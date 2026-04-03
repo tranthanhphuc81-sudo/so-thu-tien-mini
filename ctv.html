@@ -657,6 +657,8 @@ function initFirebase(cfg, ctv) {
         if (btnL) { btnL.disabled = false; btnL.textContent = '🔓 Đăng nhập'; }
         if (btnS) { btnS.disabled = false; btnS.textContent = '✅ Tạo mật khẩu & Vào app'; }
         _db.ref('/ctvAllowed/' + safeKey(ctv)).get().then(snap => {
+          // Race condition guard: nếu user đã login thành công trong lúc chờ → bỏ qua
+          if (_ctvAuthed) return;
           document.getElementById('loadingScreen').style.display = 'none';
           if (!snap.exists()) {
             document.getElementById('noData').style.display = 'block';
@@ -672,6 +674,7 @@ function initFirebase(cfg, ctv) {
           }
           document.getElementById('ctvLoginOverlay').classList.add('show');
         }).catch(e => {
+          if (_ctvAuthed) return;
           document.getElementById('loadingScreen').style.display = 'none';
           document.getElementById('noData').style.display = 'block';
           showToast('⚠️ Lỗi kết nối: ' + e.message);
