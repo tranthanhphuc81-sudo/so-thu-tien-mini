@@ -357,13 +357,27 @@
   <div class="ctv-login-card">
     <div class="login-logo">🔐</div>
     <h2 id="ctvLoginName"></h2>
-    <p class="login-sub">Nhập mật khẩu để xem danh sách khách hàng</p>
-    <div class="form-group">
+    <p class="login-sub" id="ctvLoginSub">Nhập mật khẩu để xem danh sách khách hàng</p>
+
+    <!-- Form đăng nhập -->
+    <div id="ctvFormLogin" style="display:none">
       <input type="password" id="ctvPwInput" placeholder="Mật khẩu" autocomplete="current-password"
-             style="width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;font-size:15px"
+             style="width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;font-size:15px;margin-bottom:10px"
              onkeydown="if(event.key==='Enter')ctvLogin()">
+      <button class="btn btn-success" style="width:100%;padding:12px" onclick="ctvLogin()">🔓 Đăng nhập</button>
     </div>
-    <button class="btn btn-success" style="width:100%;margin-top:8px;padding:12px" onclick="ctvLogin()">🔓 Đăng nhập</button>
+
+    <!-- Form tạo mật khẩu lần đầu -->
+    <div id="ctvFormSetup" style="display:none">
+      <input type="password" id="ctvPwSetup1" placeholder="Tạo mật khẩu (tối thiểu 4 ký tự)" autocomplete="new-password"
+             style="width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;font-size:15px;margin-bottom:10px"
+             onkeydown="if(event.key==='Enter')ctvSetupPassword()">
+      <input type="password" id="ctvPwSetup2" placeholder="Nhập lại mật khẩu" autocomplete="new-password"
+             style="width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;font-size:15px;margin-bottom:10px"
+             onkeydown="if(event.key==='Enter')ctvSetupPassword()">
+      <button class="btn btn-success" style="width:100%;padding:12px" onclick="ctvSetupPassword()">✅ Tạo mật khẩu & Vào app</button>
+    </div>
+
     <div class="login-err" id="ctvLoginErr"></div>
   </div>
 </div>
@@ -512,6 +526,20 @@ async function ctvLogin() {
   }
 }
 
+async function ctvSetupPassword() {
+  const pw1 = document.getElementById('ctvPwSetup1').value;
+  const pw2 = document.getElementById('ctvPwSetup2').value;
+  document.getElementById('ctvLoginErr').textContent = '';
+  if (pw1.length < 4) { document.getElementById('ctvLoginErr').textContent = 'Mật khẩu cần ít nhất 4 ký tự'; return; }
+  if (pw1 !== pw2) { document.getElementById('ctvLoginErr').textContent = 'Mật khẩu không khớp'; return; }
+  if (!_db) { document.getElementById('ctvLoginErr').textContent = 'Chưa kết nối Firebase'; return; }
+  const h = await hashPw(pw1);
+  await _db.ref('/data/auth/ctvPw/' + safeKey(ctvName)).set(h);
+  sessionStorage.setItem('sothu_ctv_ok_' + ctvName, '1');
+  _ctvAuthed = true;
+  _showCtvApp(ctvName);
+}
+
 function getData() { return _cache; }
 
 function saveData(data) {
@@ -546,21 +574,28 @@ function initFirebase(cfg, ctv) {
             return;
           }
 
-          // Check if NVTD has set a password for this CTV
+          // Check for existing password
           const pwHash = val.auth && val.auth.ctvPw && val.auth.ctvPw[safeKey(ctv)];
+          document.getElementById('loadingScreen').style.display = 'none';
+          document.getElementById('ctvLoginName').textContent = '👤 ' + (ctv || 'CTV');
+
           if (!pwHash) {
-            // No password set — allow access directly
-            _ctvAuthed = true;
-            _showCtvApp(ctv);
+            // No password yet — ask CTV to create one
+            document.getElementById('ctvLoginSub').textContent = 'Lần đầu đăng nhập — hãy tạo mật khẩu của bạn';
+            document.getElementById('ctvFormSetup').style.display = '';
+            document.getElementById('ctvFormLogin').style.display = 'none';
+            document.getElementById('ctvLoginOverlay').classList.add('show');
+            document.getElementById('ctvPwSetup1').focus();
           } else if (sessionStorage.getItem('sothu_ctv_ok_' + ctv) === '1') {
-            // Valid session
+            // Valid session — go straight in
             _ctvAuthed = true;
             _showCtvApp(ctv);
           } else {
-            // Show login overlay
+            // Show login form
             _pendingPwHash = pwHash;
-            document.getElementById('loadingScreen').style.display = 'none';
-            document.getElementById('ctvLoginName').textContent = '👤 ' + (ctv || 'CTV');
+            document.getElementById('ctvLoginSub').textContent = 'Nhập mật khẩu để xem danh sách khách hàng';
+            document.getElementById('ctvFormLogin').style.display = '';
+            document.getElementById('ctvFormSetup').style.display = 'none';
             document.getElementById('ctvLoginOverlay').classList.add('show');
             document.getElementById('ctvPwInput').focus();
           }
