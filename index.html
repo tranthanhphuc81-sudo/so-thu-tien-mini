@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sổ Thu Tiền Mini</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #1a73e8 0%, #0d47a1 50%, #1b5e20 100%);
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+  }
+  .container { max-width: 440px; width: 100%; }
+  .logo-area { text-align: center; color: #fff; margin-bottom: 36px; }
+  .logo-area .icon { font-size: 72px; margin-bottom: 12px; }
+  .logo-area h1 { font-size: 28px; font-weight: 800; }
+  .logo-area p { font-size: 15px; opacity: 0.85; margin-top: 6px; }
+
+  .card {
+    background: rgba(255,255,255,0.95);
+    border-radius: 20px;
+    padding: 28px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  }
+  .card h2 { font-size: 18px; font-weight: 700; color: #202124; margin-bottom: 20px; text-align: center; }
+
+  .btn-nav {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 20px;
+    border-radius: 14px;
+    text-decoration: none;
+    margin-bottom: 14px;
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+  }
+  .btn-nav:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
+  .btn-nav.nvtd { background: linear-gradient(135deg, #1a73e8, #0d47a1); color: #fff; }
+  .btn-nav.ctv { background: linear-gradient(135deg, #34a853, #1b5e20); color: #fff; }
+  .btn-nav .icon { font-size: 36px; }
+  .btn-nav .text h3 { font-size: 17px; font-weight: 800; }
+  .btn-nav .text p { font-size: 12px; opacity: 0.85; margin-top: 2px; }
+  .btn-nav .arrow { margin-left: auto; font-size: 20px; opacity: 0.7; }
+
+  .note {
+    background: #fff8e1;
+    border-left: 4px solid #fbbc04;
+    border-radius: 0 8px 8px 0;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: #5f6368;
+    margin-top: 16px;
+  }
+
+  footer { text-align: center; color: rgba(255,255,255,0.6); font-size: 12px; margin-top: 24px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="logo-area">
+    <div class="icon">📋</div>
+    <h1>Sổ Thu Tiền Mini</h1>
+    <p>Hệ thống quản lý thu tiền qua CTV</p>
+  </div>
+
+  <div class="card">
+    <h2>Bạn là ai?</h2>
+
+    <a href="nvtd.html" class="btn-nav nvtd">
+      <div class="icon">👔</div>
+      <div class="text">
+        <h3>Nhân viên TD (NVTD)</h3>
+        <p>Quản lý, nhập danh sách, xem báo cáo, cấp link CTV</p>
+      </div>
+      <div class="arrow">→</div>
+    </a>
+
+    <a href="ctv.html" class="btn-nav ctv">
+      <div class="icon">💳</div>
+      <div class="text">
+        <h3>Cộng tác viên (CTV)</h3>
+        <p>Xem danh sách, gửi QR, xác nhận đã thu</p>
+      </div>
+      <div class="arrow">→</div>
+    </a>
+
+    <div class="note">
+      💡 <strong>Lần đầu dùng?</strong> Vào trang NVTD → Thiết lập → bấm "Dùng dữ liệu mẫu" để xem demo ngay.
+    </div>
+  </div>
+
+  <footer>Sổ Thu Tiền Mini · Dữ liệu lưu trong trình duyệt</footer>
+</div>
+</body>
+</html>

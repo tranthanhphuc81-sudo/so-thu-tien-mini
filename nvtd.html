@@ -1,0 +1,1688 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sổ Thu Tiền Mini - Quản Lý NVTD</title>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qr.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<style>
+  :root {
+    --primary: #1a73e8;
+    --success: #34a853;
+    --warning: #fbbc04;
+    --danger: #ea4335;
+    --bg: #f0f4f8;
+    --card: #ffffff;
+    --border: #e0e0e0;
+    --text: #202124;
+    --muted: #5f6368;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* HEADER */
+  header {
+    background: linear-gradient(135deg, #1a73e8, #0d47a1);
+    color: #fff;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    position: sticky; top: 0; z-index: 100;
+  }
+  header .logo { font-size: 28px; }
+  header h1 { font-size: 20px; font-weight: 700; }
+  header .subtitle { font-size: 12px; opacity: 0.8; }
+  header .role-badge {
+    margin-left: auto;
+    background: rgba(255,255,255,0.2);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  /* TABS */
+  .tab-bar {
+    display: flex;
+    background: var(--card);
+    border-bottom: 2px solid var(--border);
+    padding: 0 24px;
+    gap: 4px;
+  }
+  .tab-btn {
+    padding: 14px 20px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--muted);
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s;
+  }
+  .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+  .tab-btn:hover { color: var(--primary); background: #f8f9fa; }
+
+  /* CONTENT */
+  .tab-content { display: none; padding: 24px; max-width: 1100px; margin: 0 auto; }
+  .tab-content.active { display: block; }
+
+  /* CARD */
+  .card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 20px 24px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    margin-bottom: 20px;
+  }
+  .card-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* FORM */
+  .form-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  .form-group { flex: 1; min-width: 180px; }
+  label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--muted); }
+  input, select, textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    transition: border-color 0.2s;
+    font-family: inherit;
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(26,115,232,0.12);
+  }
+
+  /* BUTTONS */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 18px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: #1557b0; }
+  .btn-success { background: var(--success); color: #fff; }
+  .btn-success:hover { background: #2d8f47; }
+  .btn-danger { background: var(--danger); color: #fff; }
+  .btn-danger:hover { background: #c62828; }
+  .btn-outline {
+    background: #fff;
+    color: var(--primary);
+    border: 1.5px solid var(--primary);
+  }
+  .btn-outline:hover { background: #e8f0fe; }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+  .btn-icon { padding: 8px; border-radius: 8px; background: none; border: none; cursor: pointer; font-size: 16px; }
+
+  /* STATS ROW */
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 20px; }
+  .stat-card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 18px 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    text-align: center;
+  }
+  .stat-card .stat-num { font-size: 32px; font-weight: 800; }
+  .stat-card .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .stat-card.blue .stat-num { color: var(--primary); }
+  .stat-card.green .stat-num { color: var(--success); }
+  .stat-card.orange .stat-num { color: #e65100; }
+  .stat-card.gray .stat-num { color: var(--muted); }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th {
+    background: #f8f9fa;
+    padding: 12px 14px;
+    text-align: left;
+    font-weight: 700;
+    font-size: 12px;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+  }
+  td { padding: 12px 14px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fafafa; }
+  tr.paid td { background: #f0fdf4; }
+
+  /* BADGE */
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .badge-pending { background: #fff3e0; color: #e65100; }
+  .badge-paid { background: #e8f5e9; color: #2e7d32; }
+
+  /* PROGRESS BAR */
+  .progress-wrap { background: #e8eaf6; border-radius: 10px; height: 10px; overflow: hidden; margin-top: 8px; }
+  .progress-bar { height: 100%; border-radius: 10px; background: linear-gradient(90deg, var(--success), #66bb6a); transition: width 0.5s; }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 999;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 28px;
+    max-width: 480px;
+    width: 100%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    position: relative;
+    animation: slideUp 0.25s ease;
+  }
+  @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .modal-close {
+    position: absolute; top: 16px; right: 16px;
+    background: #f0f4f8; border: none; border-radius: 50%;
+    width: 32px; height: 32px; font-size: 18px; cursor: pointer; color: var(--muted);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .modal-close:hover { background: #e0e0e0; }
+
+  /* QR CARD in modal */
+  .qr-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 12px;
+    color: #fff;
+  }
+  .qr-display canvas { border-radius: 8px; background: #fff; padding: 8px; }
+  .qr-name { font-size: 20px; font-weight: 800; text-align: center; text-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+  .qr-amount { font-size: 16px; font-weight: 600; background: rgba(255,255,255,0.25); padding: 4px 16px; border-radius: 20px; }
+  .qr-acct { font-size: 12px; opacity: 0.85; }
+
+  /* BILL MODAL */
+  .bill-img { width: 100%; border-radius: 8px; max-height: 400px; object-fit: contain; border: 1px solid var(--border); }
+
+  /* IMPORT TEXTAREA */
+  textarea { resize: vertical; min-height: 100px; }
+
+  /* CTV LINK BOX */
+  .link-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #e8f0fe;
+    border: 1.5px solid #c5d8ff;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-top: 8px;
+  }
+  .link-box input { background: transparent; border: none; flex: 1; font-size: 14px; color: var(--primary); font-weight: 600; }
+  .link-box input:focus { box-shadow: none; }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: #333; color: #fff;
+    padding: 12px 24px; border-radius: 30px;
+    font-size: 14px; font-weight: 600;
+    z-index: 9999;
+    opacity: 0; transition: opacity 0.3s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+
+  /* EMPTY STATE */
+  .empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+  }
+  .empty .icon { font-size: 56px; margin-bottom: 12px; }
+  .empty p { font-size: 15px; }
+
+  /* SEARCH BAR */
+  .search-wrap { position: relative; margin-bottom: 16px; }
+  .search-wrap input { padding-left: 38px; }
+  .search-wrap::before {
+    content: '🔍';
+    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    font-size: 14px;
+  }
+
+  /* FILTER CHIPS */
+  .filter-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .chip {
+    padding: 5px 14px;
+    border-radius: 20px;
+    border: 1.5px solid var(--border);
+    background: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--muted);
+  }
+  .chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+  .section-note {
+    font-size: 13px;
+    color: var(--muted);
+    background: #fff8e1;
+    border-left: 4px solid var(--warning);
+    padding: 10px 14px;
+    border-radius: 0 8px 8px 0;
+    margin-bottom: 16px;
+  }
+
+  /* EXCEL UPLOAD */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 28px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--muted);
+    background: #fafafa;
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--primary);
+    background: #e8f0fe;
+    color: var(--primary);
+  }
+  .upload-zone .upload-icon { font-size: 40px; margin-bottom: 8px; }
+
+  .col-map-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+
+  @media (max-width: 600px) {
+    header h1 { font-size: 16px; }
+    .tab-btn { padding: 12px 12px; font-size: 13px; }
+    .tab-content { padding: 16px; }
+    .form-row { flex-direction: column; }
+    th { font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">📋</div>
+  <div>
+    <h1>Sổ Thu Tiền Mini</h1>
+    <div class="subtitle">Phần mềm quản lý thu tiền CTV</div>
+  </div>
+  <div class="role-badge">👔 NVTD</div>
+</header>
+
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('tab-setup')">⚙️ Thiết lập</button>
+  <button class="tab-btn" onclick="switchTab('tab-dashboard')">📊 Tổng quan</button>
+  <button class="tab-btn" onclick="switchTab('tab-list')">📋 Danh sách KH</button>
+  <button class="tab-btn" onclick="switchTab('tab-ctv')">👥 Quản lý CTV</button>
+</div>
+
+<!-- ===================== TAB SETUP ===================== -->
+<div id="tab-setup" class="tab-content active">
+
+  <div class="card" id="fbSetupCard">
+    <div class="card-title">🔥 Kết nối Firebase (đồng bộ đa thiết bị)</div>
+    <div class="section-note">
+      ⚡ Sau khi kết nối, NVTD và CTV đồng bộ real-time dù khác mạng, khác điện thoại. Hoàn toàn miễn phí.<br>
+      <strong>Hướng dẫn:</strong> 1) Vào <a href="https://console.firebase.google.com/" target="_blank" style="color:var(--primary)">console.firebase.google.com</a> → Tạo project → Realtime Database → Tạo database → Copy URL &amp; API Key → Dán vào đây.
+    </div>
+    <div class="form-row" style="margin-top:12px">
+      <div class="form-group">
+        <label>API Key <span style="color:var(--danger)">*</span></label>
+        <input type="text" id="fbApiKey" placeholder="AIzaSy..." autocomplete="off" />
+      </div>
+      <div class="form-group">
+        <label>Database URL <span style="color:var(--danger)">*</span></label>
+        <input type="text" id="fbDbUrl" placeholder="https://your-project-default-rtdb.asia-southeast1.firebasedatabase.app" autocomplete="off" />
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="connectFirebase()">🔥 Kết nối Firebase</button>
+      <button class="btn btn-outline btn-sm" onclick="resetFbCfg()" title="Xóa cấu hình cũ để kết nối lại">🔄 Reset &amp; kết nối lại</button>
+      <div id="fbStatusBadge" style="font-size:14px;font-weight:700">🔴 <span style="color:var(--muted)">Chưa kết nối – Dùng bộ nhớ cục bộ</span></div>
+    </div>
+    <div id="fbErrorBox" style="display:none;margin-top:14px;padding:14px;background:#fce8e6;border:1.5px solid #ea4335;border-radius:8px;font-size:13px;color:#b71c1c">
+      <strong>❌ Lỗi kết nối:</strong> <span id="fbErrorMsg"></span>
+      <div id="fbErrorHint" style="margin-top:8px;padding:10px;background:rgba(255,255,255,0.75);border-radius:6px;line-height:1.8;color:#333"></div>
+    </div>
+  </div>
+
+  <div class="card" id="secRulesCard">
+    <div class="card-title">🛡️ Bảo mật Firebase (Bắt buộc)</div>
+    <div class="section-note" style="margin-bottom:12px">
+      ⚠️ <strong>Thực hiện 2 bước này để bảo vệ dữ liệu khách hàng:</strong><br>
+      <strong>1.</strong> <a href="https://console.firebase.google.com/" target="_blank" style="color:var(--primary)">Firebase Console</a> → <strong>Authentication</strong> → <strong>Sign-in method</strong> → Bật <strong>Anonymous</strong> → Save<br>
+      <strong>2.</strong> Vào <strong>Realtime Database</strong> → Tab <strong>Rules</strong> → Xóa hết nội dung cũ → Dán JSON dưới đây → Bấm <strong>Publish</strong>
+    </div>
+    <pre id="fbRulesJson" style="background:#1e1e1e;color:#d4d4d4;padding:14px;border-radius:10px;font-size:12px;overflow-x:auto;line-height:1.6;margin-bottom:12px;font-family:monospace;user-select:all">{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "data": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    }
+  }
+}</pre>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <button class="btn btn-outline btn-sm" onclick="copyRules()">📋 Copy Rules JSON</button>
+      <span style="font-size:12px;color:var(--muted)">💡 Chỉ người đăng nhập vào công cụ mới đọc/ghi được dữ liệu — không ai tự truy cập Firebase được.</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🏦 Thông tin tài khoản ngân hàng</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Ngân hàng</label>
+        <select id="bankName">
+          <option value="MB">MB Bank</option>
+          <option value="VCB">Vietcombank</option>
+          <option value="TCB">Techcombank</option>
+          <option value="VTB">Vietinbank</option>
+          <option value="BIDV">BIDV</option>
+          <option value="ACB">ACB</option>
+          <option value="VPB">VPBank</option>
+          <option value="TPB">TPBank</option>
+          <option value="MSB">MSB</option>
+          <option value="OCB">OCB</option>
+          <option value="SHB">SHB</option>
+          <option value="HDB">HDBank</option>
+          <option value="STB">Sacombank</option>
+          <option value="MOMO">MoMo</option>
+          <option value="ZALOPAY">ZaloPay</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Số tài khoản</label>
+        <input type="text" id="bankAccount" placeholder="VD: 0123456789" />
+      </div>
+      <div class="form-group">
+        <label>Tên chủ tài khoản</label>
+        <input type="text" id="accountName" placeholder="VD: CONG TY ABC" />
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="saveBankInfo()">💾 Lưu thông tin</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📥 Nhập danh sách khách hàng</div>
+    <div class="section-note">
+      💡 Nhập theo định dạng mỗi dòng: <strong>Tên Khách Hàng | Số tiền | Mã đối soát (tuỳ chọn)</strong><br>
+      Ví dụ: <code>Nguyễn Văn An | 500000 | KH001</code>
+    </div>
+    <div class="form-group" style="margin-bottom:12px">
+      <label>Tên CTV phụ trách (để phân nhóm)</label>
+      <input type="text" id="ctvName" placeholder="VD: Hoa, Lan, Trang..." />
+    </div>
+    <div class="form-group" style="margin-bottom:12px">
+      <label>Dán danh sách khách hàng vào đây</label>
+      <textarea id="customerInput" placeholder="Nguyễn Văn An | 500000 | KH001&#10;Trần Thị Bình | 800000 | KH002&#10;Lê Văn Cường | 1200000 | KH003"></textarea>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="importCustomers()">📥 Nhập danh sách</button>
+      <button class="btn btn-outline" onclick="loadSampleData()">📋 Dùng dữ liệu mẫu</button>
+      <button class="btn btn-danger" onclick="clearAllData()">🗑️ Xóa tất cả dữ liệu</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📊 Upload file Excel công nợ</div>
+    <div class="section-note">
+      💡 Upload file Excel (.xlsx, .xls) báo cáo tình hình công nợ. Hệ thống tự nhận dạng cột <strong>Tên khách hàng</strong>, <strong>Mã KH</strong> và <strong>Số tiền cần thu</strong>. Bạn có thể chỉnh lại trước khi nhập.
+    </div>
+    <div class="form-group" style="margin-bottom:12px">
+      <label>CTV phụ trách danh sách này</label>
+      <input type="text" id="excelCtvName" placeholder="VD: Hoa, Lan, Trang..." />
+      <select id="excelCtvSelect" style="display:none;margin-top:6px"></select>
+      <div id="excelCtvHint" style="display:none;font-size:12px;color:var(--success);margin-top:4px">✅ Đã nhận diện CTV từ file Excel – chọn CTV hoặc gán theo từng dòng</div>
+    </div>
+    <div class="upload-zone" id="uploadZone"
+         onclick="document.getElementById('excelFileInput').click()"
+         ondragover="event.preventDefault();this.classList.add('drag-over')"
+         ondragleave="this.classList.remove('drag-over')"
+         ondrop="this.classList.remove('drag-over');handleExcelDrop(event)">
+      <input type="file" id="excelFileInput" accept=".xlsx,.xls" style="display:none" onchange="handleExcelFile(this)">
+      <div class="upload-icon">📊</div>
+      <div style="font-size:15px;font-weight:700;margin-bottom:6px">Kéo thả hoặc bấm để chọn file Excel</div>
+      <div style="font-size:13px">Chấp nhận file .xlsx, .xls</div>
+    </div>
+    <div id="excelFileInfo" style="display:none;margin-top:12px;padding:10px 14px;background:#e8f5e9;border-radius:8px;font-size:13px;color:#2e7d32;font-weight:600"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🌐 Địa chỉ website (bắt buộc để tạo link CTV)</div>
+    <div class="section-note" style="margin-bottom:14px">
+      ⚠️ Công cụ đang chạy trên máy cục bộ (<code>file://</code>) nên link tạo ra không gửi được cho CTV.
+      Cần upload 3 file HTML lên web để có địa chỉ thật:<br><br>
+      <strong>Cách dễ nhất — Netlify Drop (miễn phí, không cần tài khoản):</strong><br>
+      1. Mở <a href="https://app.netlify.com/drop" target="_blank" style="color:var(--primary)"><strong>app.netlify.com/drop</strong></a><br>
+      2. Kéo thả thư mục <code>SoThuTienMini</code> vào khung đó<br>
+      3. Netlify sẽ cấp 1 địa chỉ kiểu <code>https://abc123.netlify.app</code><br>
+      4. Dán địa chỉ đó vào ô bên dưới và bấm Lưu
+    </div>
+    <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+      <div class="form-group" style="flex:1;min-width:260px;margin-bottom:0">
+        <label>Địa chỉ website (URL gốc)</label>
+        <input type="url" id="siteBaseUrl" placeholder="https://abc123.netlify.app" autocomplete="off" />
+      </div>
+      <button class="btn btn-primary" onclick="saveSiteUrl()">💾 Lưu URL</button>
+    </div>
+    <div id="siteUrlStatus" style="margin-top:10px;font-size:13px;display:none"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🔗 Link công cụ CTV</div>
+    <p style="font-size:14px;color:var(--muted);margin-bottom:12px">Gửi link này cho CTV để họ mở giao diện thu tiền. CTV có thể ghim vào Cloud Zalo để tiện truy cập.</p>
+    <div id="ctvLinkList"></div>
+    <div class="section-note" style="margin-top:12px">
+      📱 Hướng dẫn CTV: Mở link → Ghim vào <strong>"Cloud của tôi"</strong> trên Zalo → Mở ra bất cứ lúc nào cần.
+    </div>
+  </div>
+
+</div>
+
+<!-- ===================== TAB DASHBOARD ===================== -->
+<div id="tab-dashboard" class="tab-content">
+
+  <div class="stats-row" id="statsRow">
+    <div class="stat-card blue"><div class="stat-num" id="stat-total">0</div><div class="stat-label">Tổng khách hàng</div></div>
+    <div class="stat-card green"><div class="stat-num" id="stat-paid">0</div><div class="stat-label">Đã thu ✅</div></div>
+    <div class="stat-card orange"><div class="stat-num" id="stat-pending">0</div><div class="stat-label">Chưa thu ⏳</div></div>
+    <div class="stat-card gray"><div class="stat-num" id="stat-pct">0%</div><div class="stat-label">Tiến độ</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📈 Tiến độ thu tiền tổng thể</div>
+    <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-bottom:6px">
+      <span id="prog-text">0 / 0 khách hàng đã nộp tiền</span>
+      <span id="prog-pct">0%</span>
+    </div>
+    <div class="progress-wrap"><div class="progress-bar" id="prog-bar" style="width:0%"></div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">💰 Tổng tiền đã thu được</div>
+    <div style="font-size:36px;font-weight:800;color:var(--success)" id="total-amount">0 ₫</div>
+    <div style="font-size:14px;color:var(--muted);margin-top:6px">Tổng cần thu: <strong id="total-need">0 ₫</strong></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📋 Hoạt động gần đây</div>
+    <div id="recent-activity">
+      <div class="empty"><div class="icon">📭</div><p>Chưa có giao dịch nào</p></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ===================== TAB LIST ===================== -->
+<div id="tab-list" class="tab-content">
+
+  <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
+    <div class="search-wrap" style="flex:1;min-width:200px;margin-bottom:0">
+      <input type="text" id="searchInput" placeholder="Tìm kiếm khách hàng..." oninput="renderCustomerTable()" />
+    </div>
+    <button class="btn btn-outline btn-sm" onclick="refreshPage()">🔄 Làm mới</button>
+    <button class="btn btn-primary btn-sm" onclick="generateAllQR()">🖨️ Tạo tất cả QR</button>
+  </div>
+
+  <div class="filter-chips">
+    <div class="chip active" onclick="setFilter('all', this)">Tất cả</div>
+    <div class="chip" onclick="setFilter('pending', this)">⏳ Chưa thu</div>
+    <div class="chip" onclick="setFilter('paid', this)">✅ Đã thu</div>
+  </div>
+
+  <div class="card" style="padding:0">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Tên khách hàng</th>
+            <th>Số tiền</th>
+            <th>Mã đối soát</th>
+            <th>CTV phụ trách</th>
+            <th>Trạng thái</th>
+            <th>Thời gian thu</th>
+            <th>Thao tác</th>
+          </tr>
+        </thead>
+        <tbody id="customerTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- ===================== TAB CTV ===================== -->
+<div id="tab-ctv" class="tab-content">
+
+  <div class="card">
+    <div class="card-title">👥 Danh sách CTV & Tiến độ</div>
+    <div id="ctvProgressList">
+      <div class="empty"><div class="icon">👤</div><p>Chưa có CTV nào. Hãy nhập danh sách khách hàng với tên CTV.</p></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🧾 Bill đã xác nhận (Kiểm tra chéo)</div>
+    <div class="section-note">NVTD có thể xem bill CTV tải lên để hậu kiểm.</div>
+    <div id="billGallery">
+      <div class="empty"><div class="icon">🧾</div><p>Chưa có bill nào được xác nhận.</p></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- =================== MODAL QR =================== -->
+<div class="modal-overlay" id="qrModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('qrModal')">✕</button>
+    <h3 style="margin-bottom:16px;font-size:17px">🔲 Mã QR Thanh Toán</h3>
+    <div class="qr-display">
+      <canvas id="qrCanvas" width="220" height="220"></canvas>
+      <div class="qr-name" id="qrModalName"></div>
+      <div class="qr-amount" id="qrModalAmount"></div>
+      <div class="qr-acct" id="qrModalAcct"></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+      <button class="btn btn-success" style="flex:1" onclick="downloadQR()">⬇️ Tải ảnh QR</button>
+      <button class="btn btn-outline" style="flex:1" onclick="closeModal('qrModal')">Đóng</button>
+    </div>
+  </div>
+</div>
+
+<!-- =================== MODAL BILL =================== -->
+<div class="modal-overlay" id="billModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('billModal')">✕</button>
+    <h3 style="margin-bottom:16px;font-size:17px">🧾 Bill xác nhận</h3>
+    <img id="billModalImg" class="bill-img" src="" alt="Bill" />
+    <div style="margin-top:12px;font-size:14px;color:var(--muted)" id="billModalInfo"></div>
+  </div>
+</div>
+
+<!-- =================== MODAL EXCEL PREVIEW =================== -->
+<div class="modal-overlay" id="excelModal">
+  <div class="modal" style="max-width:700px;width:100%">
+    <button class="modal-close" onclick="closeModal('excelModal')">✕</button>
+    <h3 style="margin-bottom:4px;font-size:17px">📊 Xem trước dữ liệu từ Excel</h3>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px" id="excelFileName"></p>
+    <div style="font-size:13px;font-weight:700;color:var(--muted);margin-bottom:8px">Chọn cột tương ứng trong file:</div>
+    <div id="excelColMap" class="form-row" style="margin-bottom:16px"></div>
+    <div style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px" id="excelPreviewTable"></div>
+    <div id="excelPreviewNote" style="margin-top:10px;padding:10px 14px;border-radius:8px;font-size:13px"></div>
+    <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+      <button class="btn btn-primary" style="flex:1" onclick="confirmExcelImport()">✅ Nhập <span id="excelImportCount">0</span> khách hàng</button>
+      <button class="btn btn-outline" onclick="closeModal('excelModal')">Hủy</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ==================== FIREBASE DATA LAYER ====================
+const FB_CFG_KEY = 'sothu_fb_cfg';
+let _cache = { customers: [], bank: {}, activities: [] };
+let _db = null;
+let _fbInitialized = false;
+
+function getFbCfg() {
+  try { return JSON.parse(localStorage.getItem(FB_CFG_KEY)); } catch { return null; }
+}
+function saveFbCfg(cfg) {
+  localStorage.setItem(FB_CFG_KEY, JSON.stringify(cfg));
+}
+
+function getData() { return _cache; }
+
+function saveData(data) {
+  _cache = data;
+  if (!_db) {
+    localStorage.setItem('sothu_local', JSON.stringify(data));
+    return;
+  }
+  const customersObj = {};
+  data.customers.forEach(c => { customersObj[c.id] = c; });
+  const activitiesObj = {};
+  (data.activities || []).forEach((a, i) => { activitiesObj['act_' + a.at + '_' + i] = a; });
+  _db.ref('/data').update({
+    bank: data.bank || {},
+    customers: customersObj,
+    activities: activitiesObj,
+  }).catch(err => showToast('⚠️ Lỗi lưu Firebase: ' + err.message));
+}
+
+function cacheFromVal(val) {
+  return {
+    customers: val && val.customers ? Object.values(val.customers) : [],
+    bank: (val && val.bank) ? val.bank : {},
+    activities: val && val.activities
+      ? Object.values(val.activities).sort((a, b) => (b.at || 0) - (a.at || 0))
+      : [],
+  };
+}
+
+function initFirebase(cfg, showSuccessToast = false) {
+  if (_fbInitialized) return;
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(cfg);
+    _db = firebase.database();
+    _fbInitialized = true;
+    firebase.auth().signInAnonymously()
+      .then(cred => {
+        _db.ref('/data').on('value', snapshot => {
+          _cache = cacheFromVal(snapshot.val());
+          renderAll();
+          loadBankInfo();
+          renderCtvLinks();
+        });
+        hideFbError();
+        updateFbStatus(true);
+        if (showSuccessToast) showToast('🔥 Kết nối Firebase thành công!');
+      })
+      .catch(e => {
+        _fbInitialized = false;
+        _db = null;
+        updateFbStatus(false);
+        console.error('[Firebase Auth Error]', e.code, e.message, e);
+        if (showSuccessToast) showFbError(e.code || '', e.message);
+      });
+  } catch (e) {
+    _fbInitialized = false;
+    _db = null;
+    updateFbStatus(false);
+    console.error('[Firebase Init Error]', e);
+    if (showSuccessToast) showFbError('init-error', e.message);
+  }
+}
+
+function showFbError(code, message) {
+  const box  = document.getElementById('fbErrorBox');
+  const msg  = document.getElementById('fbErrorMsg');
+  const hint = document.getElementById('fbErrorHint');
+  if (!box) return;
+  msg.textContent = '(' + (code || '?') + ') ' + message;
+  let h = '';
+  if (code === 'auth/operation-not-allowed' || code === 'auth/admin-restricted-operation') {
+    h = '👉 <strong>Anonymous Authentication chưa được bật.</strong> Làm theo đúng thứ tự:<br>'
+      + '1. Vào <a href="https://console.firebase.google.com/" target="_blank" style="color:var(--primary)">console.firebase.google.com</a><br>'
+      + '2. Chọn đúng project (<code>sothutienmini</code>)<br>'
+      + '3. Menu trái → <strong>Build</strong> → <strong>Authentication</strong><br>'
+      + '4. Bấm tab <strong>Sign-in method</strong><br>'
+      + '5. Tìm dòng <strong>Anonymous</strong> → bấm vào → bật toggle <strong>Enable</strong> → bấm <strong>Save</strong><br>'
+      + '6. Quay lại đây → bấm <strong>🔄 Reset &amp; kết nối lại</strong> → nhập lại API Key + URL → Kết nối';
+  } else if (code === 'auth/invalid-api-key' || message.toLowerCase().includes('api key') || message.toLowerCase().includes('api-key')) {
+    h = '👉 <strong>API Key không hợp lệ.</strong> Vào Firebase Console → Project Settings → Web App → copy lại API Key.';
+  } else if (code === 'auth/network-request-failed') {
+    h = '👉 <strong>Lỗi mạng.</strong> Kiểm tra kết nối internet, tắt VPN nếu đang dùng, thử lại.';
+  } else if (message.toLowerCase().includes('permission') || message.toLowerCase().includes('denied')) {
+    h = '👉 <strong>Bị từ chối quyền.</strong> Vào Realtime Database → Rules → dán Rules mới → Publish (xem thẻ bên dưới).';
+  } else if (code === 'auth/configuration-not-found') {
+    h = '👉 <strong>Cấu hình Auth chưa đúng.</strong> Kiểm tra lại API Key và Database URL. Đảm bảo project Firebase còn hoạt động.';
+  } else {
+    h = '👉 Mở <strong>F12 → Console</strong> để xem chi tiết lỗi và chụp màn hình gửi hỗ trợ.';
+  }
+  hint.innerHTML = h;
+  box.style.display = '';
+  box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function hideFbError() {
+  const box = document.getElementById('fbErrorBox');
+  if (box) box.style.display = 'none';
+}
+
+function resetFbCfg() {
+  localStorage.removeItem(FB_CFG_KEY);
+  showToast('🔄 Đã xóa cấu hình cũ. Đang tải lại...');
+  setTimeout(() => location.reload(), 1000);
+}
+
+function deriveAuthDomain(databaseURL) {
+  // https://{projectId}-default-rtdb.{region}.firebasedatabase.app
+  const m = (databaseURL || '').match(/https:\/\/(.+)-default-rtdb\./);
+  if (m) return m[1] + '.firebaseapp.com';
+  // https://{projectId}.firebaseio.com
+  const m2 = (databaseURL || '').match(/https:\/\/([^.]+)\.firebaseio\.com/);
+  if (m2) return m2[1] + '.firebaseapp.com';
+  return '';
+}
+
+function connectFirebase() {
+  const apiKey = document.getElementById('fbApiKey').value.trim();
+  const dbUrl  = document.getElementById('fbDbUrl').value.trim();
+  if (!apiKey || !dbUrl) { showToast('⚠️ Vui lòng nhập đủ thông tin Firebase!'); return; }
+  if (_fbInitialized) { showToast('🔄 Firebase đã kết nối. Bấm Reset để đổi cấu hình.'); return; }
+  const authDomain = deriveAuthDomain(dbUrl);
+  const cfg = { apiKey, databaseURL: dbUrl, authDomain };
+  saveFbCfg(cfg);
+  showToast('⏳ Đang kết nối...');
+  initFirebase(cfg, true);
+}
+
+function updateFbStatus(connected, msg) {
+  const el = document.getElementById('fbStatusBadge');
+  if (!el) return;
+  if (connected) {
+    el.innerHTML = '🟢 <span style="color:var(--success)">Đã kết nối Firebase – Real-time sync bật ✅</span>';
+  } else {
+    el.innerHTML = '🔴 <span style="color:var(--muted)">Chưa kết nối – Dùng bộ nhớ cục bộ</span>';
+  }
+}
+
+function showToast(msg, duration = 2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+
+// ==================== INIT ====================
+// ==================== SITE URL ====================
+const SITE_URL_KEY = 'sothu_site_url';
+
+function getSiteBaseUrl() {
+  const saved = localStorage.getItem(SITE_URL_KEY);
+  if (saved) {
+    // Làm sạch nếu lỡ lưu kèm tên file
+    return saved.replace(/\/(nvtd|ctv|index)\.html.*$/, '').replace(/\/$/, '');
+  }
+  const loc = window.location.href;
+  if (loc.startsWith('http')) {
+    return loc.replace(/[?#].*$/, '').replace(/\/(nvtd|ctv|index)\.html$/, '').replace(/\/$/, '');
+  }
+  return '';
+}
+
+function saveSiteUrl() {
+  let val = document.getElementById('siteBaseUrl').value.trim()
+    .replace(/\/$/, '')
+    .replace(/\/(nvtd|ctv|index)\.html.*$/, ''); // xóa tên file nếu người dùng lỡ dán
+  if (!val || !val.startsWith('http')) {
+    showToast('⚠️ URL phải bắt đầu bằng https://');
+    return;
+  }
+  localStorage.setItem(SITE_URL_KEY, val);
+  document.getElementById('siteBaseUrl').value = val;
+  const st = document.getElementById('siteUrlStatus');
+  st.style.display = '';
+  st.innerHTML = '✅ Đã lưu. Link CTV sẽ dùng: <strong>' + escHtml(val) + '/ctv.html</strong>';
+  renderCtvLinks();
+  renderCtvProgress();
+  showToast('✅ Đã lưu URL!');
+}
+
+window.addEventListener('load', () => {
+  // Load + tự động lưu URL site nếu đang chạy trên HTTP
+  const savedUrl = localStorage.getItem(SITE_URL_KEY);
+  if (savedUrl) {
+    document.getElementById('siteBaseUrl').value = savedUrl;
+    const st = document.getElementById('siteUrlStatus');
+    st.style.display = '';
+    st.innerHTML = '✅ URL hiện tại: <strong>' + escHtml(savedUrl) + '/ctv.html</strong>';
+  } else if (window.location.href.startsWith('http')) {
+    const autoUrl = window.location.href.replace(/[?#].*$/, '').replace(/\/nvtd\.html$/, '').replace(/\/$/, '');
+    document.getElementById('siteBaseUrl').value = autoUrl;
+    localStorage.setItem(SITE_URL_KEY, autoUrl);
+    const st = document.getElementById('siteUrlStatus');
+    st.style.display = '';
+    st.innerHTML = '✅ Tự động phát hiện: <strong>' + escHtml(autoUrl) + '/ctv.html</strong>';
+  }
+
+  const cfg = getFbCfg();
+  if (cfg && cfg.apiKey && cfg.databaseURL) {
+    // Tự động vá authDomain nếu config cũ chưa có
+    if (!cfg.authDomain) {
+      cfg.authDomain = deriveAuthDomain(cfg.databaseURL);
+      saveFbCfg(cfg);
+    }
+    document.getElementById('fbApiKey').value = cfg.apiKey;
+    document.getElementById('fbDbUrl').value = cfg.databaseURL;
+    initFirebase(cfg);
+    // onValue will call renderAll + loadBankInfo + renderCtvLinks
+  } else {
+    // No Firebase: load from local fallback
+    try {
+      const local = localStorage.getItem('sothu_local');
+      if (local) _cache = JSON.parse(local);
+    } catch {}
+    updateFbStatus(false);
+    loadBankInfo();
+    renderAll();
+    renderCtvLinks();
+  }
+});
+
+function renderAll() {
+  renderStats();
+  renderCustomerTable();
+  renderRecentActivity();
+  renderCtvProgress();
+  renderBillGallery();
+}
+
+// ==================== TABS ====================
+function switchTab(id) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.currentTarget.classList.add('active');
+  renderAll();
+}
+
+// ==================== BANK INFO ====================
+function saveBankInfo() {
+  const bank = {
+    name: document.getElementById('bankName').value,
+    account: document.getElementById('bankAccount').value.trim(),
+    holder: document.getElementById('accountName').value.trim(),
+  };
+  if (!bank.account || !bank.holder) { showToast('⚠️ Vui lòng nhập đủ thông tin tài khoản!'); return; }
+  _cache.bank = bank;
+  if (_db) {
+    _db.ref('/data/bank').set(bank)
+      .then(() => showToast('✅ Đã lưu thông tin ngân hàng!'))
+      .catch(e => showToast('⚠️ Lỗi: ' + e.message));
+  } else {
+    localStorage.setItem('sothu_local', JSON.stringify(_cache));
+    showToast('✅ Đã lưu thông tin ngân hàng!');
+  }
+}
+
+function loadBankInfo() {
+  const { bank } = getData();
+  if (bank && bank.name) document.getElementById('bankName').value = bank.name;
+  if (bank && bank.account) document.getElementById('bankAccount').value = bank.account;
+  if (bank && bank.holder) document.getElementById('accountName').value = bank.holder;
+}
+
+// ==================== IMPORT ====================
+function importCustomers() {
+  const text = document.getElementById('customerInput').value.trim();
+  const ctv = document.getElementById('ctvName').value.trim() || 'Chưa phân công';
+  if (!text) { showToast('⚠️ Vui lòng nhập danh sách khách hàng!'); return; }
+
+  const lines = text.split('\n').filter(l => l.trim());
+  const data = getData();
+  let count = 0;
+
+  lines.forEach(line => {
+    const parts = line.split('|').map(p => p.trim());
+    if (parts.length < 2) return;
+    const name = parts[0];
+    const amount = parseInt(parts[1].replace(/\D/g, ''), 10);
+    const code = parts[2] || 'MS' + Date.now() + Math.floor(Math.random() * 1000);
+    if (!name || isNaN(amount)) return;
+
+    const existing = data.customers.find(c => c.name === name && c.ctv === ctv);
+    if (!existing) {
+      data.customers.push({
+        id: 'kh_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+        name, amount, code, ctv,
+        status: 'pending',
+        paidAt: null,
+        billImg: null,
+        note: '',
+      });
+      count++;
+    }
+  });
+
+  saveData(data);
+  document.getElementById('customerInput').value = '';
+  renderAll();
+  renderCtvLinks();
+  showToast(`✅ Đã nhập ${count} khách hàng mới!`);
+}
+
+function loadSampleData() {
+  document.getElementById('bankName').value = 'MB';
+  document.getElementById('bankAccount').value = '0987654321';
+  document.getElementById('accountName').value = 'CONG TY TNHH ABC';
+  saveBankInfo();
+
+  document.getElementById('ctvName').value = 'Hoa';
+  document.getElementById('customerInput').value =
+`Nguyễn Văn An | 500000 | KH001
+Trần Thị Bình | 800000 | KH002
+Lê Văn Cường | 1200000 | KH003
+Phạm Thị Dung | 650000 | KH004
+Hoàng Văn Em | 300000 | KH005`;
+  importCustomers();
+
+  document.getElementById('ctvName').value = 'Lan';
+  document.getElementById('customerInput').value =
+`Ngô Thị Fát | 900000 | KH006
+Đặng Văn Giang | 450000 | KH007
+Bùi Thị Hà | 750000 | KH008
+Vũ Văn Inh | 1000000 | KH009
+Đỗ Thị Kim | 550000 | KH010`;
+  importCustomers();
+}
+
+function clearAllData() {
+  if (!confirm('⚠️ Xóa TOÀN BỘ dữ liệu? Hành động này không thể hoàn tác!')) return;
+  if (_db) {
+    _db.ref('/data').remove().catch(e => showToast('⚠️ Lỗi: ' + e.message));
+    // onValue sẽ cập nhật _cache về rỗng
+  } else {
+    localStorage.removeItem('sothu_local');
+    _cache = { customers: [], bank: {}, activities: [] };
+    renderAll();
+    loadBankInfo();
+    renderCtvLinks();
+  }
+  showToast('🗑️ Đã xóa toàn bộ dữ liệu');
+}
+
+// ==================== STATS ====================
+function renderStats() {
+  const { customers } = getData();
+  const total = customers.length;
+  const paid = customers.filter(c => c.status === 'paid').length;
+  const pending = total - paid;
+  const pct = total ? Math.round(paid / total * 100) : 0;
+
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-paid').textContent = paid;
+  document.getElementById('stat-pending').textContent = pending;
+  document.getElementById('stat-pct').textContent = pct + '%';
+  document.getElementById('prog-text').textContent = `${paid} / ${total} khách hàng đã nộp tiền`;
+  document.getElementById('prog-pct').textContent = pct + '%';
+  document.getElementById('prog-bar').style.width = pct + '%';
+
+  const paidAmt = customers.filter(c => c.status === 'paid').reduce((s, c) => s + c.amount, 0);
+  const totalAmt = customers.reduce((s, c) => s + c.amount, 0);
+  document.getElementById('total-amount').textContent = paidAmt.toLocaleString('vi-VN') + ' ₫';
+  document.getElementById('total-need').textContent = totalAmt.toLocaleString('vi-VN') + ' ₫';
+}
+
+// ==================== TABLE ====================
+let currentFilter = 'all';
+
+function setFilter(f, el) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-chips .chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderCustomerTable();
+}
+
+function refreshPage() {
+  renderAll();
+  showToast('🔄 Đã làm mới dữ liệu');
+}
+
+function renderCustomerTable() {
+  const { customers } = getData();
+  const search = (document.getElementById('searchInput')?.value || '').toLowerCase();
+  const tbody = document.getElementById('customerTableBody');
+
+  let list = customers.filter(c => {
+    const matchFilter = currentFilter === 'all' || c.status === currentFilter;
+    const matchSearch = c.name.toLowerCase().includes(search) || (c.code||'').toLowerCase().includes(search) || (c.ctv||'').toLowerCase().includes(search);
+    return matchFilter && matchSearch;
+  });
+
+  if (!list.length) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty"><div class="icon">🔍</div><p>Không có khách hàng nào</p></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = list.map((c, i) => `
+    <tr class="${c.status === 'paid' ? 'paid' : ''}">
+      <td>${i + 1}</td>
+      <td><strong>${escHtml(c.name)}</strong></td>
+      <td><strong style="color:#e65100">${c.amount.toLocaleString('vi-VN')} ₫</strong></td>
+      <td><code style="font-size:12px">${escHtml(c.code)}</code></td>
+      <td>${escHtml(c.ctv)}</td>
+      <td><span class="badge ${c.status === 'paid' ? 'badge-paid' : 'badge-pending'}">${c.status === 'paid' ? '✅ Đã thu' : '⏳ Chưa thu'}</span></td>
+      <td style="font-size:12px;color:var(--muted)">${c.paidAt ? new Date(c.paidAt).toLocaleString('vi-VN') : '—'}</td>
+      <td>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" onclick="showQR('${c.id}')">🔲 QR</button>
+          ${c.status === 'pending'
+            ? `<button class="btn btn-success btn-sm" onclick="markPaidNVTD('${c.id}')">✅ Xác nhận</button>`
+            : `<button class="btn btn-sm" style="background:#f5f5f5;color:#555" onclick="unmarkPaid('${c.id}')">↩️ Hoàn tác</button>`
+          }
+          ${c.billImg ? `<button class="btn btn-sm btn-outline" onclick="viewBill('${c.id}')">🧾 Bill</button>` : ''}
+          <button class="btn btn-danger btn-sm" onclick="deleteCustomer('${c.id}')">🗑️</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function deleteCustomer(id) {
+  if (!confirm('Xóa khách hàng này?')) return;
+  if (_db) {
+    _db.ref('/data/customers/' + id).remove()
+      .catch(e => showToast('⚠️ Lỗi: ' + e.message));
+    // onValue sẽ tự re-render
+  } else {
+    const data = getData();
+    data.customers = data.customers.filter(c => c.id !== id);
+    saveData(data);
+    renderAll();
+  }
+  showToast('🗑️ Đã xóa');
+}
+
+function markPaidNVTD(id) {
+  const data = getData();
+  const c = data.customers.find(x => x.id === id);
+  if (!c) return;
+  const paidAt = Date.now();
+  const actKey = 'act_' + paidAt;
+  const act = { name: c.name, amount: c.amount, ctv: c.ctv, at: paidAt, type: 'paid' };
+  if (_db) {
+    _db.ref('/data/customers/' + id).update({ status: 'paid', paidAt });
+    _db.ref('/data/activities/' + actKey).set(act);
+  } else {
+    c.status = 'paid';
+    c.paidAt = paidAt;
+    data.activities = data.activities || [];
+    data.activities.unshift(act);
+    if (data.activities.length > 50) data.activities = data.activities.slice(0, 50);
+    saveData(data);
+    renderAll();
+  }
+  showToast(`✅ Đã xác nhận thu tiền của ${c.name}`);
+}
+
+function unmarkPaid(id) {
+  if (_db) {
+    _db.ref('/data/customers/' + id).update({ status: 'pending', paidAt: null })
+      .catch(e => showToast('⚠️ Lỗi: ' + e.message));
+  } else {
+    const data = getData();
+    const c = data.customers.find(x => x.id === id);
+    if (!c) return;
+    c.status = 'pending';
+    c.paidAt = null;
+    saveData(data);
+    renderAll();
+  }
+  showToast('↩️ Đã hoàn tác');
+}
+
+// ==================== QR ====================
+let currentQRCustomer = null;
+
+function showQR(id) {
+  const { customers, bank } = getData();
+  const c = customers.find(x => x.id === id);
+  if (!c) return;
+  if (!bank || !bank.account) { showToast('⚠️ Vui lòng lưu thông tin tài khoản trước!'); return; }
+
+  currentQRCustomer = c;
+  document.getElementById('qrModalName').textContent = c.name;
+  document.getElementById('qrModalAmount').textContent = c.amount.toLocaleString('vi-VN') + ' ₫';
+  document.getElementById('qrModalAcct').textContent = `${bank.name} - ${bank.account} - ${bank.holder}`;
+
+  // VietQR format: bank|account|amount|description
+  const qrContent = buildVietQR(bank, c);
+
+  const canvas = document.getElementById('qrCanvas');
+  QRCode.toCanvas(canvas, qrContent, {
+    width: 220,
+    margin: 1,
+    color: { dark: '#000000', light: '#ffffff' },
+    errorCorrectionLevel: 'M',
+  }, err => { if (err) console.error(err); });
+
+  openModal('qrModal');
+}
+
+function buildVietQR(bank, c) {
+  // Standard VietQR / NAPAS EMV QR string (simplified for display purposes)
+  const desc = encodeURIComponent(`${c.name} - ${c.code}`);
+  return `https://img.vietqr.io/image/${bank.name}-${bank.account}-compact2.png?amount=${c.amount}&addInfo=${c.name.replace(/ /g,'+')}_${c.code}&accountName=${encodeURIComponent(bank.holder)}`;
+}
+
+function downloadQR() {
+  if (!currentQRCustomer) return;
+  const canvas = document.getElementById('qrCanvas');
+
+  // Create a new canvas with label
+  const out = document.createElement('canvas');
+  out.width = 320;
+  out.height = 380;
+  const ctx = out.getContext('2d');
+
+  // Background gradient
+  const grad = ctx.createLinearGradient(0, 0, 320, 380);
+  grad.addColorStop(0, '#667eea');
+  grad.addColorStop(1, '#764ba2');
+  ctx.fillStyle = grad;
+  ctx.roundRect(0, 0, 320, 380, 16);
+  ctx.fill();
+
+  // White card center
+  ctx.fillStyle = '#fff';
+  ctx.roundRect(20, 60, 280, 260, 12);
+  ctx.fill();
+
+  // QR
+  ctx.drawImage(canvas, 50, 75, 220, 220);
+
+  // Name label (big)
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 18px Segoe UI, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(currentQRCustomer.name, 160, 36);
+
+  // Amount
+  ctx.font = 'bold 15px Segoe UI, sans-serif';
+  ctx.fillStyle = '#FFD700';
+  ctx.fillText(currentQRCustomer.amount.toLocaleString('vi-VN') + ' ₫', 160, 58);
+
+  // Bank info bottom
+  const { bank } = getData();
+  ctx.fillStyle = 'rgba(255,255,255,0.75)';
+  ctx.font = '12px Segoe UI, sans-serif';
+  ctx.fillText(`${bank.name} - ${bank.account}`, 160, 350);
+  ctx.fillText(bank.holder, 160, 368);
+
+  const link = document.createElement('a');
+  link.download = `QR_${currentQRCustomer.name.replace(/ /g, '_')}.png`;
+  link.href = out.toDataURL('image/png');
+  link.click();
+  showToast('⬇️ Đã tải ảnh QR!');
+}
+
+function generateAllQR() {
+  showToast('💡 Bấm nút 🔲 QR ở từng dòng để xem và tải QR cho từng khách hàng.');
+}
+
+// ==================== RECENT ACTIVITY ====================
+function renderRecentActivity() {
+  const { activities = [] } = getData();
+  const el = document.getElementById('recent-activity');
+  if (!activities.length) {
+    el.innerHTML = '<div class="empty"><div class="icon">📭</div><p>Chưa có giao dịch nào</p></div>';
+    return;
+  }
+  el.innerHTML = activities.slice(0, 10).map(a => `
+    <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #f0f0f0">
+      <div style="width:36px;height:36px;border-radius:50%;background:#e8f5e9;display:flex;align-items:center;justify-content:center;font-size:18px">✅</div>
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:14px">${escHtml(a.name)}</div>
+        <div style="font-size:12px;color:var(--muted)">CTV: ${escHtml(a.ctv)} · ${new Date(a.at).toLocaleString('vi-VN')}</div>
+      </div>
+      <div style="font-weight:800;color:var(--success)">${a.amount.toLocaleString('vi-VN')} ₫</div>
+    </div>
+  `).join('');
+}
+
+// ==================== CTV PROGRESS ====================
+function renderCtvProgress() {
+  const { customers } = getData();
+  const el = document.getElementById('ctvProgressList');
+  if (!customers.length) {
+    el.innerHTML = '<div class="empty"><div class="icon">👤</div><p>Chưa có dữ liệu</p></div>';
+    return;
+  }
+
+  const ctvMap = {};
+  customers.forEach(c => {
+    if (!ctvMap[c.ctv]) ctvMap[c.ctv] = { total: 0, paid: 0 };
+    ctvMap[c.ctv].total++;
+    if (c.status === 'paid') ctvMap[c.ctv].paid++;
+  });
+
+  const _cfg = getFbCfg();
+  const _cfgParam = _cfg ? '&cfg=' + encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(_cfg))))) : '';
+  const baseUrl = getSiteBaseUrl();
+
+  el.innerHTML = Object.entries(ctvMap).map(([name, s]) => {
+    const pct = s.total ? Math.round(s.paid / s.total * 100) : 0;
+    const ctvUrl = baseUrl ? `${baseUrl}/ctv.html?ctv=${encodeURIComponent(name)}${_cfgParam}` : '';
+    return `
+      <div style="margin-bottom:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div>
+            <strong style="font-size:15px">👤 ${escHtml(name)}</strong>
+            <span style="font-size:13px;color:var(--muted);margin-left:8px">Đã thu ${s.paid}/${s.total} người (${pct}%)</span>
+          </div>
+          ${ctvUrl
+            ? `<a href="${ctvUrl}" target="_blank" class="btn btn-outline btn-sm">🔗 Mở trang CTV</a>`
+            : `<span style="font-size:12px;color:var(--danger)">⚠️ Chưa có URL website</span>`
+          }
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-bar" style="width:${pct}%"></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ==================== BILL GALLERY ====================
+function renderBillGallery() {
+  const { customers } = getData();
+  const withBill = customers.filter(c => c.billImg && c.status === 'paid');
+  const el = document.getElementById('billGallery');
+  if (!withBill.length) {
+    el.innerHTML = '<div class="empty"><div class="icon">🧾</div><p>Chưa có bill nào.</p></div>';
+    return;
+  }
+  el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px">` +
+    withBill.map(c => `
+      <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;cursor:pointer" onclick="viewBill('${c.id}')">
+        <img src="${safeBillSrc(c.billImg)}" style="width:100%;height:120px;object-fit:cover" />
+        <div style="padding:8px;font-size:12px">
+          <div style="font-weight:700">${escHtml(c.name)}</div>
+          <div style="color:var(--success)">${c.amount.toLocaleString('vi-VN')} ₫</div>
+          <div style="color:var(--muted);font-size:11px">${new Date(c.paidAt).toLocaleString('vi-VN')}</div>
+        </div>
+      </div>
+    `).join('') + `</div>`;
+}
+
+function viewBill(id) {
+  const { customers } = getData();
+  const c = customers.find(x => x.id === id);
+  if (!c) { showToast('Không có ảnh bill'); return; }
+  const billSrc = safeBillSrc(c.billImg);
+  if (!billSrc) { showToast('Không có ảnh bill'); return; }
+  document.getElementById('billModalImg').src = billSrc;
+  document.getElementById('billModalInfo').textContent = `${c.name} · ${c.amount.toLocaleString('vi-VN')} ₫ · CTV: ${c.ctv} · ${new Date(c.paidAt).toLocaleString('vi-VN')}`;
+  openModal('billModal');
+}
+
+// ==================== CTV LINKS ====================
+function renderCtvLinks() {
+  const { customers } = getData();
+  const el = document.getElementById('ctvLinkList');
+  const ctvs = [...new Set(customers.map(c => c.ctv))].filter(Boolean);
+
+  if (!ctvs.length) {
+    el.innerHTML = '<p style="color:var(--muted);font-size:14px">Chưa có CTV nào. Hãy nhập danh sách khách hàng.</p>';
+    return;
+  }
+
+  const baseUrl = getSiteBaseUrl();
+  if (!baseUrl) {
+    el.innerHTML = `<div class="section-note" style="background:#fce8e6;border-color:var(--danger);color:#b71c1c">
+      ❌ Chưa có URL website. Hãy upload file lên Netlify (hướng dẫn ở thẻ phía trên) rồi dán URL vào ô "Địa chỉ website".
+    </div>`;
+    return;
+  }
+
+  // Không phụ thuộc isSameDomain vì CTV dùng thiết bị khác — luôn luôn truyền cfg
+  const cfg = getFbCfg();
+  const cfgParam = cfg
+    ? '&cfg=' + encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(cfg)))))
+    : '';
+
+  el.innerHTML = ctvs.map(name => {
+    const linkId = 'link_' + name.replace(/\W/g, '_');
+    const url = `${baseUrl}/ctv.html?ctv=${encodeURIComponent(name)}${cfgParam}`;
+    return `
+      <div style="margin-bottom:14px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:6px">👤 ${escHtml(name)}</div>
+        <div class="link-box">
+          <input type="text" value="${escHtml(url)}" readonly id="${linkId}" />
+          <button class="btn btn-outline btn-sm" onclick="copyLink('${linkId}')">📋 Copy</button>
+          <a href="${escHtml(url)}" target="_blank" class="btn btn-outline btn-sm">🔗 Test</a>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function copyLink(id) {
+  const inp = document.getElementById(id);
+  if (!inp) return;
+  navigator.clipboard.writeText(inp.value).then(() => showToast('📋 Đã copy link!')).catch(() => {
+    inp.select();
+    document.execCommand('copy');
+    showToast('📋 Đã copy link!');
+  });
+}
+
+// ==================== MODAL ====================
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+});
+
+// ==================== UTILS ====================
+function safeBillSrc(src) {
+  if (!src || typeof src !== 'string') return '';
+  return /^data:image\/(png|jpe?g|gif|webp);base64,/.test(src) ? src : '';
+}
+
+function copyRules() {
+  const text = document.getElementById('fbRulesJson').textContent;
+  navigator.clipboard.writeText(text)
+    .then(() => showToast('📋 Đã copy Security Rules!'))
+    .catch(() => showToast('⚠️ Copy thất bại, hãy chọn text và copy thủ công'));
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ==================== EXCEL IMPORT ====================
+let _excelParsed = null;
+
+function handleExcelFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  readExcelFile(file);
+}
+
+function handleExcelDrop(event) {
+  event.preventDefault();
+  const file = event.dataTransfer.files[0];
+  if (file && /\.(xlsx|xls)$/i.test(file.name)) {
+    readExcelFile(file);
+  } else {
+    showToast('⚠️ Chỉ chấp nhận file .xlsx hoặc .xls');
+  }
+}
+
+function readExcelFile(file) {
+  if (typeof XLSX === 'undefined') {
+    showToast('❌ Thư viện đọc Excel chưa tải xong, thử lại sau giây lát!');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const allRows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '' });
+
+      if (allRows.length < 2) { showToast('⚠️ File không có dữ liệu!'); return; }
+
+      // Find first header row that has ≥ 4 non-empty cells
+      let headerRowIdx = 0;
+      for (let i = 0; i < Math.min(6, allRows.length); i++) {
+        if (allRows[i].filter(c => String(c).trim() !== '').length >= 4) {
+          headerRowIdx = i;
+          break;
+        }
+      }
+
+      const headers = allRows[headerRowIdx].map(h => String(h || '').trim());
+      const dataRows = allRows.slice(headerRowIdx + 1).filter(r => r.some(c => String(c).trim() !== ''));
+
+      // Auto-detect columns by keyword matching
+      const colName   = findColumn(headers, ['tên khách hàng', 'họ và tên', 'họ tên', 'tên chủ hộ', 'tên kh', 'khách hàng', 'tên']);
+      const colCode   = findColumn(headers, ['mã khách hàng', 'mã kh', 'mskh', 'mã số kh', 'mã số', 'mã']);
+      const colAmount  = findColumn(headers, ['dư nợ hbt', 'dư nợ', 'tổng nợ', 'nợ gốc', 'số tiền vay', 'số tiền cần thu', 'số tiền', 'tiền nợ', 'nợ']);
+      const colCtvCode = findColumn(headers, ['mã ctv', 'ma ctv', 'mãctv']);
+      const colCtvName = findColumn(headers, ['họ tên ctv', 'ho ten ctv', 'tên ctv', 'ten ctv', 'họ và tên ctv']);
+
+      // Extract unique CTV list from detected column
+      const ctvList = [];
+      if (colCtvName >= 0) {
+        const seenCtv = new Set();
+        dataRows.forEach(row => {
+          const nm = String(row[colCtvName] || '').trim();
+          if (nm && !seenCtv.has(nm)) {
+            seenCtv.add(nm);
+            const cd = colCtvCode >= 0 ? String(row[colCtvCode] || '').trim() : '';
+            ctvList.push({ code: cd, name: nm });
+          }
+        });
+      }
+
+      _excelParsed = { headers, dataRows, colName, colCode, colAmount, colCtvCode, colCtvName, ctvList, fileName: file.name };
+
+      const info = document.getElementById('excelFileInfo');
+      info.style.display = '';
+      info.innerHTML = `✅ Đã đọc: <strong>${escHtml(file.name)}</strong> — ${dataRows.length} dòng dữ liệu, ${headers.length} cột`;
+
+      showExcelPreview();
+      populateCtvDropdown();
+    } catch(err) {
+      showToast('❌ Lỗi đọc file: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function findColumn(headers, keywords) {
+  for (const kw of keywords) {
+    const idx = headers.findIndex(h => h.toLowerCase().includes(kw.toLowerCase()));
+    if (idx >= 0) return idx;
+  }
+  return -1;
+}
+
+function showExcelPreview() {
+  if (!_excelParsed) return;
+  const { headers, colName, colCode, colAmount, colCtvName, fileName } = _excelParsed;
+
+  document.getElementById('excelFileName').textContent = fileName;
+
+  const buildSelect = (label, id, selectedIdx) => {
+    const opts = headers.map((h, i) =>
+      `<option value="${i}"${i === selectedIdx ? ' selected' : ''}>${escHtml(h || '(Cột ' + (i + 1) + ')')}</option>`
+    ).join('');
+    return `
+      <div class="form-group" style="min-width:160px;flex:1">
+        <label>${label}</label>
+        <select id="${id}" onchange="updateExcelPreview()">
+          <option value="-1">-- Không dùng --</option>
+          ${opts}
+        </select>
+      </div>`;
+  };
+
+  document.getElementById('excelColMap').innerHTML =
+    buildSelect('👤 Tên khách hàng <span style="color:var(--danger)">*</span>', 'exColName', colName) +
+    buildSelect('💰 Số tiền cần thu <span style="color:var(--danger)">*</span>', 'exColAmount', colAmount) +
+    buildSelect('🔑 Mã đối soát (tuỳ chọn)', 'exColCode', colCode) +
+    buildSelect('👥 Tên CTV phụ trách', 'exColCtvName', colCtvName != null ? colCtvName : -1);
+
+  updateExcelPreview();
+  openModal('excelModal');
+}
+
+function updateExcelPreview() {
+  if (!_excelParsed) return;
+  const { dataRows } = _excelParsed;
+
+  const colName    = parseInt(document.getElementById('exColName')?.value ?? -1);
+  const colAmount  = parseInt(document.getElementById('exColAmount')?.value ?? -1);
+  const colCode    = parseInt(document.getElementById('exColCode')?.value ?? -1);
+  const colCtvName = parseInt(document.getElementById('exColCtvName')?.value ?? -1);
+
+  // Rebuild CTV list when column selector changes
+  _excelParsed.colCtvName = colCtvName;
+  const newCtvList = [];
+  if (colCtvName >= 0) {
+    const seenCtv = new Set();
+    _excelParsed.dataRows.forEach(row => {
+      const nm = String(row[colCtvName] || '').trim();
+      if (nm && !seenCtv.has(nm)) {
+        seenCtv.add(nm);
+        const cd = _excelParsed.colCtvCode >= 0 ? String(row[_excelParsed.colCtvCode] || '').trim() : '';
+        newCtvList.push({ code: cd, name: nm });
+      }
+    });
+  }
+  _excelParsed.ctvList = newCtvList;
+  populateCtvDropdown();
+
+  const validRows = dataRows.filter(row => {
+    const name = colName >= 0 ? String(row[colName] || '').trim() : '';
+    const amt  = colAmount >= 0 ? parseFloat(String(row[colAmount]).replace(/[^0-9.]/g, '')) : 0;
+    return name && amt > 0;
+  });
+
+  document.getElementById('excelImportCount').textContent = validRows.length;
+
+  const noteEl = document.getElementById('excelPreviewNote');
+  if (colName < 0 || colAmount < 0) {
+    noteEl.style.background = '#fff3e0'; noteEl.style.color = '#e65100';
+    noteEl.textContent = '⚠️ Vui lòng chọn cột Tên khách hàng và Số tiền cần thu';
+    document.getElementById('excelPreviewTable').innerHTML = '';
+    return;
+  }
+
+  const skipped = dataRows.length - validRows.length;
+  noteEl.style.background = '#e8f5e9'; noteEl.style.color = '#2e7d32';
+  noteEl.textContent = `✅ ${validRows.length} dòng hợp lệ sẽ được nhập` +
+    (skipped > 0 ? ` · ⚠️ Bỏ qua ${skipped} dòng thiếu tên hoặc số tiền = 0` : '');
+
+  const preview = validRows.slice(0, 12);
+  document.getElementById('excelPreviewTable').innerHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead>
+        <tr style="background:#f8f9fa;position:sticky;top:0">
+          <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border)">#</th>
+          <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border)">Tên khách hàng</th>
+          <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border)">Số tiền</th>
+          <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border)">Mã đối soát</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${preview.map((row, i) => {
+          const name = String(row[colName] || '').trim();
+          const amt  = parseFloat(String(row[colAmount] || '').replace(/[^0-9.]/g, '')) || 0;
+          const code = colCode >= 0 ? String(row[colCode] || '').trim() : '';
+          return `<tr style="border-bottom:1px solid #f0f0f0">
+            <td style="padding:8px 12px;color:var(--muted)">${i + 1}</td>
+            <td style="padding:8px 12px;font-weight:600">${escHtml(name)}</td>
+            <td style="padding:8px 12px;color:#e65100;font-weight:700">${amt.toLocaleString('vi-VN')} ₫</td>
+            <td style="padding:8px 12px;font-size:12px;color:var(--muted)">${escHtml(code) || '—'}</td>
+          </tr>`;
+        }).join('')}
+        ${validRows.length > 12 ? `<tr><td colspan="4" style="padding:10px;text-align:center;color:var(--muted);font-size:12px">...và ${validRows.length - 12} khách hàng nữa</td></tr>` : ''}
+      </tbody>
+    </table>`;
+}
+
+function populateCtvDropdown() {
+  const inp  = document.getElementById('excelCtvName');
+  const sel  = document.getElementById('excelCtvSelect');
+  const hint = document.getElementById('excelCtvHint');
+  if (!inp || !sel) return;
+  if (!_excelParsed || !_excelParsed.ctvList || !_excelParsed.ctvList.length) {
+    inp.style.display = '';
+    sel.style.display = 'none';
+    if (hint) hint.style.display = 'none';
+    return;
+  }
+  inp.style.display = 'none';
+  sel.innerHTML = '<option value="__per_row__">📋 Gán theo từng dòng (dùng cột CTV trong Excel)</option>' +
+    _excelParsed.ctvList.map(c =>
+      `<option value="${escHtml(c.name)}">${escHtml(c.name)}${c.code ? ' — ' + escHtml(c.code) : ''}</option>`
+    ).join('');
+  sel.style.display = '';
+  if (hint) hint.style.display = '';
+}
+
+function confirmExcelImport() {
+  if (!_excelParsed) return;
+
+  const colName   = parseInt(document.getElementById('exColName').value);
+  const colAmount = parseInt(document.getElementById('exColAmount').value);
+  const colCode   = parseInt(document.getElementById('exColCode').value);
+
+  // Determine CTV assignment mode
+  const selEl = document.getElementById('excelCtvSelect');
+  const isDropdown = selEl && selEl.style.display !== 'none';
+  const ctvVal = isDropdown ? selEl.value : (document.getElementById('excelCtvName').value || '').trim();
+  const perRowCtv = isDropdown && ctvVal === '__per_row__' && _excelParsed.colCtvName >= 0;
+  const ctv = perRowCtv ? '' : (ctvVal || 'Chưa phân công');
+
+  if (colName < 0 || colAmount < 0) {
+    showToast('⚠️ Vui lòng chọn cột tên và số tiền!');
+    return;
+  }
+
+  const data = getData();
+  let count = 0;
+
+  _excelParsed.dataRows.forEach(row => {
+    const name   = String(row[colName] || '').trim();
+    const amt    = parseFloat(String(row[colAmount] || '').replace(/[^0-9.]/g, '')) || 0;
+    const code   = colCode >= 0 ? String(row[colCode] || '').trim() : '';
+    if (!name || amt <= 0) return;
+
+    const rowCtv = perRowCtv
+      ? (String(row[_excelParsed.colCtvName] || '').trim() || 'Chưa phân công')
+      : ctv;
+
+    const finalCode = code || 'MS' + Date.now() + Math.floor(Math.random() * 1000);
+    if (!data.customers.find(c => c.name === name && c.ctv === rowCtv)) {
+      data.customers.push({
+        id: 'kh_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+        name, amount: amt, code: finalCode, ctv: rowCtv,
+        status: 'pending', paidAt: null, billImg: null, note: '',
+      });
+      count++;
+    }
+  });
+
+  saveData(data);
+  closeModal('excelModal');
+  _excelParsed = null;
+  document.getElementById('excelFileInput').value = '';
+  document.getElementById('excelFileInfo').style.display = 'none';
+  // Reset CTV field back to text input
+  if (selEl) { selEl.style.display = 'none'; selEl.innerHTML = ''; }
+  const inpReset = document.getElementById('excelCtvName');
+  const hintReset = document.getElementById('excelCtvHint');
+  if (inpReset) inpReset.style.display = '';
+  if (hintReset) hintReset.style.display = 'none';
+  renderAll();
+  renderCtvLinks();
+  showToast(`✅ Đã nhập ${count} khách hàng từ Excel!`);
+}
+</script>
+</body>
+</html>

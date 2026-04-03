@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Sổ Thu Tiền Mini - CTV</title>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qr.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<style>
+  :root {
+    --primary: #1a73e8;
+    --success: #34a853;
+    --warning: #fbbc04;
+    --danger: #ea4335;
+    --bg: #f0f4f8;
+    --card: #ffffff;
+    --border: #e0e0e0;
+    --text: #202124;
+    --muted: #5f6368;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* HEADER */
+  header {
+    background: linear-gradient(135deg, #34a853, #1b5e20);
+    color: #fff;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    position: sticky; top: 0; z-index: 100;
+  }
+  header .logo { font-size: 26px; }
+  header .info h1 { font-size: 17px; font-weight: 700; }
+  header .info .sub { font-size: 12px; opacity: 0.8; }
+  header .ctv-name {
+    margin-left: auto;
+    background: rgba(255,255,255,0.2);
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  /* STATS BAR */
+  .stats-bar {
+    display: flex;
+    background: #1b5e20;
+    color: #fff;
+    padding: 10px 16px;
+    gap: 20px;
+    font-size: 13px;
+  }
+  .stats-bar .stat { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .stats-bar .stat .num { font-size: 22px; font-weight: 800; }
+  .stats-bar .stat .lbl { font-size: 11px; opacity: 0.8; }
+  .stats-bar .progress-mini {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .stats-bar .bar-track {
+    flex: 1;
+    height: 8px;
+    background: rgba(255,255,255,0.25);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .stats-bar .bar-fill {
+    height: 100%;
+    background: #FFD700;
+    border-radius: 10px;
+    transition: width 0.5s;
+  }
+  .stats-bar .pct-text { font-size: 14px; font-weight: 700; white-space: nowrap; }
+
+  /* TABS */
+  .tab-bar {
+    display: flex;
+    background: var(--card);
+    border-bottom: 2px solid var(--border);
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 14px 8px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--muted);
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s;
+    text-align: center;
+  }
+  .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+  .tab-btn .count-badge {
+    display: inline-block;
+    background: var(--danger);
+    color: #fff;
+    border-radius: 10px;
+    font-size: 11px;
+    padding: 1px 7px;
+    margin-left: 5px;
+    vertical-align: middle;
+    font-weight: 700;
+  }
+  .tab-btn.active .count-badge { background: var(--primary); }
+
+  /* CONTENT */
+  .tab-content { display: none; padding: 16px; }
+  .tab-content.active { display: block; }
+
+  /* CUSTOMER CARD */
+  .customer-card {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    border-left: 5px solid var(--warning);
+    transition: all 0.25s;
+    animation: fadeIn 0.2s ease;
+  }
+  .customer-card.paid { border-left-color: var(--success); background: #f9fff9; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  .customer-card .top { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+  .customer-card .avatar {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; color: #fff; font-weight: 800;
+    flex-shrink: 0;
+  }
+  .customer-card.paid .avatar { background: linear-gradient(135deg, #34a853, #1b5e20); }
+  .customer-card .name { font-size: 17px; font-weight: 800; }
+  .customer-card .amount { font-size: 15px; font-weight: 700; color: var(--danger); }
+  .customer-card .meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  .customer-card .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* BUTTONS */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 14px;
+    border: none;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+  }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: #1557b0; }
+  .btn-success { background: var(--success); color: #fff; flex: 1; }
+  .btn-success:hover { background: #2e7d32; }
+  .btn-outline {
+    background: #fff;
+    color: var(--primary);
+    border: 2px solid var(--primary);
+  }
+  .btn-outline:hover { background: #e8f0fe; }
+  .btn-zalo {
+    background: #0068ff;
+    color: #fff;
+    flex: 1;
+  }
+  .btn-zalo:hover { background: #0056d4; }
+  .btn-sm { padding: 7px 12px; font-size: 12px; }
+  .btn-gray { background: #e0e0e0; color: var(--muted); flex: 1; }
+
+  /* QR DISPLAY inline */
+  .qr-popup {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 12px;
+    animation: fadeIn 0.2s ease;
+    position: relative;
+  }
+  .qr-popup.open { display: flex; }
+  .qr-popup canvas { border-radius: 8px; background: #fff; padding: 8px; }
+  .qr-popup .qr-name { font-size: 18px; font-weight: 800; color: #fff; text-align: center; }
+  .qr-popup .qr-amt { font-size: 14px; font-weight: 700; color: #FFD700; }
+  .qr-popup .qr-acct { font-size: 11px; color: rgba(255,255,255,0.8); }
+  .qr-popup .qr-close {
+    position: absolute; top: 8px; right: 8px;
+    background: rgba(255,255,255,0.2);
+    border: none; border-radius: 50%; color: #fff;
+    width: 28px; height: 28px; font-size: 16px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .qr-popup .qr-actions { display: flex; gap: 8px; width: 100%; }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 999;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--card);
+    border-radius: 20px 20px 0 0;
+    padding: 24px 20px 32px;
+    width: 100%;
+    max-width: 500px;
+    box-shadow: 0 -8px 32px rgba(0,0,0,0.2);
+    animation: slideUp 0.25s ease;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  @keyframes slideUp { from { transform: translateY(100px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .modal-handle { width: 40px; height: 4px; background: #e0e0e0; border-radius: 2px; margin: 0 auto 20px; }
+  .modal-title { font-size: 18px; font-weight: 800; margin-bottom: 16px; }
+
+  /* CONFIRM FORM */
+  .upload-area {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 30px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 14px;
+  }
+  .upload-area:hover { border-color: var(--primary); background: #e8f0fe; }
+  .upload-area .icon { font-size: 40px; margin-bottom: 8px; }
+  .upload-area p { font-size: 14px; color: var(--muted); }
+  .upload-area input { display: none; }
+  .preview-img { width: 100%; border-radius: 10px; max-height: 250px; object-fit: contain; border: 1px solid var(--border); margin-bottom: 12px; }
+
+  .form-group { margin-bottom: 14px; }
+  label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px; color: var(--muted); }
+  input, textarea {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    font-size: 14px;
+    font-family: inherit;
+  }
+  input:focus, textarea:focus { outline: none; border-color: var(--primary); }
+
+  /* PAID BANNER */
+  .paid-banner {
+    background: #e8f5e9;
+    border: 1px solid #a5d6a7;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: #2e7d32;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* EMPTY */
+  .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty .icon { font-size: 56px; margin-bottom: 12px; }
+  .empty p { font-size: 15px; }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: #333; color: #fff;
+    padding: 12px 24px; border-radius: 30px;
+    font-size: 14px; font-weight: 600;
+    z-index: 9999;
+    opacity: 0; transition: opacity 0.3s;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; }
+
+  /* SEARCH */
+  .search-wrap { position: relative; margin-bottom: 14px; }
+  .search-wrap input { padding-left: 38px; }
+  .search-wrap::before {
+    content: '🔍';
+    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    font-size: 14px; pointer-events: none;
+  }
+
+  /* LOADING */
+  .loading-screen {
+    position: fixed; inset: 0;
+    background: linear-gradient(135deg, #34a853, #1b5e20);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    color: #fff; z-index: 9999;
+    gap: 16px;
+  }
+  .loading-screen .logo { font-size: 64px; }
+  .loading-screen h2 { font-size: 22px; font-weight: 800; }
+  .loading-screen p { font-size: 14px; opacity: 0.8; }
+  .spinner {
+    width: 36px; height: 36px;
+    border: 4px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* NO ACCESS */
+  .no-access {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 80vh; padding: 24px; text-align: center; color: var(--muted);
+  }
+  .no-access .icon { font-size: 64px; margin-bottom: 16px; }
+  .no-access h2 { font-size: 20px; margin-bottom: 8px; color: var(--text); }
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div class="loading-screen" id="loadingScreen">
+  <div class="logo">💳</div>
+  <h2>Sổ Thu Tiền Mini</h2>
+  <p>Đang tải dữ liệu...</p>
+  <div class="spinner"></div>
+</div>
+
+<!-- APP (hidden until loaded) -->
+<div id="app" style="display:none">
+
+  <header>
+    <div class="logo">💳</div>
+    <div class="info">
+      <h1>Sổ Thu Tiền Mini</h1>
+      <div class="sub">Công cụ CTV</div>
+    </div>
+    <div class="ctv-name" id="headerCtvName">CTV</div>
+  </header>
+
+  <div class="stats-bar" id="statsBar">
+    <div class="stat"><div class="num" id="s-paid">0</div><div class="lbl">Đã thu</div></div>
+    <div class="stat"><div class="num" id="s-pending">0</div><div class="lbl">Chưa thu</div></div>
+    <div class="progress-mini">
+      <div class="bar-track"><div class="bar-fill" id="s-bar" style="width:0%"></div></div>
+      <div class="pct-text" id="s-pct">0%</div>
+    </div>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tabBtnPending" onclick="switchTab('pending')">
+      ⏳ CHƯA THU <span class="count-badge" id="pendingCount">0</span>
+    </button>
+    <button class="tab-btn" id="tabBtnPaid" onclick="switchTab('paid')">
+      ✅ ĐÃ THU <span class="count-badge" style="background:var(--success)" id="paidCount">0</span>
+    </button>
+  </div>
+
+  <!-- TAB CHƯA THU -->
+  <div id="tab-pending" class="tab-content active">
+    <div class="search-wrap">
+      <input type="text" id="searchPending" placeholder="Tìm tên khách hàng..." oninput="renderLists()" />
+    </div>
+    <div id="listPending"></div>
+  </div>
+
+  <!-- TAB ĐÃ THU -->
+  <div id="tab-paid" class="tab-content">
+    <div class="search-wrap">
+      <input type="text" id="searchPaid" placeholder="Tìm tên khách hàng..." oninput="renderLists()" />
+    </div>
+    <div id="listPaid"></div>
+  </div>
+
+</div>
+
+<!-- NO DATA -->
+<div id="noData" style="display:none">
+  <div class="no-access">
+    <div class="icon">🔒</div>
+    <h2>Không tìm thấy dữ liệu</h2>
+    <p>Link này không có dữ liệu CTV hoặc NVTD chưa nhập danh sách.<br>Hãy liên hệ NVTD để được cấp link mới.</p>
+  </div>
+</div>
+
+<!-- MODAL XÁC NHẬN ĐÃ THU -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">✅ Xác nhận đã thu tiền</div>
+    <div id="confirmInfo" style="background:#f0fdf4;border-radius:10px;padding:14px;margin-bottom:16px;font-size:14px"></div>
+
+    <div class="form-group">
+      <label>📸 Tải ảnh bill (khuyến nghị để kiểm chứng)</label>
+      <div class="upload-area" onclick="document.getElementById('billInput').click()">
+        <div class="icon">📷</div>
+        <p>Bấm để chọn ảnh bill từ điện thoại</p>
+        <input type="file" id="billInput" accept="image/*" onchange="previewBill(event)" />
+      </div>
+      <img id="billPreview" class="preview-img" style="display:none" src="" alt="Preview" />
+    </div>
+
+    <div class="form-group">
+      <label>📝 Ghi chú (tuỳ chọn)</label>
+      <textarea id="confirmNote" placeholder="Ví dụ: KH chuyển khoản lúc 9:30, đã xác nhận..." rows="2"></textarea>
+    </div>
+
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-success" style="flex:2" onclick="submitConfirm()">✅ Xác nhận đã thu</button>
+      <button class="btn btn-gray" style="flex:1;background:#f5f5f5;color:#666" onclick="closeConfirmModal()">Hủy</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ==================== FIREBASE DATA LAYER ====================
+let _cache = { customers: [], bank: {}, activities: [] };
+let _db = null;
+
+function getData() { return _cache; }
+
+function saveData(data) {
+  _cache = data;
+  if (!_db) return;
+  const customersObj = {};
+  data.customers.forEach(c => { customersObj[c.id] = c; });
+  _db.ref('/data').update({
+    bank: data.bank || {},
+    customers: customersObj,
+  }).catch(err => showToast('⚠️ Lỗi lưu: ' + err.message));
+}
+
+function initFirebase(cfg, ctv) {
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(cfg);
+    _db = firebase.database();
+    firebase.auth().signInAnonymously()
+      .then(() => {
+        _db.ref('/data').on('value', snapshot => {
+          const val = snapshot.val() || {};
+          _cache = {
+            customers: val.customers ? Object.values(val.customers) : [],
+            bank: val.bank || {},
+            activities: val.activities
+              ? Object.values(val.activities).sort((a, b) => (b.at || 0) - (a.at || 0))
+              : [],
+          };
+          const myCustomers = _cache.customers.filter(c => c.ctv === ctv);
+          document.getElementById('loadingScreen').style.display = 'none';
+          if (!ctv || !myCustomers.length) {
+            document.getElementById('noData').style.display = 'block';
+            document.getElementById('app').style.display = 'none';
+          } else {
+            document.getElementById('app').style.display = 'block';
+            document.getElementById('noData').style.display = 'none';
+            document.getElementById('headerCtvName').textContent = '👤 ' + ctv;
+            document.title = `Thu tiền - CTV ${ctv}`;
+            renderStats();
+            renderLists();
+          }
+        });
+      })
+      .catch(e => {
+        document.getElementById('loadingScreen').style.display = 'none';
+        document.getElementById('noData').style.display = 'block';
+        showToast('⚠️ Lỗi xác thực: ' + e.message);
+      });
+  } catch (e) {
+    document.getElementById('loadingScreen').style.display = 'none';
+    document.getElementById('noData').style.display = 'block';
+    showToast('⚠️ Lỗi kết nối Firebase: ' + e.message);
+  }
+}
+
+// ==================== INIT ====================
+let ctvName = '';
+let billBase64 = null;
+let confirmingId = null;
+
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    const params = new URLSearchParams(window.location.search);
+    ctvName = params.get('ctv') || '';
+
+    // Ưu tiên 1: Đọc config từ localStorage (cùng domain — Netlify/server)
+    const lsCfg = (() => {
+      try { return JSON.parse(localStorage.getItem('sothu_fb_cfg')); } catch { return null; }
+    })();
+    if (lsCfg && lsCfg.apiKey && lsCfg.databaseURL) {
+      initFirebase(lsCfg, ctvName);
+      return;
+    }
+
+    // Ưu tiên 2: Đọc config từ URL param cfg= (link gử từ trang khác domain)
+    const cfgB64 = params.get('cfg');
+    if (cfgB64) {
+      try {
+        const cfg = JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(cfgB64)))));
+        // Lưu lại vào localStorage để lần sau không cần cfg trong URL
+        try { localStorage.setItem('sothu_fb_cfg', JSON.stringify(cfg)); } catch {}
+        initFirebase(cfg, ctvName);
+        return;
+      } catch (e) { /* bad config */ }
+    }
+
+    // Không có config
+    document.getElementById('loadingScreen').style.display = 'none';
+    document.getElementById('noData').style.display = 'block';
+  }, 800);
+});
+
+// ==================== TABS ====================
+function switchTab(tab) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.getElementById('tabBtn' + (tab === 'pending' ? 'Pending' : 'Paid')).classList.add('active');
+}
+
+// ==================== STATS ====================
+function renderStats() {
+  const data = getData();
+  const mine = data.customers.filter(c => c.ctv === ctvName);
+  const paid = mine.filter(c => c.status === 'paid').length;
+  const pending = mine.length - paid;
+  const pct = mine.length ? Math.round(paid / mine.length * 100) : 0;
+
+  document.getElementById('s-paid').textContent = paid;
+  document.getElementById('s-pending').textContent = pending;
+  document.getElementById('s-bar').style.width = pct + '%';
+  document.getElementById('s-pct').textContent = pct + '%';
+  document.getElementById('pendingCount').textContent = pending;
+  document.getElementById('paidCount').textContent = paid;
+}
+
+// ==================== RENDER LISTS ====================
+function renderLists() {
+  const data = getData();
+  const mine = data.customers.filter(c => c.ctv === ctvName);
+  const searchP = (document.getElementById('searchPending')?.value || '').toLowerCase();
+  const searchD = (document.getElementById('searchPaid')?.value || '').toLowerCase();
+
+  const pending = mine.filter(c => c.status === 'pending' && c.name.toLowerCase().includes(searchP));
+  const paid = mine.filter(c => c.status === 'paid' && c.name.toLowerCase().includes(searchD));
+
+  renderPending(pending, data.bank);
+  renderPaid(paid);
+}
+
+function getInitial(name) {
+  const parts = name.trim().split(' ');
+  return parts[parts.length - 1].charAt(0).toUpperCase();
+}
+
+function renderPending(list, bank) {
+  const el = document.getElementById('listPending');
+  if (!list.length) {
+    el.innerHTML = `<div class="empty"><div class="icon">🎉</div><p>Tất cả khách hàng đã nộp tiền!</p></div>`;
+    return;
+  }
+  el.innerHTML = list.map(c => `
+    <div class="customer-card" id="card_${c.id}">
+      <div class="top">
+        <div class="avatar">${getInitial(c.name)}</div>
+        <div style="flex:1">
+          <div class="name">${escHtml(c.name)}</div>
+          <div class="amount">${c.amount.toLocaleString('vi-VN')} ₫</div>
+          <div class="meta">Mã: ${escHtml(c.code)}</div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-outline" onclick="toggleQR('${c.id}')">🔲 Xem mã QR</button>
+        <button class="btn btn-success" onclick="openConfirm('${c.id}')">✅ Xác nhận đã thu</button>
+      </div>
+      <div class="qr-popup" id="qr_${c.id}">
+        <button class="qr-close" onclick="toggleQR('${c.id}')">✕</button>
+        <canvas id="qrcanvas_${c.id}" width="200" height="200"></canvas>
+        <div class="qr-name">${escHtml(c.name)}</div>
+        <div class="qr-amt">${c.amount.toLocaleString('vi-VN')} ₫</div>
+        <div class="qr-acct">${bank ? `${bank.name} - ${bank.account} - ${bank.holder}` : ''}</div>
+        <div class="qr-actions">
+          <button class="btn btn-zalo" onclick="shareZalo('${c.id}')">💬 Chia sẻ qua Zalo</button>
+          <button class="btn btn-outline" onclick="downloadQRCard('${c.id}')">⬇️ Tải QR</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderPaid(list) {
+  const el = document.getElementById('listPaid');
+  if (!list.length) {
+    el.innerHTML = `<div class="empty"><div class="icon">📭</div><p>Chưa có ai nộp tiền.</p></div>`;
+    return;
+  }
+  el.innerHTML = list.map(c => `
+    <div class="customer-card paid">
+      <div class="top">
+        <div class="avatar">${getInitial(c.name)}</div>
+        <div style="flex:1">
+          <div class="name">${escHtml(c.name)}</div>
+          <div class="amount" style="color:var(--success)">${c.amount.toLocaleString('vi-VN')} ₫</div>
+          <div class="meta">Đã thu lúc: ${c.paidAt ? new Date(c.paidAt).toLocaleString('vi-VN') : '—'}</div>
+          ${c.note ? `<div class="meta">📝 ${escHtml(c.note)}</div>` : ''}
+        </div>
+      </div>
+      <div class="paid-banner">✅ Đã xác nhận thu tiền thành công</div>
+      ${c.billImg ? `<img src="${safeBillSrc(c.billImg)}" style="width:100%;border-radius:10px;margin-top:10px;max-height:180px;object-fit:cover" />` : ''}
+    </div>
+  `).join('');
+}
+
+// ==================== QR ====================
+let openQRId = null;
+
+function toggleQR(id) {
+  const data = getData();
+  const bank = data.bank;
+  const c = data.customers.find(x => x.id === id);
+  if (!c) return;
+
+  if (openQRId && openQRId !== id) {
+    const prev = document.getElementById('qr_' + openQRId);
+    if (prev) prev.classList.remove('open');
+  }
+
+  const popup = document.getElementById('qr_' + id);
+  if (!popup) return;
+
+  if (popup.classList.contains('open')) {
+    popup.classList.remove('open');
+    openQRId = null;
+    return;
+  }
+
+  popup.classList.add('open');
+  openQRId = id;
+
+  if (!bank || !bank.account) {
+    showToast('⚠️ NVTD chưa cấu hình tài khoản ngân hàng!');
+    return;
+  }
+
+  const canvas = document.getElementById('qrcanvas_' + id);
+  if (!canvas) return;
+
+  // Build VietQR deep link
+  const qrData = `https://img.vietqr.io/image/${bank.name}-${bank.account}-compact2.png?amount=${c.amount}&addInfo=${encodeURIComponent(c.name + ' ' + c.code)}&accountName=${encodeURIComponent(bank.holder)}`;
+
+  QRCode.toCanvas(canvas, qrData, {
+    width: 200, margin: 1,
+    color: { dark: '#000', light: '#fff' },
+    errorCorrectionLevel: 'M',
+  }, err => { if (err) console.warn(err); });
+}
+
+function shareZalo(id) {
+  // Trigger download first, then guide user
+  downloadQRCard(id);
+  setTimeout(() => {
+    showToast('💬 Ảnh QR đã tải! Mở Zalo và gửi ảnh cho khách hàng.', 4000);
+  }, 500);
+}
+
+function downloadQRCard(id) {
+  const data = getData();
+  const c = data.customers.find(x => x.id === id);
+  const bank = data.bank;
+  if (!c) return;
+
+  const srcCanvas = document.getElementById('qrcanvas_' + id);
+  if (!srcCanvas) { showToast('⚠️ Hãy mở mã QR trước khi tải!'); return; }
+
+  const out = document.createElement('canvas');
+  out.width = 360;
+  out.height = 440;
+  const ctx = out.getContext('2d');
+
+  // Gradient background
+  const grad = ctx.createLinearGradient(0, 0, 360, 440);
+  grad.addColorStop(0, '#667eea');
+  grad.addColorStop(1, '#764ba2');
+  ctx.fillStyle = grad;
+  ctx.roundRect(0, 0, 360, 440, 20);
+  ctx.fill();
+
+  // White card
+  ctx.fillStyle = '#fff';
+  ctx.roundRect(24, 90, 312, 270, 14);
+  ctx.fill();
+
+  // QR image
+  ctx.drawImage(srcCanvas, 80, 100, 200, 200);
+
+  // Name (big, white)
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 22px Segoe UI, sans-serif';
+  ctx.textAlign = 'center';
+  const nameText = c.name.length > 22 ? c.name.substring(0, 22) + '...' : c.name;
+  ctx.fillText(nameText, 180, 46);
+
+  // Amount (yellow)
+  ctx.font = 'bold 18px Segoe UI, sans-serif';
+  ctx.fillStyle = '#FFD700';
+  ctx.fillText(c.amount.toLocaleString('vi-VN') + ' ₫', 180, 76);
+
+  // Code at bottom of white card
+  ctx.fillStyle = '#888';
+  ctx.font = '12px Segoe UI, sans-serif';
+  ctx.fillText('Mã: ' + c.code, 180, 332);
+
+  // Bank info (white, small)
+  ctx.fillStyle = 'rgba(255,255,255,0.8)';
+  ctx.font = '13px Segoe UI, sans-serif';
+  if (bank) {
+    ctx.fillText(`${bank.name} - ${bank.account}`, 180, 380);
+    ctx.fillText(bank.holder, 180, 400);
+  }
+  ctx.font = 'bold 12px Segoe UI, sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.fillText('Sổ Thu Tiền Mini', 180, 428);
+
+  const link = document.createElement('a');
+  link.download = `QR_${c.name.replace(/ /g,'_')}.png`;
+  link.href = out.toDataURL('image/png');
+  link.click();
+  showToast('⬇️ Đã tải ảnh QR: ' + c.name);
+}
+
+// ==================== CONFIRM ====================
+function openConfirm(id) {
+  const data = getData();
+  const c = data.customers.find(x => x.id === id);
+  if (!c) return;
+
+  confirmingId = id;
+  billBase64 = null;
+  document.getElementById('billPreview').style.display = 'none';
+  document.getElementById('billPreview').src = '';
+  document.getElementById('confirmNote').value = '';
+  document.getElementById('billInput').value = '';
+
+  document.getElementById('confirmInfo').innerHTML = `
+    <div style="font-weight:800;font-size:16px;margin-bottom:4px">👤 ${escHtml(c.name)}</div>
+    <div style="color:var(--danger);font-size:15px;font-weight:700">💰 ${c.amount.toLocaleString('vi-VN')} ₫</div>
+    <div style="color:var(--muted);font-size:13px;margin-top:4px">Mã: ${escHtml(c.code)}</div>
+  `;
+
+  document.getElementById('confirmModal').classList.add('open');
+}
+
+function closeConfirmModal() {
+  document.getElementById('confirmModal').classList.remove('open');
+  confirmingId = null;
+  billBase64 = null;
+}
+
+function previewBill(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  // Validate file type
+  if (!file.type.startsWith('image/')) {
+    showToast('⚠️ Vui lòng chọn file ảnh!');
+    return;
+  }
+  // Limit size to 5MB
+  if (file.size > 5 * 1024 * 1024) {
+    showToast('⚠️ Ảnh quá lớn! Vui lòng chọn ảnh dưới 5MB.');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    billBase64 = e.target.result;
+    const preview = document.getElementById('billPreview');
+    preview.src = billBase64;
+    preview.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+function submitConfirm() {
+  if (!confirmingId) return;
+  const data = getData();
+  const c = data.customers.find(x => x.id === confirmingId);
+  if (!c) return;
+  if (c.ctv !== ctvName) { showToast('\u26a0\ufe0f Kh\u00f4ng c\u00f3 quy\u1ec1n x\u00e1c nh\u1eadn kh\u00e1ch h\u00e0ng n\u00e0y!'); closeConfirmModal(); return; }
+
+  const paidAt = Date.now();
+  const note = document.getElementById('confirmNote').value.trim();
+  const updates = { status: 'paid', paidAt, note };
+  if (billBase64) updates.billImg = billBase64;
+
+  const actKey = 'act_' + paidAt;
+  const act = { name: c.name, amount: c.amount, ctv: c.ctv, at: paidAt, type: 'paid' };
+
+  if (_db) {
+    _db.ref('/data/customers/' + confirmingId).update(updates)
+      .catch(e => showToast('⚠️ Lỗi: ' + e.message));
+    _db.ref('/data/activities/' + actKey).set(act);
+  } else {
+    c.status = 'paid';
+    c.paidAt = paidAt;
+    c.note = note;
+    if (billBase64) c.billImg = billBase64;
+    data.activities = data.activities || [];
+    data.activities.unshift(act);
+    if (data.activities.length > 50) data.activities = data.activities.slice(0, 50);
+    saveData(data);
+  }
+
+  closeConfirmModal();
+
+  // Animate the card removal
+  const card = document.getElementById('card_' + confirmingId);
+  if (card) {
+    card.style.transition = 'all 0.4s';
+    card.style.opacity = '0';
+    card.style.transform = 'translateX(60px)';
+    setTimeout(() => { renderStats(); renderLists(); }, 400);
+  } else {
+    renderStats();
+    renderLists();
+  }
+
+  showToast(`✅ Đã xác nhận thu tiền của ${c.name}!`, 3000);
+}
+
+// ==================== MODAL BACKDROP ====================
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => {
+    if (e.target === m) { closeConfirmModal(); }
+  });
+});
+
+// ==================== UTILS ====================
+function safeBillSrc(src) {
+  if (!src || typeof src !== 'string') return '';
+  return /^data:image\/(png|jpe?g|gif|webp);base64,/.test(src) ? src : '';
+}
+
+function showToast(msg, duration = 2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
