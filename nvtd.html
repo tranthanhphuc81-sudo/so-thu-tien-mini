@@ -766,6 +766,11 @@ let _cache = { customers: [], bank: {}, activities: [] };
 let _db = null;
 let _fbInitialized = false;
 let _nvtdAuthed = false;
+let _loginAttempts = 0;
+let _cachedNvtdHash = null;
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_MS = 30000; // 30 giây
+let _lockedUntil = 0;
 
 // ==================== AUTH ====================
 async function hashPw(pw) {
@@ -775,6 +780,27 @@ async function hashPw(pw) {
 
 function safeKey(s) { return (s || '').replace(/[.#$[\]/]/g, '_'); }
 
+function _checkLocked() {
+  if (Date.now() < _lockedUntil) {
+    const sec = Math.ceil((_lockedUntil - Date.now()) / 1000);
+    document.getElementById('loginErr').textContent = `⛔ Quá nhiều lần sai. Thử lại sau ${sec}s`;
+    return true;
+  }
+  return false;
+}
+
+function _recordFailedAttempt(errEl) {
+  _loginAttempts++;
+  const remaining = MAX_ATTEMPTS - _loginAttempts;
+  if (_loginAttempts >= MAX_ATTEMPTS) {
+    _lockedUntil = Date.now() + LOCKOUT_MS;
+    _loginAttempts = 0;
+    document.getElementById(errEl).textContent = '⛔ Đã khóa 30 giây do nhập sai quá nhiều lần';
+  } else {
+    document.getElementById(errEl).textContent = `❌ Mật khẩu không đúng (còn ${remaining} lần)`;
+  }
+}
+
 function _showApp() {
   document.getElementById('loginOverlay').style.display = 'none';
   if (!_db) { loadBankInfo(); renderAll(); renderCtvLinks(); return; }
@@ -782,20 +808,20 @@ function _showApp() {
 }
 
 async function nvtdLogin() {
+  if (_checkLocked()) return;
   const pw = document.getElementById('pwLogin').value;
   document.getElementById('loginErr').textContent = '';
   if (!pw) { document.getElementById('loginErr').textContent = 'Vui lòng nhập mật khẩu'; return; }
   if (!_db) { document.getElementById('loginErr').textContent = 'Chưa kết nối Firebase'; return; }
-  const snap = await _db.ref('/data/auth/nvtdPwHash').get();
-  const stored = snap.val();
-  if (!stored) { document.getElementById('loginErr').textContent = 'Chưa có mật khẩu. Tải lại trang.'; return; }
+  // Hash được cache trong onValue, không cần đọc Firebase thêm
   const h = await hashPw(pw);
-  if (h === stored) {
+  if (h === _cachedNvtdHash) {
+    _loginAttempts = 0;
     sessionStorage.setItem('sothu_nvtd_ok', '1');
     _nvtdAuthed = true;
     _showApp();
   } else {
-    document.getElementById('loginErr').textContent = '❌ Mật khẩu không đúng';
+    _recordFailedAttempt('loginErr');
     document.getElementById('pwLogin').value = '';
     document.getElementById('pwLogin').focus();
   }
@@ -916,6 +942,8 @@ function initFirebase(cfg, showSuccessToast = false) {
         _db.ref('/data').on('value', snapshot => {
           const val = snapshot.val() || {};
           _cache = cacheFromVal(val);
+          // Cache hash locally — không để client re-fetch từ Firebase mỗi lần login
+          if (val.auth && val.auth.nvtdPwHash) _cachedNvtdHash = val.auth.nvtdPwHash;
           if (_nvtdAuthed) {
             renderAll(); loadBankInfo(); renderCtvLinks();
             populateCtvPwSelect();

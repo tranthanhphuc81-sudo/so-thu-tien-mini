@@ -484,7 +484,32 @@
 let _cache = { customers: [], bank: {}, activities: [] };
 let _db = null;
 let _ctvAuthed = false;
-let _pendingPwHash = null; // stored hash waiting after login check
+let _pendingPwHash = null;
+let _ctvLoginAttempts = 0;
+const CTV_MAX_ATTEMPTS = 5;
+const CTV_LOCKOUT_MS = 30000;
+let _ctvLockedUntil = 0;
+
+function _ctvCheckLocked() {
+  if (Date.now() < _ctvLockedUntil) {
+    const sec = Math.ceil((_ctvLockedUntil - Date.now()) / 1000);
+    document.getElementById('ctvLoginErr').textContent = `⛔ Quá nhiều lần sai. Thử lại sau ${sec}s`;
+    return true;
+  }
+  return false;
+}
+
+function _ctvRecordFail() {
+  _ctvLoginAttempts++;
+  const rem = CTV_MAX_ATTEMPTS - _ctvLoginAttempts;
+  if (_ctvLoginAttempts >= CTV_MAX_ATTEMPTS) {
+    _ctvLockedUntil = Date.now() + CTV_LOCKOUT_MS;
+    _ctvLoginAttempts = 0;
+    document.getElementById('ctvLoginErr').textContent = '⛔ Đã khóa 30 giây do nhập sai quá nhiều lần';
+  } else {
+    document.getElementById('ctvLoginErr').textContent = `❌ Mật khẩu không đúng (còn ${rem} lần)`;
+  }
+}
 
 // ==================== AUTH ====================
 async function hashPw(pw) {
@@ -511,16 +536,18 @@ function _showCtvApp(ctv) {
 }
 
 async function ctvLogin() {
+  if (_ctvCheckLocked()) return;
   const pw = document.getElementById('ctvPwInput').value;
   document.getElementById('ctvLoginErr').textContent = '';
   if (!pw) { document.getElementById('ctvLoginErr').textContent = 'Vui lòng nhập mật khẩu'; return; }
   const h = await hashPw(pw);
   if (h === _pendingPwHash) {
+    _ctvLoginAttempts = 0;
     sessionStorage.setItem('sothu_ctv_ok_' + ctvName, '1');
     _ctvAuthed = true;
     _showCtvApp(ctvName);
   } else {
-    document.getElementById('ctvLoginErr').textContent = '❌ Mật khẩu không đúng';
+    _ctvRecordFail();
     document.getElementById('ctvPwInput').value = '';
     document.getElementById('ctvPwInput').focus();
   }
