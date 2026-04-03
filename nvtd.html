@@ -353,6 +353,10 @@
   .login-card .login-sub { font-size: 13px; color: var(--muted); text-align: center; margin-bottom: 22px; }
   .login-card .login-err { color: var(--danger); font-size: 13px; margin-top: 10px; min-height: 18px; text-align: center; }
   .login-card .login-wait { color: var(--muted); font-size: 13px; text-align: center; margin-top: 12px; }
+  .pw-wrap { position: relative; }
+  .pw-wrap input { padding-right: 40px !important; width: 100%; box-sizing: border-box; }
+  .pw-eye { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 18px; color: var(--muted); padding: 4px; line-height: 1; user-select: none; }
+  .pw-eye:hover { color: var(--text); }
 </style>
 </head>
 <body>
@@ -368,8 +372,11 @@
     <div id="loginFormLogin" style="display:none">
       <div class="form-group">
         <label>Mật khẩu</label>
-        <input type="password" id="pwLogin" placeholder="Nhập mật khẩu" autocomplete="current-password"
-               onkeydown="if(event.key==='Enter')nvtdLogin()">
+        <div class="pw-wrap">
+          <input type="password" id="pwLogin" placeholder="Nhập mật khẩu" autocomplete="current-password"
+                 onkeydown="if(event.key==='Enter')nvtdLogin()">
+          <button class="pw-eye" type="button" onclick="togglePw('pwLogin',this)" tabindex="-1">👁️</button>
+        </div>
       </div>
       <button id="btnNvtdLogin" class="btn btn-primary" style="width:100%;margin-top:8px" onclick="nvtdLogin()">🔓 Đăng nhập</button>
       <p style="text-align:center;margin-top:12px;font-size:13px;color:var(--muted)">Lần đầu sử dụng? <a href="#" style="color:var(--primary);text-decoration:none" onclick="event.preventDefault();showNvtdSetupForm()">Tạo tài khoản</a></p>
@@ -379,13 +386,19 @@
     <div id="loginFormSetup" style="display:none">
       <div class="form-group">
         <label>Tạo mật khẩu mới</label>
-        <input type="password" id="pwSetup1" placeholder="Tối thiểu 6 ký tự" autocomplete="new-password"
-               onkeydown="if(event.key==='Enter')nvtdSetupPassword()">
+        <div class="pw-wrap">
+          <input type="password" id="pwSetup1" placeholder="Tối thiểu 6 ký tự" autocomplete="new-password"
+                 onkeydown="if(event.key==='Enter')nvtdSetupPassword()">
+          <button class="pw-eye" type="button" onclick="togglePw('pwSetup1',this)" tabindex="-1">👁️</button>
+        </div>
       </div>
       <div class="form-group">
         <label>Nhập lại mật khẩu</label>
-        <input type="password" id="pwSetup2" placeholder="Xác nhận mật khẩu" autocomplete="new-password"
-               onkeydown="if(event.key==='Enter')nvtdSetupPassword()">
+        <div class="pw-wrap">
+          <input type="password" id="pwSetup2" placeholder="Xác nhận mật khẩu" autocomplete="new-password"
+                 onkeydown="if(event.key==='Enter')nvtdSetupPassword()">
+          <button class="pw-eye" type="button" onclick="togglePw('pwSetup2',this)" tabindex="-1">👁️</button>
+        </div>
       </div>
       <button id="btnNvtdSetup" class="btn btn-primary" style="width:100%;margin-top:8px" onclick="nvtdSetupPassword()">✅ Tạo tài khoản & Vào app</button>
       <p style="text-align:center;margin-top:12px;font-size:13px;color:var(--muted)">Đã có tài khoản? <a href="#" style="color:var(--primary);text-decoration:none" onclick="event.preventDefault();showNvtdLoginForm()">Đăng nhập</a></p>
@@ -585,15 +598,15 @@
     <div class="form-row">
       <div class="form-group" style="flex:1">
         <label>Mật khẩu hiện tại</label>
-        <input type="password" id="pwChangeCurrent" placeholder="Mật khẩu cũ" autocomplete="current-password">
+        <div class="pw-wrap"><input type="password" id="pwChangeCurrent" placeholder="Mật khẩu cũ" autocomplete="current-password"><button class="pw-eye" type="button" onclick="togglePw('pwChangeCurrent',this)" tabindex="-1">👁️</button></div>
       </div>
       <div class="form-group" style="flex:1">
         <label>Mật khẩu mới</label>
-        <input type="password" id="pwChangeNew1" placeholder="Tối thiểu 6 ký tự" autocomplete="new-password">
+        <div class="pw-wrap"><input type="password" id="pwChangeNew1" placeholder="Tối thiểu 6 ký tự" autocomplete="new-password"><button class="pw-eye" type="button" onclick="togglePw('pwChangeNew1',this)" tabindex="-1">👁️</button></div>
       </div>
       <div class="form-group" style="flex:1">
         <label>Nhập lại mật khẩu mới</label>
-        <input type="password" id="pwChangeNew2" placeholder="Xác nhận" autocomplete="new-password">
+        <div class="pw-wrap"><input type="password" id="pwChangeNew2" placeholder="Xác nhận" autocomplete="new-password"><button class="pw-eye" type="button" onclick="togglePw('pwChangeNew2',this)" tabindex="-1">👁️</button></div>
       </div>
     </div>
     <button class="btn btn-primary" onclick="nvtdChangePassword()">💾 Đổi mật khẩu</button>
@@ -769,6 +782,14 @@ let _db = null;
 let _fbInitialized = false;
 let _nvtdAuthed = false;
 const NVTD_EMAIL = 'nvtd@sothu.app';
+
+function togglePw(id, btn) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const show = el.type === 'password';
+  el.type = show ? 'text' : 'password';
+  btn.textContent = show ? '🙈' : '👁️';
+}
 
 // ==================== AUTH ====================
 function safeKey(s) { return (s || '').replace(/[.#$[\]/]/g, '_'); }

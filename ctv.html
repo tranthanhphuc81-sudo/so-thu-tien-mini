@@ -348,6 +348,10 @@
   .ctv-login-card h2 { font-size: 18px; font-weight: 800; text-align: center; margin-bottom: 4px; }
   .ctv-login-card .login-sub { font-size: 13px; color: var(--muted); text-align: center; margin-bottom: 20px; }
   .ctv-login-card .login-err { color: var(--danger); font-size: 13px; margin-top: 10px; text-align: center; min-height: 18px; }
+  .pw-wrap { position: relative; }
+  .pw-wrap input { padding-right: 44px !important; width: 100%; box-sizing: border-box; }
+  .pw-eye { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 18px; color: #999; padding: 4px; line-height: 1; user-select: none; }
+  .pw-eye:hover { color: #333; }
 </style>
 </head>
 <body>
@@ -484,6 +488,14 @@
 let _cache = { customers: [], bank: {}, activities: [] };
 let _db = null;
 let _ctvAuthed = false;
+
+function togglePw(id, btn) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const show = el.type === 'password';
+  el.type = show ? 'text' : 'password';
+  btn.textContent = show ? '🙈' : '👁️';
+}
 
 // ==================== AUTH ====================
 function safeKey(s) { return (s || '').replace(/[.#$[\]/]/g, '_'); }
