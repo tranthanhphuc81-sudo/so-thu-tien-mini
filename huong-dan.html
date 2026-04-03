@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hướng Dẫn Sử Dụng – Sổ Thu Tiền Mini</title>
+<style>
+  :root {
+    --primary: #1a73e8;
+    --success: #34a853;
+    --warning: #fbbc04;
+    --danger: #ea4335;
+    --bg: #f0f4f8;
+    --card: #ffffff;
+    --border: #e0e0e0;
+    --text: #202124;
+    --muted: #5f6368;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+  }
+
+  /* HEADER */
+  header {
+    background: linear-gradient(135deg, #1a73e8, #0d47a1);
+    color: #fff;
+    padding: 28px 32px;
+    text-align: center;
+  }
+  header .logo { font-size: 52px; margin-bottom: 10px; }
+  header h1 { font-size: 26px; font-weight: 800; margin-bottom: 6px; }
+  header p { font-size: 15px; opacity: 0.85; }
+
+  /* SIDEBAR + LAYOUT */
+  .layout { display: flex; max-width: 1100px; margin: 0 auto; padding: 28px 20px; gap: 28px; }
+  .sidebar {
+    width: 230px; flex-shrink: 0;
+    position: sticky; top: 20px;
+    align-self: flex-start;
+  }
+  .sidebar nav {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .sidebar nav h3 { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 10px; }
+  .sidebar nav a {
+    display: block;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--text);
+    text-decoration: none;
+    margin-bottom: 2px;
+    transition: background .15s;
+  }
+  .sidebar nav a:hover { background: #e8f0fe; color: var(--primary); }
+  .sidebar nav a.active { background: var(--primary); color: #fff; }
+  .sidebar nav .divider { border: none; border-top: 1px solid var(--border); margin: 8px 0; }
+  .main { flex: 1; min-width: 0; }
+
+  /* SECTIONS */
+  section { margin-bottom: 36px; }
+  section:target .card-title { color: var(--primary); }
+
+  /* CARD */
+  .card {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    margin-bottom: 20px;
+  }
+  .card-title {
+    font-size: 19px;
+    font-weight: 800;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-badge {
+    display: inline-block;
+    background: var(--primary);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 10px;
+    border-radius: 20px;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+  .section-badge.green { background: var(--success); }
+  .section-badge.orange { background: #f57c00; }
+
+  /* STEPS */
+  .steps { list-style: none; counter-reset: step; padding: 0; }
+  .steps li {
+    counter-increment: step;
+    display: flex;
+    gap: 14px;
+    margin-bottom: 16px;
+    align-items: flex-start;
+  }
+  .steps li::before {
+    content: counter(step);
+    background: var(--primary);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 800;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .steps li .step-body { flex: 1; }
+  .steps li .step-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .steps li .step-desc { font-size: 13px; color: var(--muted); }
+
+  /* NOTICE BOXES */
+  .note { border-radius: 10px; padding: 13px 16px; margin: 12px 0; font-size: 13.5px; }
+  .note.info  { background: #e8f0fe; color: #1557b0; border-left: 4px solid var(--primary); }
+  .note.warn  { background: #fff8e1; color: #c67c00; border-left: 4px solid var(--warning); }
+  .note.ok    { background: #e8f5e9; color: #1b5e20; border-left: 4px solid var(--success); }
+  .note.danger{ background: #fce8e6; color: #b71c1c; border-left: 4px solid var(--danger); }
+
+  /* TABLE */
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin: 12px 0; }
+  th { background: #f8f9fa; font-weight: 700; padding: 10px 12px; text-align: left; border-bottom: 2px solid var(--border); }
+  td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fafafa; }
+
+  /* CODE */
+  code {
+    background: #f1f3f4;
+    padding: 2px 7px;
+    border-radius: 5px;
+    font-family: monospace;
+    font-size: 12.5px;
+    color: #c0392b;
+  }
+  pre {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 16px;
+    border-radius: 10px;
+    font-size: 12.5px;
+    overflow-x: auto;
+    margin: 12px 0;
+    line-height: 1.6;
+    font-family: monospace;
+  }
+
+  /* ROLE CARDS */
+  .role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .role-card { border-radius: 12px; padding: 20px; color: #fff; }
+  .role-card.nvtd { background: linear-gradient(135deg, #1a73e8, #0d47a1); }
+  .role-card.ctv  { background: linear-gradient(135deg, #34a853, #1b5e20); }
+  .role-card h3 { font-size: 17px; margin-bottom: 8px; }
+  .role-card ul { list-style: none; font-size: 13px; opacity: 0.92; }
+  .role-card ul li { padding: 3px 0; }
+  .role-card ul li::before { content: '✓ '; font-weight: 700; }
+
+  /* FLOW DIAGRAM */
+  .flow { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+  .flow-node {
+    background: var(--primary);
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .flow-node.green { background: var(--success); }
+  .flow-node.orange { background: #f57c00; }
+  .flow-node.gray { background: var(--muted); }
+  .flow-arrow { font-size: 20px; color: var(--muted); }
+
+  /* FAQ ACCORDION */
+  details {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 8px;
+    overflow: hidden;
+  }
+  details summary {
+    padding: 14px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 700;
+    background: #fafafa;
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+  details summary::after { content: '▾'; font-size: 16px; color: var(--muted); }
+  details[open] summary::after { content: '▴'; }
+  details[open] summary { background: #e8f0fe; color: var(--primary); }
+  details .detail-body { padding: 14px 16px; font-size: 13.5px; border-top: 1px solid var(--border); color: var(--muted); line-height: 1.8; }
+
+  /* BADGE */
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .badge.blue  { background: #e8f0fe; color: var(--primary); }
+  .badge.green { background: #e8f5e9; color: #1b5e20; }
+  .badge.red   { background: #fce8e6; color: #b71c1c; }
+  .badge.gray  { background: #f1f3f4; color: var(--muted); }
+
+  /* BUTTON sample */
+  .ui-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 6px 14px; border-radius: 8px;
+    font-size: 12.5px; font-weight: 700;
+    border: none; cursor: default;
+  }
+  .ui-btn.primary { background: var(--primary); color: #fff; }
+  .ui-btn.success { background: var(--success); color: #fff; }
+  .ui-btn.outline { background: #fff; color: var(--primary); border: 2px solid var(--primary); }
+  .ui-btn.danger  { background: var(--danger); color: #fff; }
+
+  /* TOC HIGHLIGHT on scroll */
+  @media (max-width: 700px) {
+    .layout { flex-direction: column; padding: 16px; }
+    .sidebar { width: 100%; position: static; }
+    .role-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">📒</div>
+  <h1>Hướng Dẫn Sử Dụng</h1>
+  <p>Sổ Thu Tiền Mini – Công cụ quản lý thu tiền cho NVTD &amp; CTV</p>
+</header>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <nav>
+      <h3>Mục lục</h3>
+      <a href="#tongquan">📌 Tổng quan hệ thống</a>
+      <a href="#firebase">🔥 Bước 1: Cài đặt Firebase</a>
+      <a href="#rules">🛡️ Bước 2: Cập nhật Rules</a>
+      <a href="#auth-enable">🔑 Bước 3: Bật Authentication</a>
+      <a href="#bank">🏦 Bước 4: Thông tin ngân hàng</a>
+      <a href="#import">📥 Bước 5: Nhập khách hàng</a>
+      <a href="#excel">📊 Nhập từ file Excel</a>
+      <a href="#deploy">🌐 Bước 6: Đưa lên web</a>
+      <a href="#password">🔐 Tạo mật khẩu NVTD</a>
+      <a href="#ctv-manage">👥 Quản lý CTV</a>
+      <a href="#ctv-access">🚦 Cấp quyền CTV</a>
+      <a href="#ctv-guide">💳 Hướng dẫn dành cho CTV</a>
+      <hr class="divider">
+      <a href="#dashboard">📊 Tổng quan &amp; Báo cáo</a>
+      <a href="#qr">🔲 Tạo mã QR thanh toán</a>
+      <a href="#faq">❓ Câu hỏi thường gặp</a>
+    </nav>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main">
+
+    <!-- ======================================================= -->
+    <section id="tongquan">
+      <div class="card">
+        <div class="card-title">📌 Tổng quan hệ thống</div>
+
+        <p style="margin-bottom:16px;font-size:14px">
+          <strong>Sổ Thu Tiền Mini</strong> là công cụ quản lý thu tiền theo nhóm, dành cho đội ngũ nhờ cộng tác viên (CTV) trực tiếp nhận tiền từ khách hàng. Dữ liệu đồng bộ real-time qua Firebase — NVTD và toàn bộ CTV luôn thấy trạng thái mới nhất.
+        </p>
+
+        <div class="role-grid" style="margin-bottom:16px">
+          <div class="role-card nvtd">
+            <h3>👤 NVTD (Người vận hành)</h3>
+            <ul>
+              <li>Nhập danh sách khách hàng</li>
+              <li>Phân nhóm khách hàng cho CTV</li>
+              <li>Cấp / thu hồi quyền đăng nhập CTV</li>
+              <li>Xem toàn bộ tổng quan &amp; tiến độ</li>
+              <li>Kiểm tra bill do CTV xác nhận</li>
+              <li>Tạo QR thanh toán cho từng KH</li>
+            </ul>
+          </div>
+          <div class="role-card ctv">
+            <h3>👥 CTV (Cộng tác viên)</h3>
+            <ul>
+              <li>Xem danh sách KH được phân công</li>
+              <li>Xác nhận đã thu tiền (có bill)</li>
+              <li>Tạo QR để KH chuyển khoản</li>
+              <li>Chia sẻ QR qua Zalo</li>
+              <li>Tra cứu KH đã / chưa thu</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="note info">
+          <strong>Luồng sử dụng tổng quát:</strong><br>
+          <div class="flow" style="margin-top:10px">
+            <div class="flow-node">NVTD thiết lập Firebase</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node green">Nhập danh sách KH</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node orange">Gửi link cho CTV</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node green">CTV thu tiền &amp; confirm</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node gray">NVTD kiểm tra</div>
+          </div>
+        </div>
+
+        <table style="margin-top:16px">
+          <tr><th>File</th><th>Dành cho</th><th>Mô tả</th></tr>
+          <tr><td><code>nvtd.html</code></td><td>NVTD</td><td>Màn hình quản lý chính – nhập dữ liệu, cấp quyền CTV, xem báo cáo</td></tr>
+          <tr><td><code>ctv.html</code></td><td>CTV</td><td>Giao diện di động – xem KH, xác nhận thu tiền, tạo QR</td></tr>
+          <tr><td><code>index.html</code></td><td>Cả hai</td><td>Trang chủ / landing page</td></tr>
+        </table>
+      </div>
+    </section>
+
+    <!-- ======================================================= -->
+    <section id="firebase">
+      <div class="card">
+        <div class="card-title">🔥 Bước 1: Tạo dự án Firebase <span class="section-badge">Bắt buộc</span></div>
+
+        <div class="note warn">
+          Bước này chỉ cần làm <strong>một lần duy nhất</strong> cho mỗi NVTD. Sau khi kết nối xong, dữ liệu tự đồng bộ với mọi thiết bị.
+        </div>
+
+        <ol class="steps" style="margin-top:16px">
+          <li>
+            <div class="step-body">
+              <div class="step-title">Truy cập Firebase Console</div>
+              <div class="step-desc">Mở trình duyệt, vào <code>console.firebase.google.com</code> → Đăng nhập bằng tài khoản Google.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Tạo dự án mới</div>
+              <div class="step-desc">Bấm <strong>Add project</strong> → Đặt tên dự án (ví dụ: <code>SoThuTien-HoaLan</code>) → Tắt Google Analytics → Bấm <strong>Create project</strong>.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Tạo Realtime Database</div>
+              <div class="step-desc">Trong menu trái → <strong>Build</strong> → <strong>Realtime Database</strong> → Bấm <strong>Create Database</strong> → Chọn vị trí <strong>asia-southeast1</strong> (Singapore) → Chọn <strong>Start in test mode</strong> → Bấm <strong>Enable</strong>.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Lấy Database URL</div>
+              <div class="step-desc">Trang RTDB sẽ hiện URL dạng:<br><code>https://ten-du-an-default-rtdb.asia-southeast1.firebasedatabase.app</code><br>Copy URL này lại.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Lấy API Key</div>
+              <div class="step-desc">Menu trái → biểu tượng bánh răng ⚙️ → <strong>Project settings</strong> → Kéo xuống mục <strong>Your apps</strong> → Bấm icon <code>&lt;/&gt;</code> (Web) → Đặt tên app → Bấm <strong>Register app</strong> → Copy giá trị <code>apiKey</code> từ đoạn config hiện ra.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Nhập vào ứng dụng</div>
+              <div class="step-desc">Mở <code>nvtd.html</code> → Tab <strong>⚙️ Thiết lập</strong> → Dán <strong>API Key</strong> và <strong>Database URL</strong> vào ô tương ứng → Bấm <span class="ui-btn primary">🔥 Kết nối Firebase</span>.</div>
+            </div>
+          </li>
+        </ol>
+
+        <div class="note ok">
+          Sau khi kết nối thành công, badge trạng thái sẽ đổi thành <strong>🟢 Đã kết nối Firebase</strong>.
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================= -->
+    <section id="rules">
+      <div class="card">
+        <div class="card-title">🛡️ Bước 2: Cập nhật Firebase Rules <span class="section-badge red badge" style="background:#fce8e6;color:#b71c1c">Quan trọng</span></div>
+
+        <div class="note danger">
+          Nếu bỏ qua bước này, mọi người đều đọc/ghi được dữ liệu của bạn. Phải làm ngay sau khi tạo database.
+        </div>
+
+        <ol class="steps" style="margin-top:16px">
+          <li>
+            <div class="step-body">
+              <div class="step-title">Vào trang Rules</div>
+              <div class="step-desc">Firebase Console → <strong>Realtime Database</strong> → Bấm tab <strong>Rules</strong>.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Copy nội dung Rules mới</div>
+              <div class="step-desc">Quay lại <code>nvtd.html</code> → Tab <strong>⚙️ Thiết lập</strong> → Kéo xuống thẻ <strong>🛡️ Bảo mật Firebase</strong> → Bấm <span class="ui-btn outline">📋 Copy Rules JSON</span>.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Dán và Publish</div>
+              <div class="step-desc">Xóa hết nội dung cũ trong ô Rules trên Firebase Console → Dán nội dung vừa copy → Bấm <strong>Publish</strong>.</div>
+            </div>
+          </li>
+        </ol>
+
+        <p style="font-size:13px;color:var(--muted);margin-top:8px">Nội dung Rules cần dán:</p>
+        <pre>{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "ctvAllowed": {
+      ".read": true,
+      ".write": "auth != null && auth.token.email === 'nvtd@sothu.app'"
+    },
+    "data": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    }
+  }
+}</pre>
+
+        <table>
+          <tr><th>Node</th><th>Ai đọc được</th><th>Ai ghi được</th></tr>
+          <tr><td><code>/ctvAllowed</code></td><td>Tất cả (để CTV kiểm tra quyền)</td><td>Chỉ NVTD (đã đăng nhập)</td></tr>
+          <tr><td><code>/data</code></td><td>Đã đăng nhập Firebase</td><td>Đã đăng nhập Firebase</td></tr>
+          <tr><td>Các node khác</td><td>Không ai</td><td>Không ai</td></tr>
+        </table>
+      </div>
+    </section>
+
+    <!-- ======================================================= -->
+    <section id="auth-enable">
+      <div class="card">
+        <div class="card-title">🔑 Bước 3: Bật Email/Password Authentication <span class="section-badge red badge" style="background:#fce8e6;color:#b71c1c">Quan trọng</span></div>
+
+        <ol class="steps">
+          <li>
+            <div class="step-body">
+              <div class="step-title">Vào mục Authentication</div>
+              <div class="step-desc">Firebase Console → Menu trái → <strong>Build</strong> → <strong>Authentication</strong>.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Bật phương thức đăng nhập</div>
+              <div class="step-desc">Bấm tab <strong>Sign-in method</strong> → Tìm dòng <strong>Email/Password</strong> → Bấm vào → Bật toggle <strong>Enable</strong> → Bấm <strong>Save</strong>.</div>
+            </div>
+          </li>
+        </ol>
+
+        <div class="note info">
+          Sau khi bật xong, quay lại <code>nvtd.html</code> và tạo mật khẩu NVTD lần đầu (xem phần <a href="#password" style="color:var(--primary)">🔐 Tạo mật khẩu NVTD</a>).
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================= -->
+    <section id="bank">
+      <div class="card">
+        <div class="card-title">🏦 Bước 4: Nhập thông tin ngân hàng</div>
+
+        <p style="font-size:14px;margin-bottom:14px">Thông tin này được dùng để tạo mã QR thanh toán cho từng khách hàng.</p>
+
+        <ol class="steps">
+          <li>
+            <div class="step-body">
+              <div class="step-title">Mở thẻ Thông tin tài khoản ngân hàng</div>
+              <div class="step-desc">Tab <strong>⚙️ Thiết lập</strong> → Kéo đến thẻ <strong>🏦 Thông tin tài khoản ngân hàng</strong>.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Điền đầy đủ</div>
+              <div class="step-desc">
+                <ul style="padding-left:18px;font-size:13px;color:var(--muted)">
+                  <li><strong>Ngân hàng:</strong> Chọn từ danh sách (MB, VCB, TCB, BIDV, ACB...)</li>
+                  <li><strong>Số tài khoản:</strong> Nhập đúng số TK nhận tiền</li>
+                  <li><strong>Tên chủ tài khoản:</strong> Nhập IN HOA không dấu (ví dụ: NGUYEN VAN AN)</li>
+                </ul>
+              </div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Lưu</div>
+              <div class="step-desc">Bấm <span class="ui-btn primary">💾 Lưu thông tin</span>. Hệ thống sẽ đồng bộ lên Firebase ngay.</div>
+            </div>
+          </li>
+        </ol>
+
+        <div class="note info">
+          QR thanh toán được tạo tự động từ thông tin này theo chuẩn VietQR. CTV cũng dùng thông tin này để tạo QR khi cần.
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================= -->
+    <section id="import">
+      <div class="card">
+        <div class="card-title">📥 Bước 5: Nhập danh sách khách hàng</div>
+
+        <h4 style="font-size:15px;margin-bottom:10px">Cách 1: Dán trực tiếp (nhanh nhất)</h4>
+
+        <ol class="steps">
+          <li>
+            <div class="step-body">
+              <div class="step-title">Nhập tên CTV phụ trách</div>
+              <div class="step-desc">Ô <strong>Tên CTV phụ trách</strong> → nhập tên của CTV sẽ đi thu nhóm này (ví dụ: <code>Hoa</code>, <code>Lan</code>).</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Dán danh sách</div>
+              <div class="step-desc">
+                Dán danh sách vào ô lớn, mỗi dòng một khách, định dạng:<br>
+                <code>Tên Khách Hàng | Số tiền | Mã đối soát</code><br><br>
+                Ví dụ:
+                <pre style="margin:8px 0;font-size:12px">Nguyễn Văn An | 500000 | KH001
+Trần Thị Bình | 800000 | KH002
+Lê Văn Cường | 1200000</pre>
+                <span style="font-size:12px;color:var(--muted)">💡 Nếu không có mã đối soát thì có thể bỏ phần <code>| KH...</code></span>
+              </div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Nhập</div>
+              <div class="step-desc">Bấm <span class="ui-btn primary">📥 Nhập danh sách</span>. Dữ liệu được thêm vào (không xóa dữ liệu cũ).</div>
+            </div>
+          </li>
+        </ol>
+
+        <div class="note warn" style="margin-top:16px">
+          Muốn xóa toàn bộ dữ liệu và nhập lại từ đầu → Bấm <span class="ui-btn danger" style="font-size:11px">🗑️ Xóa tất cả dữ liệu</span> trước. Thao tác này <strong>không thể hoàn tác</strong>.
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================= -->
+    <section id="excel">
+      <div class="card">
+        <div class="card-title">📊 Nhập từ file Excel <span class="section-badge green">Tiện lợi</span></div>
+
+        <p style="font-size:14px;margin-bottom:14px">Hỗ trợ file <code>.xlsx</code> và <code>.xls</code>. Hệ thống tự động nhận dạng cột tên khách hàng, mã KH và số tiền.</p>
+
+        <ol class="steps">
+          <li>
+            <div class="step-body">
+              <div class="step-title">Chọn CTV phụ trách</div>
+              <div class="step-desc">Nhập hoặc chọn tên CTV trong ô <strong>CTV phụ trách danh sách này</strong>.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Upload file</div>
+              <div class="step-desc">Kéo thả file Excel vào vùng tải lên, hoặc bấm vào để chọn file từ máy.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Kiểm tra cột</div>
+              <div class="step-desc">Hệ thống hiển thị bảng xem trước và gợi ý cột. Chỉnh lại nếu cần: chọn đúng cột <strong>Tên KH</strong>, <strong>Số tiền</strong>, <strong>Mã đối soát</strong>.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Xác nhận nhập</div>
+              <div class="step-desc">Bấm <span class="ui-btn primary">✅ Nhập N khách hàng</span>.</div>
+            </div>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ======================================================= -->
+    <section id="deploy">
+      <div class="card">
+        <div class="card-title">🌐 Bước 6: Đưa ứng dụng lên web <span class="section-badge red badge" style="background:#fce8e6;color:#b71c1c">Bắt buộc để gửi link CTV</span></div>
+
+        <div class="note warn">
+          Khi chạy file HTML trực tiếp từ máy (<code>file://...</code>), link tạo ra không gửi được cho CTV. Cần đưa lên một địa chỉ web thật.
+        </div>
+
+        <h4 style="font-size:15px;margin:16px 0 10px">Cách dễ nhất: Netlify Drop (miễn phí, không cần tài khoản)</h4>
+
+        <ol class="steps">
+          <li>
+            <div class="step-body">
+              <div class="step-title">Mở Netlify Drop</div>
+              <div class="step-desc">Vào <code>app.netlify.com/drop</code>.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Kéo thả thư mục</div>
+              <div class="step-desc">Kéo thả <strong>toàn bộ thư mục</strong> <code>SoThuTienMini</code> (chứa 3 file HTML) vào khung Netlify. <strong>Không kéo từng file</strong>, phải kéo cả thư mục.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Lấy địa chỉ</div>
+              <div class="step-desc">Netlify sẽ cấp địa chỉ kiểu <code>https://abc123.netlify.app</code>. Copy địa chỉ này.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Lưu vào ứng dụng</div>
+              <div class="step-desc">Mở <code>nvtd.html</code> → Tab <strong>⚙️ Thiết lập</strong> → Thẻ <strong>🌐 Địa chỉ website</strong> → Dán URL → Bấm <span class="ui-btn primary">💾 Lưu URL</span>.</div>
+            </div>
+          </li>
+        </ol>
+
+        <div class="note info">
+          <strong>Tùy chọn khác:</strong> GitHub Pages (miễn phí, cần tài khoản GitHub), Vercel, hoặc bất kỳ hosting nào có HTTPS. Chỉ cần đưa 3 file <code>.html</code> lên là đủ.
+        </div>
+
+        <div class="note warn" style="margin-top:12px">
+          Mỗi khi cập nhật file HTML, cần kéo thả lại lên Netlify để CTV nhận phiên bản mới. URL sẽ giữ nguyên nếu cùng site.
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================= -->
+    <section id="password">
+      <div class="card">
+        <div class="card-title">🔐 Tạo mật khẩu NVTD lần đầu</div>
+
+        <p style="font-size:14px;margin-bottom:14px">
+          NVTD đăng nhập bằng Firebase Email/Password với email cố định <code>nvtd@sothu.app</code>.
+          Mật khẩu do bạn tự đặt và lưu bên phía Firebase — không ai khác biết.
+        </p>
+
+        <ol class="steps">
+          <li>
+            <div class="step-body">
+              <div class="step-title">Kết nối Firebase thành công</div>
+              <div class="step-desc">Phải hoàn thành Bước 1–3 trước.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Màn hình đăng nhập hiện ra</div>
+              <div class="step-desc">Sau khi kết nối Firebase, giao diện đăng nhập xuất hiện với 2 lựa chọn:<br>
+                <span class="badge blue">Chưa có mật khẩu</span> → Bấm <strong>Tạo mật khẩu lần đầu</strong><br>
+                <span class="badge green">Đã có mật khẩu</span> → Dùng form Đăng nhập bình thường
+              </div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Đặt mật khẩu</div>
+              <div class="step-desc">Nhập mật khẩu mới (tối thiểu 6 ký tự) → Nhập lại xác nhận → Bấm <span class="ui-btn success">✅ Tạo mật khẩu</span>.</div>
+            </div>
+          </li>
+        </ol>
+
+        <h4 style="font-size:14px;margin:16px 0 10px">Đổi mật khẩu về sau</h4>
+        <p style="font-size:13px;color:var(--muted)">Tab <strong>⚙️ Thiết lập</strong> → Thẻ <strong>🔐 Đổi mật khẩu NVTD</strong> → Nhập mật khẩu cũ → Nhập mật khẩu mới → Bấm <span class="ui-btn primary">💾 Đổi mật khẩu</span>.</p>
+
+        <div class="note danger" style="margin-top:12px">
+          Nếu quên mật khẩu, vào <strong>Firebase Console → Authentication → Users</strong> → Xóa tài khoản <code>nvtd@sothu.app</code> → Quay lại app và tạo mật khẩu mới.
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================= -->
+    <section id="ctv-manage">
+      <div class="card">
+        <div class="card-title">👥 Tab Quản lý CTV</div>
+
+        <p style="font-size:14px;margin-bottom:16px">Tab <strong>👥 Quản lý CTV</strong> trong <code>nvtd.html</code> có 3 thẻ chính:</p>
+
+        <table>
+          <tr>
+            <th>Thẻ</th>
+            <th>Chức năng</th>
+          </tr>
+          <tr>
+            <td><strong>👥 Danh sách CTV &amp; Tiến độ</strong></td>
+            <td>Hiển thị từng CTV, số KH chưa thu / đã thu, thanh tiến độ theo phần trăm</td>
+          </tr>
+          <tr>
+            <td><strong>🔑 Cấp quyền đăng nhập CTV</strong></td>
+            <td>Chọn CTV từ dropdown → Cấp quyền hoặc thu hồi. Mỗi CTV có badge ✅ / ⛔.</td>
+          </tr>
+          <tr>
+            <td><strong>🧾 Bill đã xác nhận</strong></td>
+            <td>Xem toàn bộ ảnh bill CTV đã upload khi xác nhận thu tiền</td>
+          </tr>
+        </table>
+
+        <div class="note info" style="margin-top:12px">
+          Tên CTV trong app phân biệt hoa/thường. <strong>Hoa</strong> và <strong>hoa</strong> là 2 CTV khác nhau. Hãy nhất quán khi nhập.
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================= -->
+    <section id="ctv-access">
+      <div class="card">
+        <div class="card-title">🚦 Cấp quyền đăng nhập cho CTV</div>
+
+        <div class="note warn">
+          CTV <strong>chỉ có thể tạo mật khẩu và đăng nhập sau khi NVTD cấp quyền</strong>. Chưa cấp quyền thì màn hình CTV hiện thông báo chờ.
+        </div>
+
+        <ol class="steps" style="margin-top:16px">
+          <li>
+            <div class="step-body">
+              <div class="step-title">Mở tab Quản lý CTV</div>
+              <div class="step-desc">Bấm tab <strong>👥 Quản lý CTV</strong> trong <code>nvtd.html</code>.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Chọn CTV trong dropdown</div>
+              <div class="step-desc">Thẻ <strong>🔑 Cấp quyền đăng nhập CTV</strong> → Dropdown <strong>Chọn CTV</strong> → Chọn tên CTV muốn cấp.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Cấp quyền</div>
+              <div class="step-desc">Bấm <span class="ui-btn success">✅ Cấp quyền đăng nhập</span>. Badge của CTV đó đổi thành ✅.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Gửi link cho CTV</div>
+              <div class="step-desc">Tab <strong>⚙️ Thiết lập</strong> → Thẻ <strong>🔗 Link công cụ CTV</strong> → Mỗi CTV có một link riêng → Bấm nút copy hoặc Zalo để gửi ngay.</div>
+            </div>
+          </li>
+        </ol>
+
+        <h4 style="font-size:14px;margin:16px 0 8px">Thu hồi quyền</h4>
+        <p style="font-size:13px;color:var(--muted)">
+          Chọn CTV → Bấm <span class="ui-btn danger" style="font-size:11px">🚫 Thu hồi quyền</span>. CTV đó sẽ không đăng nhập được nữa. Dữ liệu họ đã xác nhận vẫn giữ nguyên.
+        </p>
+      </div>
+    </section>
+
+    <!-- ======================================================= -->
+    <section id="ctv-guide">
+      <div class="card">
+        <div class="card-title">💳 Hướng dẫn dành cho CTV</div>
+
+        <p style="font-size:14px;margin-bottom:16px">
+          CTV nhận link từ NVTD (dạng <code>https://...netlify.app/ctv.html?ctv=TenCTV&amp;cfg=...</code>) và thực hiện theo các bước sau.
+        </p>
+
+        <h4 style="font-size:15px;margin-bottom:10px">Lần đầu sử dụng</h4>
+        <ol class="steps">
+          <li>
+            <div class="step-body">
+              <div class="step-title">Mở link</div>
+              <div class="step-desc">Bấm vào link NVTD gửi. Trên điện thoại có thể lưu vào Cloud Zalo để tiện mở lại.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Tạo mật khẩu lần đầu</div>
+              <div class="step-desc">Màn hình đăng nhập hiện ra → Bấm link <strong>Lần đầu? Tạo mật khẩu</strong> → Nhập mật khẩu (ít nhất 6 ký tự) → Nhập lại → Bấm <span class="ui-btn success" style="font-size:11px">✅ Tạo mật khẩu &amp; Vào app</span>.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Nếu thấy thông báo "Chưa được cấp quyền"</div>
+              <div class="step-desc">Liên hệ NVTD để được cấp quyền, sau đó mở lại link.</div>
+            </div>
+          </li>
+        </ol>
+
+        <h4 style="font-size:15px;margin:16px 0 10px">Xác nhận thu tiền</h4>
+        <ol class="steps">
+          <li>
+            <div class="step-body">
+              <div class="step-title">Chọn khách hàng</div>
+              <div class="step-desc">Tab <strong>⏳ CHƯA THU</strong> → Tìm tên KH → Bấm <span class="ui-btn success" style="font-size:11px">✅ Xác nhận đã thu</span>.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Tải ảnh bill (khuyến nghị)</div>
+              <div class="step-desc">Bấm vùng tải ảnh → Chọn ảnh chụp từ điện thoại. QR, biên lai, hoặc ảnh chụp màn hình chuyển khoản đều được.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Thêm ghi chú (tùy chọn)</div>
+              <div class="step-desc">Ô ghi chú: ghi thêm thời gian, cách thức thu, hoặc mã giao dịch nếu cần.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Xác nhận</div>
+              <div class="step-desc">Bấm <span class="ui-btn success" style="font-size:11px">✅ Xác nhận đã thu</span>. KH chuyển sang tab <strong>✅ ĐÃ THU</strong> ngay lập tức.</div>
+            </div>
+          </li>
+        </ol>
+
+        <h4 style="font-size:15px;margin:16px 0 10px">Tạo QR để khách chuyển khoản</h4>
+        <ol class="steps">
+          <li>
+            <div class="step-body">
+              <div class="step-title">Mở QR</div>
+              <div class="step-desc">Trong card KH → Bấm <span class="ui-btn outline" style="font-size:11px">🔲 QR</span>. Mã QR VietQR hiện ra đúng số tiền của KH đó.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Chia sẻ / Tải về</div>
+              <div class="step-desc">Bấm <span class="ui-btn primary" style="font-size:11px">📤 Chia sẻ Zalo</span> để gửi ngay qua Zalo, hoặc <span class="ui-btn outline" style="font-size:11px">⬇️ Tải ảnh</span> để lưu về máy.</div>
+            </div>
+          </li>
+        </ol>
+
+        <div class="note ok">
+          Sau khi CTV xác nhận, NVTD thấy cập nhật ngay trong tab <strong>📊 Tổng quan</strong> và <strong>📋 Danh sách KH</strong>.
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================= -->
+    <section id="dashboard">
+      <div class="card">
+        <div class="card-title">📊 Tab Tổng quan (NVTD)</div>
+
+        <table>
+          <tr><th>Thành phần</th><th>Ý nghĩa</th></tr>
+          <tr><td>Ô thống kê (xanh/xanh lá/cam/xám)</td><td>Tổng KH | Đã thu | Chưa thu | Tiến độ %</td></tr>
+          <tr><td>Thanh tiến độ</td><td>Phần trăm KH đã nộp tiền</td></tr>
+          <tr><td>Tổng tiền đã thu</td><td>Tổng số tiền đã thu thực tế</td></tr>
+          <tr><td>Hoạt động gần đây</td><td>Lịch sử xác nhận mới nhất (ai, bao nhiêu, lúc nào)</td></tr>
+        </table>
+      </div>
+    </section>
+
+    <!-- ======================================================= -->
+    <section id="qr">
+      <div class="card">
+        <div class="card-title">🔲 Tạo mã QR thanh toán (NVTD)</div>
+
+        <p style="font-size:14px;margin-bottom:14px">NVTD có thể tạo QR cho từng KH để in ra hoặc gửi trực tiếp.</p>
+
+        <ol class="steps">
+          <li>
+            <div class="step-body">
+              <div class="step-title">Mở tab Danh sách KH</div>
+              <div class="step-desc">Bấm tab <strong>📋 Danh sách KH</strong>.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Tạo QR từng KH</div>
+              <div class="step-desc">Trên dòng của KH → Bấm nút <strong>🔲 QR</strong>. Modal QR hiện ra kèm tên KH, số tiền, thông tin TK.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Tạo tất cả QR cùng lúc</div>
+              <div class="step-desc">Bấm <span class="ui-btn primary">🖨️ Tạo tất cả QR</span> → Tất cả QR được hiển thị để in (dùng Ctrl+P).</div>
+            </div>
+          </li>
+        </ol>
+
+        <div class="note info">
+          QR được tạo theo chuẩn <strong>VietQR</strong> — hỗ trợ hầu hết ứng dụng ngân hàng Việt Nam. Số tiền và mã đối soát được điền sẵn vào QR.
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================= -->
+    <section id="faq">
+      <div class="card">
+        <div class="card-title">❓ Câu hỏi thường gặp</div>
+
+        <details>
+          <summary>Nhiều NVTD có dùng chung app này được không?</summary>
+          <div class="detail-body">
+            Được. Mỗi NVTD tạo <strong>Firebase project riêng</strong> và nhập API Key của mình vào. Dữ liệu hoàn toàn độc lập — NVTD này không thấy dữ liệu của NVTD kia. Mọi người đều dùng cùng file HTML nhưng kết nối đến database khác nhau.
+          </div>
+        </details>
+
+        <details>
+          <summary>CTV có thể đăng nhập trên nhiều thiết bị không?</summary>
+          <div class="detail-body">
+            Được. CTV chỉ cần bấm link từ bất kỳ thiết bị nào → Nhập mật khẩu đã tạo → Vào app. Dữ liệu đồng bộ real-time trên mọi thiết bị.
+          </div>
+        </details>
+
+        <details>
+          <summary>CTV quên mật khẩu thì làm thế nào?</summary>
+          <div class="detail-body">
+            NVTD vào <strong>Firebase Console → Authentication → Users</strong> → Tìm email CTV (dạng <code>ctv+...@sothu.app</code>) → Xóa user đó đi → CTV mở lại link và tạo mật khẩu mới. Dữ liệu đã xác nhận trước đó không bị mất.
+          </div>
+        </details>
+
+        <details>
+          <summary>CTV thấy "Bạn chưa được cấp quyền" sau khi tạo mật khẩu</summary>
+          <div class="detail-body">
+            NVTD chưa cấp quyền cho CTV đó. Thực hiện: Tab <strong>👥 Quản lý CTV</strong> → Thẻ <strong>🔑 Cấp quyền</strong> → Chọn tên CTV → Bấm <strong>✅ Cấp quyền đăng nhập</strong>. CTV mở lại link là vào được ngay.
+          </div>
+        </details>
+
+        <details>
+          <summary>Bị lỗi "Permission denied" khi đăng nhập xong</summary>
+          <div class="detail-body">
+            Firebase Rules chưa được cập nhật. Làm theo hướng dẫn ở <a href="#rules" style="color:var(--primary)">Bước 2: Cập nhật Rules</a>. App sẽ hiển thị nút <strong>🔗 Mở Firebase Console → Rules</strong> dẫn thẳng tới trang cần sửa.
+          </div>
+        </details>
+
+        <details>
+          <summary>Lỗi "Email/Password Authentication chưa được bật"</summary>
+          <div class="detail-body">
+            Cần bật tính năng này trong Firebase Console. Xem hướng dẫn tại <a href="#auth-enable" style="color:var(--primary)">Bước 3: Bật Authentication</a>.
+          </div>
+        </details>
+
+        <details>
+          <summary>Link gửi cho CTV quá dài, không gửi được qua Zalo</summary>
+          <div class="detail-body">
+            Lần đầu CTV mở link dài (chứa <code>?cfg=...</code>), app tự lưu vào bộ nhớ trình duyệt. Các lần sau CTV chỉ cần bấm đúng link đó — không cần gửi lại link mới. Bạn cũng có thể dùng dịch vụ rút gọn link như <strong>zalo.me/s</strong> hoặc <strong>bit.ly</strong>.
+          </div>
+        </details>
+
+        <details>
+          <summary>Dữ liệu có bị mất không?</summary>
+          <div class="detail-body">
+            Dữ liệu lưu trên Firebase Realtime Database — không mất khi đóng trình duyệt, tắt máy, hay mở trên thiết bị khác. Firebase miễn phí có giới hạn <strong>1 GB dung lượng</strong> và <strong>10 GB/tháng</strong> băng thông — quá đủ cho quy mô vừa và nhỏ.
+          </div>
+        </details>
+
+        <details>
+          <summary>Làm sao đặt lại cấu hình Firebase (đổi project)?</summary>
+          <div class="detail-body">
+            Tab <strong>⚙️ Thiết lập</strong> → Thẻ <strong>🔥 Kết nối Firebase</strong> → Bấm <span class="ui-btn outline" style="font-size:11px">🔄 Reset &amp; kết nối lại</span> → Nhập API Key + DB URL mới → Kết nối.
+          </div>
+        </details>
+
+        <details>
+          <summary>Ứng dụng có dùng được offline không?</summary>
+          <div class="detail-body">
+            Giao diện vẫn hiển thị nhưng dữ liệu cần kết nối internet để đồng bộ. Khi mất mạng, Firebase sẽ cache dữ liệu cục bộ và tự đồng bộ lại khi có kết nối.
+          </div>
+        </details>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer style="text-align:center;padding:24px;font-size:13px;color:var(--muted);border-top:1px solid var(--border);background:var(--card);margin-top:20px">
+  Sổ Thu Tiền Mini · Miễn phí · Dữ liệu lưu trên Firebase của bạn
+</footer>
+
+</body>
+</html>
