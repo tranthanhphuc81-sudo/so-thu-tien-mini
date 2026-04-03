@@ -1227,7 +1227,6 @@ async function downloadQR() {
   ctx.fillText(currentQRCustomer.amount.toLocaleString('vi-VN') + ' ₫', 160, 58);
 
   // Bank info bottom
-  const { bank } = getData();
   ctx.fillStyle = 'rgba(255,255,255,0.75)';
   ctx.font = '12px Segoe UI, sans-serif';
   ctx.fillText(`${bank.name} - ${bank.account}`, 160, 350);
