@@ -668,7 +668,9 @@ function toggleQR(id) {
   if (!img) return;
 
   // Build VietQR image URL — display directly as <img>
-  const qrData = `https://img.vietqr.io/image/${bank.name}-${bank.account}-compact2.png?amount=${c.amount}&addInfo=${encodeURIComponent(c.name + ' ' + c.code)}&accountName=${encodeURIComponent(bank.holder)}`;
+  const BANK_CODE_MAP = { 'VTB': 'ICB', 'VIETINBANK': 'ICB', 'VIETCOMBANK': 'VCB' };
+  const bankCode = BANK_CODE_MAP[(bank.name||'').toUpperCase()] || bank.name;
+  const qrData = `https://img.vietqr.io/image/${bankCode}-${bank.account}-compact2.png?amount=${c.amount}&addInfo=${encodeURIComponent(c.name + ' ' + c.code)}&accountName=${encodeURIComponent(bank.holder)}`;
   img.src = qrData;
 }
 
@@ -686,7 +688,9 @@ async function downloadQRCard(id) {
   const bank = data.bank;
   if (!c) return;
 
-  const qrUrl = `https://img.vietqr.io/image/${bank.name}-${bank.account}-compact2.png?amount=${c.amount}&addInfo=${encodeURIComponent(c.name + ' ' + c.code)}&accountName=${encodeURIComponent(bank.holder)}`;
+  const BANK_CODE_MAP2 = { 'VTB': 'ICB', 'VIETINBANK': 'ICB', 'VIETCOMBANK': 'VCB' };
+  const bankCode2 = BANK_CODE_MAP2[(bank.name||'').toUpperCase()] || bank.name;
+  const qrUrl = `https://img.vietqr.io/image/${bankCode2}-${bank.account}-compact2.png?amount=${c.amount}&addInfo=${encodeURIComponent(c.name + ' ' + c.code)}&accountName=${encodeURIComponent(bank.holder)}`;
 
   showToast('⏳ Đang tải ảnh QR...');
   let qrImg;
