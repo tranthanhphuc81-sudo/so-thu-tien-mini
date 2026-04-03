@@ -195,7 +195,7 @@
     position: relative;
   }
   .qr-popup.open { display: flex; }
-  .qr-popup canvas { border-radius: 8px; background: #fff; padding: 8px; }
+  .qr-popup img.qr-img { border-radius: 8px; background: #fff; padding: 8px; width: 200px; height: 200px; box-sizing: border-box; }
   .qr-popup .qr-name { font-size: 18px; font-weight: 800; color: #fff; text-align: center; }
   .qr-popup .qr-amt { font-size: 14px; font-weight: 700; color: #FFD700; }
   .qr-popup .qr-acct { font-size: 11px; color: rgba(255,255,255,0.8); }
@@ -594,7 +594,7 @@ function renderPending(list, bank) {
       </div>
       <div class="qr-popup" id="qr_${c.id}">
         <button class="qr-close" onclick="toggleQR('${c.id}')">✕</button>
-        <canvas id="qrcanvas_${c.id}" width="200" height="200"></canvas>
+        <img id="qrimg_${c.id}" class="qr-img" src="" alt="QR">
         <div class="qr-name">${escHtml(c.name)}</div>
         <div class="qr-amt">${c.amount.toLocaleString('vi-VN')} ₫</div>
         <div class="qr-acct">${bank ? `${bank.name} - ${bank.account} - ${bank.holder}` : ''}</div>
@@ -661,17 +661,12 @@ function toggleQR(id) {
     return;
   }
 
-  const canvas = document.getElementById('qrcanvas_' + id);
-  if (!canvas) return;
+  const img = document.getElementById('qrimg_' + id);
+  if (!img) return;
 
-  // Build VietQR deep link
+  // Build VietQR image URL — display directly as <img>
   const qrData = `https://img.vietqr.io/image/${bank.name}-${bank.account}-compact2.png?amount=${c.amount}&addInfo=${encodeURIComponent(c.name + ' ' + c.code)}&accountName=${encodeURIComponent(bank.holder)}`;
-
-  QRCode.toCanvas(canvas, qrData, {
-    width: 200, margin: 1,
-    color: { dark: '#000', light: '#fff' },
-    errorCorrectionLevel: 'M',
-  }, err => { if (err) console.warn(err); });
+  img.src = qrData;
 }
 
 function shareZalo(id) {
@@ -682,14 +677,26 @@ function shareZalo(id) {
   }, 500);
 }
 
-function downloadQRCard(id) {
+async function downloadQRCard(id) {
   const data = getData();
   const c = data.customers.find(x => x.id === id);
   const bank = data.bank;
   if (!c) return;
 
-  const srcCanvas = document.getElementById('qrcanvas_' + id);
-  if (!srcCanvas) { showToast('⚠️ Hãy mở mã QR trước khi tải!'); return; }
+  const qrUrl = `https://img.vietqr.io/image/${bank.name}-${bank.account}-compact2.png?amount=${c.amount}&addInfo=${encodeURIComponent(c.name + ' ' + c.code)}&accountName=${encodeURIComponent(bank.holder)}`;
+
+  showToast('⏳ Đang tải ảnh QR...');
+  let qrImg;
+  try {
+    const resp = await fetch(qrUrl);
+    const blob = await resp.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    qrImg = await new Promise((res, rej) => {
+      const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = blobUrl;
+    });
+  } catch(e) {
+    window.open(qrUrl); return;
+  }
 
   const out = document.createElement('canvas');
   out.width = 360;
@@ -710,7 +717,7 @@ function downloadQRCard(id) {
   ctx.fill();
 
   // QR image
-  ctx.drawImage(srcCanvas, 80, 100, 200, 200);
+  ctx.drawImage(qrImg, 80, 100, 200, 200);
 
   // Name (big, white)
   ctx.fillStyle = '#fff';
