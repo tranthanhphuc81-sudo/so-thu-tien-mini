@@ -1493,8 +1493,9 @@ function readExcelFile(file) {
 }
 
 function findColumn(headers, keywords) {
+  const norm = s => s.toLowerCase().normalize('NFC');
   for (const kw of keywords) {
-    const idx = headers.findIndex(h => h.toLowerCase().includes(kw.toLowerCase()));
+    const idx = headers.findIndex(h => norm(h).includes(norm(kw)));
     if (idx >= 0) return idx;
   }
   return -1;
