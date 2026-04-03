@@ -336,9 +336,63 @@
     .form-row { flex-direction: column; }
     th { font-size: 11px; }
   }
+
+  /* ===== LOGIN OVERLAY ===== */
+  #loginOverlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%);
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+  }
+  .login-card {
+    background: #fff; border-radius: 20px; padding: 32px 28px;
+    width: 100%; max-width: 380px; box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+    animation: fadeIn .25s ease;
+  }
+  .login-card .login-logo { font-size: 48px; text-align: center; margin-bottom: 10px; }
+  .login-card h2 { font-size: 20px; font-weight: 800; color: var(--text); text-align: center; margin-bottom: 4px; }
+  .login-card .login-sub { font-size: 13px; color: var(--muted); text-align: center; margin-bottom: 22px; }
+  .login-card .login-err { color: var(--danger); font-size: 13px; margin-top: 10px; min-height: 18px; text-align: center; }
+  .login-card .login-wait { color: var(--muted); font-size: 13px; text-align: center; margin-top: 12px; }
 </style>
 </head>
 <body>
+
+<!-- ===== LOGIN OVERLAY ===== -->
+<div id="loginOverlay">
+  <div class="login-card">
+    <div class="login-logo">🔐</div>
+    <h2 id="loginTitle">Đăng nhập NVTD</h2>
+    <p class="login-sub" id="loginSub">Nhập mật khẩu để quản lý sổ thu tiền</p>
+
+    <!-- Form đăng nhập -->
+    <div id="loginFormLogin" style="display:none">
+      <div class="form-group">
+        <label>Mật khẩu</label>
+        <input type="password" id="pwLogin" placeholder="Nhập mật khẩu" autocomplete="current-password"
+               onkeydown="if(event.key==='Enter')nvtdLogin()">
+      </div>
+      <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="nvtdLogin()">🔓 Đăng nhập</button>
+    </div>
+
+    <!-- Form tạo mật khẩu lần đầu -->
+    <div id="loginFormSetup" style="display:none">
+      <div class="form-group">
+        <label>Tạo mật khẩu mới</label>
+        <input type="password" id="pwSetup1" placeholder="Tối thiểu 4 ký tự" autocomplete="new-password"
+               onkeydown="if(event.key==='Enter')nvtdSetupPassword()">
+      </div>
+      <div class="form-group">
+        <label>Nhập lại mật khẩu</label>
+        <input type="password" id="pwSetup2" placeholder="Xác nhận mật khẩu" autocomplete="new-password"
+               onkeydown="if(event.key==='Enter')nvtdSetupPassword()">
+      </div>
+      <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="nvtdSetupPassword()">✅ Tạo mật khẩu & Vào app</button>
+    </div>
+
+    <div id="loginWaiting" class="login-wait">⏳ Đang kết nối Firebase...</div>
+    <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
 
 <header>
   <div class="logo">📋</div>
@@ -347,6 +401,7 @@
     <div class="subtitle">Phần mềm quản lý thu tiền CTV</div>
   </div>
   <div class="role-badge">👔 NVTD</div>
+  <button class="btn" style="margin-left:8px;padding:5px 10px;font-size:12px;background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.4)" onclick="nvtdLogout()" title="Đăng xuất">🚪</button>
 </header>
 
 <div class="tab-bar">
@@ -519,6 +574,26 @@
     </div>
   </div>
 
+  <div class="card">
+    <div class="card-title">🔐 Đổi mật khẩu NVTD</div>
+    <div class="form-row">
+      <div class="form-group" style="flex:1">
+        <label>Mật khẩu hiện tại</label>
+        <input type="password" id="pwChangeCurrent" placeholder="Mật khẩu cũ" autocomplete="current-password">
+      </div>
+      <div class="form-group" style="flex:1">
+        <label>Mật khẩu mới</label>
+        <input type="password" id="pwChangeNew1" placeholder="Tối thiểu 4 ký tự" autocomplete="new-password">
+      </div>
+      <div class="form-group" style="flex:1">
+        <label>Nhập lại mật khẩu mới</label>
+        <input type="password" id="pwChangeNew2" placeholder="Xác nhận" autocomplete="new-password">
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="nvtdChangePassword()">💾 Đổi mật khẩu</button>
+    <div style="color:var(--danger);font-size:13px;margin-top:8px" id="pwChangeErr"></div>
+  </div>
+
 </div>
 
 <!-- ===================== TAB DASHBOARD ===================== -->
@@ -605,6 +680,28 @@
   </div>
 
   <div class="card">
+    <div class="card-title">🔑 Mật khẩu đăng nhập CTV</div>
+    <div class="section-note">Đặt mật khẩu riêng cho từng CTV. CTV cần nhập mật khẩu khi mở link lần đầu.</div>
+    <div class="form-row" style="margin-top:12px">
+      <div class="form-group" style="flex:1">
+        <label>Chọn CTV</label>
+        <select id="ctvPwSelect" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px">
+          <option value="">-- Chọn CTV --</option>
+        </select>
+      </div>
+      <div class="form-group" style="flex:1">
+        <label>Mật khẩu mới (tối thiểu 4 ký tự)</label>
+        <input type="password" id="ctvPwInput" placeholder="Nhập mật khẩu cho CTV" autocomplete="new-password">
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="saveCtvPassword()">💾 Lưu mật khẩu CTV</button>
+      <button class="btn btn-outline" onclick="removeCtvPassword()" style="color:var(--danger)">🗑️ Xóa mật khẩu</button>
+    </div>
+    <div style="color:var(--danger);font-size:13px;margin-top:8px" id="ctvPwErr"></div>
+  </div>
+
+  <div class="card">
     <div class="card-title">🧾 Bill đã xác nhận (Kiểm tra chéo)</div>
     <div class="section-note">NVTD có thể xem bill CTV tải lên để hậu kiểm.</div>
     <div id="billGallery">
@@ -668,6 +765,109 @@ const FB_CFG_KEY = 'sothu_fb_cfg';
 let _cache = { customers: [], bank: {}, activities: [] };
 let _db = null;
 let _fbInitialized = false;
+let _nvtdAuthed = false;
+
+// ==================== AUTH ====================
+async function hashPw(pw) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function safeKey(s) { return (s || '').replace(/[.#$[\]/]/g, '_'); }
+
+function _showApp() {
+  document.getElementById('loginOverlay').style.display = 'none';
+  if (!_db) { loadBankInfo(); renderAll(); renderCtvLinks(); return; }
+  renderAll(); loadBankInfo(); renderCtvLinks(); populateCtvPwSelect();
+}
+
+async function nvtdLogin() {
+  const pw = document.getElementById('pwLogin').value;
+  document.getElementById('loginErr').textContent = '';
+  if (!pw) { document.getElementById('loginErr').textContent = 'Vui lòng nhập mật khẩu'; return; }
+  if (!_db) { document.getElementById('loginErr').textContent = 'Chưa kết nối Firebase'; return; }
+  const snap = await _db.ref('/data/auth/nvtdPwHash').get();
+  const stored = snap.val();
+  if (!stored) { document.getElementById('loginErr').textContent = 'Chưa có mật khẩu. Tải lại trang.'; return; }
+  const h = await hashPw(pw);
+  if (h === stored) {
+    sessionStorage.setItem('sothu_nvtd_ok', '1');
+    _nvtdAuthed = true;
+    _showApp();
+  } else {
+    document.getElementById('loginErr').textContent = '❌ Mật khẩu không đúng';
+    document.getElementById('pwLogin').value = '';
+    document.getElementById('pwLogin').focus();
+  }
+}
+
+async function nvtdSetupPassword() {
+  const pw1 = document.getElementById('pwSetup1').value;
+  const pw2 = document.getElementById('pwSetup2').value;
+  document.getElementById('loginErr').textContent = '';
+  if (pw1.length < 4) { document.getElementById('loginErr').textContent = 'Mật khẩu cần ít nhất 4 ký tự'; return; }
+  if (pw1 !== pw2) { document.getElementById('loginErr').textContent = 'Mật khẩu không khớp'; return; }
+  if (!_db) { document.getElementById('loginErr').textContent = 'Chưa kết nối Firebase'; return; }
+  const h = await hashPw(pw1);
+  await _db.ref('/data/auth/nvtdPwHash').set(h);
+  sessionStorage.setItem('sothu_nvtd_ok', '1');
+  _nvtdAuthed = true;
+  _showApp();
+}
+
+function nvtdLogout() {
+  if (!confirm('Bạn có chắc muốn đăng xuất không?')) return;
+  sessionStorage.removeItem('sothu_nvtd_ok');
+  location.reload();
+}
+
+async function nvtdChangePassword() {
+  const cur = document.getElementById('pwChangeCurrent').value;
+  const n1  = document.getElementById('pwChangeNew1').value;
+  const n2  = document.getElementById('pwChangeNew2').value;
+  document.getElementById('pwChangeErr').textContent = '';
+  if (!_db) return;
+  const snap = await _db.ref('/data/auth/nvtdPwHash').get();
+  const stored = snap.val();
+  if (stored && await hashPw(cur) !== stored) {
+    document.getElementById('pwChangeErr').textContent = '❌ Mật khẩu hiện tại không đúng'; return;
+  }
+  if (n1.length < 4) { document.getElementById('pwChangeErr').textContent = 'Mật khẩu mới cần ít nhất 4 ký tự'; return; }
+  if (n1 !== n2) { document.getElementById('pwChangeErr').textContent = 'Mật khẩu mới không khớp'; return; }
+  await _db.ref('/data/auth/nvtdPwHash').set(await hashPw(n1));
+  document.getElementById('pwChangeCurrent').value = '';
+  document.getElementById('pwChangeNew1').value = '';
+  document.getElementById('pwChangeNew2').value = '';
+  showToast('✅ Đã đổi mật khẩu NVTD thành công!');
+}
+
+async function saveCtvPassword() {
+  const ctv = document.getElementById('ctvPwSelect').value.trim();
+  const pw  = document.getElementById('ctvPwInput').value;
+  document.getElementById('ctvPwErr').textContent = '';
+  if (!ctv) { document.getElementById('ctvPwErr').textContent = 'Chọn CTV trước'; return; }
+  if (pw.length < 4) { document.getElementById('ctvPwErr').textContent = 'Mật khẩu cần ít nhất 4 ký tự'; return; }
+  if (!_db) return;
+  await _db.ref('/data/auth/ctvPw/' + safeKey(ctv)).set(await hashPw(pw));
+  document.getElementById('ctvPwInput').value = '';
+  showToast('✅ Đã đặt mật khẩu cho CTV: ' + ctv);
+}
+
+async function removeCtvPassword() {
+  const ctv = document.getElementById('ctvPwSelect').value.trim();
+  if (!ctv || !_db) return;
+  if (!confirm('Xóa mật khẩu CTV "' + ctv + '"? CTV sẽ không cần đăng nhập nữa.')) return;
+  await _db.ref('/data/auth/ctvPw/' + safeKey(ctv)).remove();
+  showToast('🗑️ Đã xóa mật khẩu của: ' + ctv);
+}
+
+function populateCtvPwSelect() {
+  const sel = document.getElementById('ctvPwSelect');
+  if (!sel) return;
+  const ctvSet = new Set(_cache.customers.map(c => c.ctv).filter(Boolean));
+  sel.innerHTML = '<option value="">-- Chọn CTV --</option>' +
+    [...ctvSet].map(c => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('');
+}
 
 function getFbCfg() {
   try { return JSON.parse(localStorage.getItem(FB_CFG_KEY)); } catch { return null; }
@@ -714,10 +914,27 @@ function initFirebase(cfg, showSuccessToast = false) {
     firebase.auth().signInAnonymously()
       .then(cred => {
         _db.ref('/data').on('value', snapshot => {
-          _cache = cacheFromVal(snapshot.val());
-          renderAll();
-          loadBankInfo();
-          renderCtvLinks();
+          const val = snapshot.val() || {};
+          _cache = cacheFromVal(val);
+          if (_nvtdAuthed) {
+            renderAll(); loadBankInfo(); renderCtvLinks();
+            populateCtvPwSelect();
+          } else {
+            // Show login or setup form
+            document.getElementById('loginWaiting').style.display = 'none';
+            const pwHash = val.auth && val.auth.nvtdPwHash;
+            if (!pwHash) {
+              document.getElementById('loginTitle').textContent = '🔑 Tạo mật khẩu NVTD';
+              document.getElementById('loginSub').textContent = 'Lần đầu sử dụng — tạo mật khẩu để bảo vệ dữ liệu';
+              document.getElementById('loginFormSetup').style.display = '';
+              document.getElementById('loginFormLogin').style.display = 'none';
+              document.getElementById('pwSetup1').focus();
+            } else {
+              document.getElementById('loginFormLogin').style.display = '';
+              document.getElementById('loginFormSetup').style.display = 'none';
+              document.getElementById('pwLogin').focus();
+            }
+          }
         });
         hideFbError();
         updateFbStatus(true);
@@ -856,6 +1073,12 @@ function saveSiteUrl() {
 }
 
 window.addEventListener('load', () => {
+  // Kiểm tra session đăng nhập trước
+  if (sessionStorage.getItem('sothu_nvtd_ok') === '1') {
+    _nvtdAuthed = true;
+    document.getElementById('loginOverlay').style.display = 'none';
+  }
+
   // Load + tự động lưu URL site nếu đang chạy trên HTTP
   const savedUrl = localStorage.getItem(SITE_URL_KEY);
   if (savedUrl) {
@@ -884,15 +1107,18 @@ window.addEventListener('load', () => {
     initFirebase(cfg);
     // onValue will call renderAll + loadBankInfo + renderCtvLinks
   } else {
-    // No Firebase: load from local fallback
+    // No Firebase: load from local fallback — show setup form (no password possible)
+    document.getElementById('loginWaiting').style.display = 'none';
+    document.getElementById('loginTitle').textContent = '🔑 Tạo mật khẩu NVTD';
+    document.getElementById('loginSub').textContent = 'Tạo mật khẩu để bảo vệ dữ liệu (lưu cục bộ)';
+    document.getElementById('loginFormSetup').style.display = '';
+    document.getElementById('loginFormLogin').style.display = 'none';
     try {
       const local = localStorage.getItem('sothu_local');
       if (local) _cache = JSON.parse(local);
     } catch {}
     updateFbStatus(false);
-    loadBankInfo();
-    renderAll();
-    renderCtvLinks();
+    // Render will happen after login
   }
 });
 

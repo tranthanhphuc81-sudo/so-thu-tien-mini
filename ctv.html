@@ -331,9 +331,42 @@
   }
   .no-access .icon { font-size: 64px; margin-bottom: 16px; }
   .no-access h2 { font-size: 20px; margin-bottom: 8px; color: var(--text); }
+
+  /* ===== CTV LOGIN OVERLAY ===== */
+  #ctvLoginOverlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: linear-gradient(135deg, #34a853 0%, #1b5e20 100%);
+    display: none; align-items: center; justify-content: center; padding: 24px;
+  }
+  #ctvLoginOverlay.show { display: flex; }
+  .ctv-login-card {
+    background: #fff; border-radius: 20px; padding: 32px 28px;
+    width: 100%; max-width: 360px; box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+    animation: fadeIn .25s ease;
+  }
+  .ctv-login-card .login-logo { font-size: 44px; text-align: center; margin-bottom: 10px; }
+  .ctv-login-card h2 { font-size: 18px; font-weight: 800; text-align: center; margin-bottom: 4px; }
+  .ctv-login-card .login-sub { font-size: 13px; color: var(--muted); text-align: center; margin-bottom: 20px; }
+  .ctv-login-card .login-err { color: var(--danger); font-size: 13px; margin-top: 10px; text-align: center; min-height: 18px; }
 </style>
 </head>
 <body>
+
+<!-- ===== CTV LOGIN OVERLAY ===== -->
+<div id="ctvLoginOverlay">
+  <div class="ctv-login-card">
+    <div class="login-logo">🔐</div>
+    <h2 id="ctvLoginName"></h2>
+    <p class="login-sub">Nhập mật khẩu để xem danh sách khách hàng</p>
+    <div class="form-group">
+      <input type="password" id="ctvPwInput" placeholder="Mật khẩu" autocomplete="current-password"
+             style="width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;font-size:15px"
+             onkeydown="if(event.key==='Enter')ctvLogin()">
+    </div>
+    <button class="btn btn-success" style="width:100%;margin-top:8px;padding:12px" onclick="ctvLogin()">🔓 Đăng nhập</button>
+    <div class="login-err" id="ctvLoginErr"></div>
+  </div>
+</div>
 
 <!-- LOADING -->
 <div class="loading-screen" id="loadingScreen">
@@ -436,6 +469,48 @@
 // ==================== FIREBASE DATA LAYER ====================
 let _cache = { customers: [], bank: {}, activities: [] };
 let _db = null;
+let _ctvAuthed = false;
+let _pendingPwHash = null; // stored hash waiting after login check
+
+// ==================== AUTH ====================
+async function hashPw(pw) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function safeKey(s) { return (s || '').replace(/[.#$[\]/]/g, '_'); }
+
+function _showCtvApp(ctv) {
+  document.getElementById('ctvLoginOverlay').classList.remove('show');
+  document.getElementById('loadingScreen').style.display = 'none';
+  const myCustomers = _cache.customers.filter(c => c.ctv === ctv);
+  if (!ctv || !myCustomers.length) {
+    document.getElementById('noData').style.display = 'block';
+    document.getElementById('app').style.display = 'none';
+  } else {
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('noData').style.display = 'none';
+    document.getElementById('headerCtvName').textContent = '👤 ' + ctv;
+    document.title = `Thu tiền - CTV ${ctv}`;
+    renderStats(); renderLists();
+  }
+}
+
+async function ctvLogin() {
+  const pw = document.getElementById('ctvPwInput').value;
+  document.getElementById('ctvLoginErr').textContent = '';
+  if (!pw) { document.getElementById('ctvLoginErr').textContent = 'Vui lòng nhập mật khẩu'; return; }
+  const h = await hashPw(pw);
+  if (h === _pendingPwHash) {
+    sessionStorage.setItem('sothu_ctv_ok_' + ctvName, '1');
+    _ctvAuthed = true;
+    _showCtvApp(ctvName);
+  } else {
+    document.getElementById('ctvLoginErr').textContent = '❌ Mật khẩu không đúng';
+    document.getElementById('ctvPwInput').value = '';
+    document.getElementById('ctvPwInput').focus();
+  }
+}
 
 function getData() { return _cache; }
 
@@ -465,18 +540,29 @@ function initFirebase(cfg, ctv) {
               ? Object.values(val.activities).sort((a, b) => (b.at || 0) - (a.at || 0))
               : [],
           };
-          const myCustomers = _cache.customers.filter(c => c.ctv === ctv);
-          document.getElementById('loadingScreen').style.display = 'none';
-          if (!ctv || !myCustomers.length) {
-            document.getElementById('noData').style.display = 'block';
-            document.getElementById('app').style.display = 'none';
+
+          if (_ctvAuthed) {
+            _showCtvApp(ctv);
+            return;
+          }
+
+          // Check if NVTD has set a password for this CTV
+          const pwHash = val.auth && val.auth.ctvPw && val.auth.ctvPw[safeKey(ctv)];
+          if (!pwHash) {
+            // No password set — allow access directly
+            _ctvAuthed = true;
+            _showCtvApp(ctv);
+          } else if (sessionStorage.getItem('sothu_ctv_ok_' + ctv) === '1') {
+            // Valid session
+            _ctvAuthed = true;
+            _showCtvApp(ctv);
           } else {
-            document.getElementById('app').style.display = 'block';
-            document.getElementById('noData').style.display = 'none';
-            document.getElementById('headerCtvName').textContent = '👤 ' + ctv;
-            document.title = `Thu tiền - CTV ${ctv}`;
-            renderStats();
-            renderLists();
+            // Show login overlay
+            _pendingPwHash = pwHash;
+            document.getElementById('loadingScreen').style.display = 'none';
+            document.getElementById('ctvLoginName').textContent = '👤 ' + (ctv || 'CTV');
+            document.getElementById('ctvLoginOverlay').classList.add('show');
+            document.getElementById('ctvPwInput').focus();
           }
         });
       })
@@ -501,6 +587,11 @@ window.addEventListener('load', () => {
   setTimeout(() => {
     const params = new URLSearchParams(window.location.search);
     ctvName = params.get('ctv') || '';
+
+    // Pre-check session (avoids loading screen flicker after first login)
+    if (sessionStorage.getItem('sothu_ctv_ok_' + ctvName) === '1') {
+      _ctvAuthed = true;
+    }
 
     // Ưu tiên 1: Đọc config từ localStorage (cùng domain — Netlify/server)
     const lsCfg = (() => {
