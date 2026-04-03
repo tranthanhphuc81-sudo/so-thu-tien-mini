@@ -674,12 +674,40 @@ function toggleQR(id) {
   img.src = qrData;
 }
 
-function shareZalo(id) {
-  // Trigger download first, then guide user
-  downloadQRCard(id);
-  setTimeout(() => {
-    showToast('💬 Ảnh QR đã tải! Mở Zalo và gửi ảnh cho khách hàng.', 4000);
-  }, 500);
+async function shareZalo(id) {
+  const data = getData();
+  const c = data.customers.find(x => x.id === id);
+  const bank = data.bank;
+  if (!c || !bank) return;
+
+  const BANK_CODE_MAP_S = { 'VTB': 'ICB', 'VIETINBANK': 'ICB', 'VIETCOMBANK': 'VCB' };
+  const bankCode = BANK_CODE_MAP_S[(bank.name||'').toUpperCase()] || bank.name;
+  const qrUrl = `https://img.vietqr.io/image/${bankCode}-${bank.account}-compact2.png?amount=${c.amount}&addInfo=${encodeURIComponent(c.name + ' ' + c.code)}&accountName=${encodeURIComponent(bank.holder)}`;
+  const text = `💳 ${c.name} – Nộp ${c.amount.toLocaleString('vi-VN')} ₫\nQuét mã QR để thanh toán:\n${qrUrl}`;
+
+  // Mobile: dùng Web Share API (bao gồm Zalo)
+  if (navigator.share) {
+    try {
+      // Thử chia sẻ kèm file ảnh
+      showToast('⏳ Đang tải ảnh...');
+      const resp = await fetch(qrUrl);
+      const blob = await resp.blob();
+      const file = new File([blob], `QR_${c.name}.png`, { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], text: `💳 ${c.name} – nộp ${c.amount.toLocaleString('vi-VN')} ₫` });
+      } else {
+        await navigator.share({ title: c.name, text });
+      }
+      return;
+    } catch(e) {
+      if (e.name !== 'AbortError') showToast('⚠️ Không chia sẻ được: ' + e.message);
+      return;
+    }
+  }
+
+  // Desktop: copy link và mở Zalo web
+  try { await navigator.clipboard.writeText(text); } catch(_) {}
+  showToast('📋 Đã copy tin nhắn! Mở Zalo và dán vào chat khách hàng.', 4000);
 }
 
 async function downloadQRCard(id) {
