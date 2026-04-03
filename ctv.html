@@ -443,7 +443,7 @@
   <div class="no-access">
     <div class="icon">🔒</div>
     <h2>Không tìm thấy dữ liệu</h2>
-    <p>Link này không có dữ liệu CTV hoặc NVTD chưa nhập danh sách.<br>Hãy liên hệ NVTD để được cấp link mới.</p>
+    <p id="noDataMsg">Link này không có dữ liệu CTV hoặc NVTD chưa nhập danh sách.<br>Hãy liên hệ NVTD để được cấp link mới.</p>
   </div>
 </div>
 
@@ -484,40 +484,32 @@
 let _cache = { customers: [], bank: {}, activities: [] };
 let _db = null;
 let _ctvAuthed = false;
-let _pendingPwHash = null;
-let _ctvLoginAttempts = 0;
-const CTV_MAX_ATTEMPTS = 5;
-const CTV_LOCKOUT_MS = 30000;
-let _ctvLockedUntil = 0;
-
-function _ctvCheckLocked() {
-  if (Date.now() < _ctvLockedUntil) {
-    const sec = Math.ceil((_ctvLockedUntil - Date.now()) / 1000);
-    document.getElementById('ctvLoginErr').textContent = `⛔ Quá nhiều lần sai. Thử lại sau ${sec}s`;
-    return true;
-  }
-  return false;
-}
-
-function _ctvRecordFail() {
-  _ctvLoginAttempts++;
-  const rem = CTV_MAX_ATTEMPTS - _ctvLoginAttempts;
-  if (_ctvLoginAttempts >= CTV_MAX_ATTEMPTS) {
-    _ctvLockedUntil = Date.now() + CTV_LOCKOUT_MS;
-    _ctvLoginAttempts = 0;
-    document.getElementById('ctvLoginErr').textContent = '⛔ Đã khóa 30 giây do nhập sai quá nhiều lần';
-  } else {
-    document.getElementById('ctvLoginErr').textContent = `❌ Mật khẩu không đúng (còn ${rem} lần)`;
-  }
-}
 
 // ==================== AUTH ====================
-async function hashPw(pw) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+function safeKey(s) { return (s || '').replace(/[.#$[\]/]/g, '_'); }
+
+function ctvEmail(name) {
+  try {
+    const b64 = btoa(encodeURIComponent((name || '').trim())).replace(/[+/=]/g, '');
+    return 'ctv+' + b64.slice(0, 50) + '@sothu.app';
+  } catch { return 'ctv+unknown@sothu.app'; }
 }
 
-function safeKey(s) { return (s || '').replace(/[.#$[\]/]/g, '_'); }
+function showCtvLoginForm() {
+  document.getElementById('ctvFormLogin').style.display = '';
+  document.getElementById('ctvFormSetup').style.display = 'none';
+  document.getElementById('ctvLoginSub').textContent = 'Nhập mật khẩu để xem danh sách khách hàng';
+  document.getElementById('ctvLoginErr').textContent = '';
+  setTimeout(() => document.getElementById('ctvPwInput').focus(), 50);
+}
+
+function showCtvSetupForm() {
+  document.getElementById('ctvFormSetup').style.display = '';
+  document.getElementById('ctvFormLogin').style.display = 'none';
+  document.getElementById('ctvLoginSub').textContent = 'Lần đầu đăng nhập — hãy tạo mật khẩu của bạn';
+  document.getElementById('ctvLoginErr').textContent = '';
+  setTimeout(() => document.getElementById('ctvPwSetup1').focus(), 50);
+}
 
 function _showCtvApp(ctv) {
   document.getElementById('ctvLoginOverlay').classList.remove('show');
@@ -536,18 +528,24 @@ function _showCtvApp(ctv) {
 }
 
 async function ctvLogin() {
-  if (_ctvCheckLocked()) return;
   const pw = document.getElementById('ctvPwInput').value;
   document.getElementById('ctvLoginErr').textContent = '';
   if (!pw) { document.getElementById('ctvLoginErr').textContent = 'Vui lòng nhập mật khẩu'; return; }
-  const h = await hashPw(pw);
-  if (h === _pendingPwHash) {
-    _ctvLoginAttempts = 0;
-    sessionStorage.setItem('sothu_ctv_ok_' + ctvName, '1');
-    _ctvAuthed = true;
-    _showCtvApp(ctvName);
-  } else {
-    _ctvRecordFail();
+  const btn = document.getElementById('btnCtvLogin');
+  btn.disabled = true; btn.textContent = '⏳ Đang đăng nhập...';
+  try {
+    await firebase.auth().signInWithEmailAndPassword(ctvEmail(ctvName), pw);
+    // onAuthStateChanged will take over
+  } catch (e) {
+    btn.disabled = false; btn.textContent = '🔓 Đăng nhập';
+    const errMap = {
+      'auth/wrong-password': '❌ Mật khẩu không đúng',
+      'auth/invalid-credential': '❌ Mật khẩu không đúng',
+      'auth/user-not-found': '❌ Chưa có tài khoản. Bấm "Lần đầu?" bên dưới.',
+      'auth/too-many-requests': '⛔ Quá nhiều lần thử. Firebase đã tạm khóa — thử lại sau.',
+      'auth/network-request-failed': '⚠️ Lỗi mạng. Kiểm tra kết nối internet.',
+    };
+    document.getElementById('ctvLoginErr').textContent = errMap[e.code] || ('❌ ' + e.message);
     document.getElementById('ctvPwInput').value = '';
     document.getElementById('ctvPwInput').focus();
   }
@@ -557,14 +555,27 @@ async function ctvSetupPassword() {
   const pw1 = document.getElementById('ctvPwSetup1').value;
   const pw2 = document.getElementById('ctvPwSetup2').value;
   document.getElementById('ctvLoginErr').textContent = '';
-  if (pw1.length < 4) { document.getElementById('ctvLoginErr').textContent = 'Mật khẩu cần ít nhất 4 ký tự'; return; }
+  if (pw1.length < 6) { document.getElementById('ctvLoginErr').textContent = 'Mật khẩu cần ít nhất 6 ký tự'; return; }
   if (pw1 !== pw2) { document.getElementById('ctvLoginErr').textContent = 'Mật khẩu không khớp'; return; }
   if (!_db) { document.getElementById('ctvLoginErr').textContent = 'Chưa kết nối Firebase'; return; }
-  const h = await hashPw(pw1);
-  await _db.ref('/data/auth/ctvPw/' + safeKey(ctvName)).set(h);
-  sessionStorage.setItem('sothu_ctv_ok_' + ctvName, '1');
-  _ctvAuthed = true;
-  _showCtvApp(ctvName);
+  const btn = document.getElementById('btnCtvSetup');
+  btn.disabled = true; btn.textContent = '⏳ Đang tạo...';
+  try {
+    await firebase.auth().createUserWithEmailAndPassword(ctvEmail(ctvName), pw1);
+    localStorage.setItem('sothu_ctv_setup_' + safeKey(ctvName), '1');
+    // onAuthStateChanged will take over
+  } catch (e) {
+    btn.disabled = false; btn.textContent = '✅ Tạo mật khẩu & Vào app';
+    if (e.code === 'auth/email-already-in-use') {
+      document.getElementById('ctvLoginErr').textContent = '❌ Tài khoản đã tồn tại. Vui lòng đăng nhập.';
+      showCtvLoginForm();
+      localStorage.setItem('sothu_ctv_setup_' + safeKey(ctvName), '1');
+    } else if (e.code === 'auth/weak-password') {
+      document.getElementById('ctvLoginErr').textContent = '❌ Mật khẩu quá yếu (cần ít nhất 6 ký tự)';
+    } else {
+      document.getElementById('ctvLoginErr').textContent = '❌ ' + e.message;
+    }
+  }
 }
 
 function getData() { return _cache; }
@@ -580,59 +591,58 @@ function saveData(data) {
   }).catch(err => showToast('⚠️ Lỗi lưu: ' + err.message));
 }
 
+let _dataListenerCtvOn = false;
+
 function initFirebase(cfg, ctv) {
   try {
     if (!firebase.apps.length) firebase.initializeApp(cfg);
     _db = firebase.database();
-    firebase.auth().signInAnonymously()
-      .then(() => {
-        _db.ref('/data').on('value', snapshot => {
-          const val = snapshot.val() || {};
-          _cache = {
-            customers: val.customers ? Object.values(val.customers) : [],
-            bank: val.bank || {},
-            activities: val.activities
-              ? Object.values(val.activities).sort((a, b) => (b.at || 0) - (a.at || 0))
-              : [],
-          };
 
-          if (_ctvAuthed) {
+    firebase.auth().onAuthStateChanged(user => {
+      if (user && user.email === ctvEmail(ctv)) {
+        // Authenticated as this CTV
+        _ctvAuthed = true;
+        if (!_dataListenerCtvOn) {
+          _dataListenerCtvOn = true;
+          _db.ref('/data').on('value', snapshot => {
+            const val = snapshot.val() || {};
+            _cache = {
+              customers: val.customers ? Object.values(val.customers) : [],
+              bank: val.bank || {},
+              activities: val.activities
+                ? Object.values(val.activities).sort((a, b) => (b.at || 0) - (a.at || 0))
+                : [],
+            };
             _showCtvApp(ctv);
+          });
+        }
+      } else if (user) {
+        // Logged in as wrong account — sign out
+        firebase.auth().signOut();
+      } else {
+        // Not logged in — check approval then show form
+        _db.ref('/ctvAllowed/' + safeKey(ctv)).get().then(snap => {
+          document.getElementById('loadingScreen').style.display = 'none';
+          if (!snap.exists()) {
+            document.getElementById('noData').style.display = 'block';
+            document.getElementById('noDataMsg').textContent = '🚫 Bạn chưa được NVTD cấp quyền truy cập.';
             return;
           }
-
-          // Check for existing password
-          const pwHash = val.auth && val.auth.ctvPw && val.auth.ctvPw[safeKey(ctv)];
-          document.getElementById('loadingScreen').style.display = 'none';
           document.getElementById('ctvLoginName').textContent = '👤 ' + (ctv || 'CTV');
-
-          if (!pwHash) {
-            // No password yet — ask CTV to create one
-            document.getElementById('ctvLoginSub').textContent = 'Lần đầu đăng nhập — hãy tạo mật khẩu của bạn';
-            document.getElementById('ctvFormSetup').style.display = '';
-            document.getElementById('ctvFormLogin').style.display = 'none';
-            document.getElementById('ctvLoginOverlay').classList.add('show');
-            document.getElementById('ctvPwSetup1').focus();
-          } else if (sessionStorage.getItem('sothu_ctv_ok_' + ctv) === '1') {
-            // Valid session — go straight in
-            _ctvAuthed = true;
-            _showCtvApp(ctv);
+          const hasSetup = localStorage.getItem('sothu_ctv_setup_' + safeKey(ctv));
+          if (hasSetup) {
+            showCtvLoginForm();
           } else {
-            // Show login form
-            _pendingPwHash = pwHash;
-            document.getElementById('ctvLoginSub').textContent = 'Nhập mật khẩu để xem danh sách khách hàng';
-            document.getElementById('ctvFormLogin').style.display = '';
-            document.getElementById('ctvFormSetup').style.display = 'none';
-            document.getElementById('ctvLoginOverlay').classList.add('show');
-            document.getElementById('ctvPwInput').focus();
+            showCtvSetupForm();
           }
+          document.getElementById('ctvLoginOverlay').classList.add('show');
+        }).catch(e => {
+          document.getElementById('loadingScreen').style.display = 'none';
+          document.getElementById('noData').style.display = 'block';
+          showToast('⚠️ Lỗi kết nối: ' + e.message);
         });
-      })
-      .catch(e => {
-        document.getElementById('loadingScreen').style.display = 'none';
-        document.getElementById('noData').style.display = 'block';
-        showToast('⚠️ Lỗi xác thực: ' + e.message);
-      });
+      }
+    });
   } catch (e) {
     document.getElementById('loadingScreen').style.display = 'none';
     document.getElementById('noData').style.display = 'block';
@@ -649,11 +659,6 @@ window.addEventListener('load', () => {
   setTimeout(() => {
     const params = new URLSearchParams(window.location.search);
     ctvName = params.get('ctv') || '';
-
-    // Pre-check session (avoids loading screen flicker after first login)
-    if (sessionStorage.getItem('sothu_ctv_ok_' + ctvName) === '1') {
-      _ctvAuthed = true;
-    }
 
     // Ưu tiên 1: Đọc config từ localStorage (cùng domain — Netlify/server)
     const lsCfg = (() => {

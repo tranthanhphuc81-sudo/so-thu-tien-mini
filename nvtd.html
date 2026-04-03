@@ -371,14 +371,15 @@
         <input type="password" id="pwLogin" placeholder="Nhập mật khẩu" autocomplete="current-password"
                onkeydown="if(event.key==='Enter')nvtdLogin()">
       </div>
-      <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="nvtdLogin()">🔓 Đăng nhập</button>
+      <button id="btnNvtdLogin" class="btn btn-primary" style="width:100%;margin-top:8px" onclick="nvtdLogin()">🔓 Đăng nhập</button>
+      <p style="text-align:center;margin-top:12px;font-size:13px;color:var(--muted)">Lần đầu sử dụng? <a href="#" style="color:var(--primary);text-decoration:none" onclick="event.preventDefault();showNvtdSetupForm()">Tạo tài khoản</a></p>
     </div>
 
     <!-- Form tạo mật khẩu lần đầu -->
     <div id="loginFormSetup" style="display:none">
       <div class="form-group">
         <label>Tạo mật khẩu mới</label>
-        <input type="password" id="pwSetup1" placeholder="Tối thiểu 4 ký tự" autocomplete="new-password"
+        <input type="password" id="pwSetup1" placeholder="Tối thiểu 6 ký tự" autocomplete="new-password"
                onkeydown="if(event.key==='Enter')nvtdSetupPassword()">
       </div>
       <div class="form-group">
@@ -386,7 +387,8 @@
         <input type="password" id="pwSetup2" placeholder="Xác nhận mật khẩu" autocomplete="new-password"
                onkeydown="if(event.key==='Enter')nvtdSetupPassword()">
       </div>
-      <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="nvtdSetupPassword()">✅ Tạo mật khẩu & Vào app</button>
+      <button id="btnNvtdSetup" class="btn btn-primary" style="width:100%;margin-top:8px" onclick="nvtdSetupPassword()">✅ Tạo tài khoản & Vào app</button>
+      <p style="text-align:center;margin-top:12px;font-size:13px;color:var(--muted)">Đã có tài khoản? <a href="#" style="color:var(--primary);text-decoration:none" onclick="event.preventDefault();showNvtdLoginForm()">Đăng nhập</a></p>
     </div>
 
     <div id="loginWaiting" class="login-wait">⏳ Đang kết nối Firebase...</div>
@@ -445,22 +447,26 @@
     <div class="card-title">🛡️ Bảo mật Firebase (Bắt buộc)</div>
     <div class="section-note" style="margin-bottom:12px">
       ⚠️ <strong>Thực hiện 2 bước này để bảo vệ dữ liệu khách hàng:</strong><br>
-      <strong>1.</strong> <a href="https://console.firebase.google.com/" target="_blank" style="color:var(--primary)">Firebase Console</a> → <strong>Authentication</strong> → <strong>Sign-in method</strong> → Bật <strong>Anonymous</strong> → Save<br>
+      <strong>1.</strong> <a href="https://console.firebase.google.com/" target="_blank" style="color:var(--primary)">Firebase Console</a> → <strong>Authentication</strong> → <strong>Sign-in method</strong> → Bật <strong>Email/Password</strong> → Save<br>
       <strong>2.</strong> Vào <strong>Realtime Database</strong> → Tab <strong>Rules</strong> → Xóa hết nội dung cũ → Dán JSON dưới đây → Bấm <strong>Publish</strong>
     </div>
     <pre id="fbRulesJson" style="background:#1e1e1e;color:#d4d4d4;padding:14px;border-radius:10px;font-size:12px;overflow-x:auto;line-height:1.6;margin-bottom:12px;font-family:monospace;user-select:all">{
   "rules": {
     ".read": false,
     ".write": false,
+    "ctvAllowed": {
+      ".read": true,
+      ".write": "auth != null && auth.token.email === 'nvtd@sothu.app'"
+    },
     "data": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".read": "auth != null && auth.token.firebase.sign_in_provider === 'password'",
+      ".write": "auth != null && auth.token.firebase.sign_in_provider === 'password'"
     }
   }
 }</pre>
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
       <button class="btn btn-outline btn-sm" onclick="copyRules()">📋 Copy Rules JSON</button>
-      <span style="font-size:12px;color:var(--muted)">💡 Chỉ người đăng nhập vào công cụ mới đọc/ghi được dữ liệu — không ai tự truy cập Firebase được.</span>
+      <span style="font-size:12px;color:var(--muted)">💡 Mật khẩu xác thực phía server (Firebase Auth) — không ai đọc được hash từ database.</span>
     </div>
   </div>
 
@@ -583,7 +589,7 @@
       </div>
       <div class="form-group" style="flex:1">
         <label>Mật khẩu mới</label>
-        <input type="password" id="pwChangeNew1" placeholder="Tối thiểu 4 ký tự" autocomplete="new-password">
+        <input type="password" id="pwChangeNew1" placeholder="Tối thiểu 6 ký tự" autocomplete="new-password">
       </div>
       <div class="form-group" style="flex:1">
         <label>Nhập lại mật khẩu mới</label>
@@ -680,8 +686,8 @@
   </div>
 
   <div class="card">
-    <div class="card-title">🔑 Mật khẩu đăng nhập CTV</div>
-    <div class="section-note">Đặt mật khẩu riêng cho từng CTV. CTV cần nhập mật khẩu khi mở link lần đầu.</div>
+    <div class="card-title">🔑 Cấp quyền đăng nhập CTV</div>
+    <div class="section-note">Cấp quyền để CTV tự tạo mật khẩu và đăng nhập. Firebase xác thực phía server — mật khẩu không lưu trong database.</div>
     <div class="form-row" style="margin-top:12px">
       <div class="form-group" style="flex:1">
         <label>Chọn CTV</label>
@@ -689,14 +695,10 @@
           <option value="">-- Chọn CTV --</option>
         </select>
       </div>
-      <div class="form-group" style="flex:1">
-        <label>Mật khẩu mới (tối thiểu 4 ký tự)</label>
-        <input type="password" id="ctvPwInput" placeholder="Nhập mật khẩu cho CTV" autocomplete="new-password">
-      </div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn btn-primary" onclick="saveCtvPassword()">💾 Lưu mật khẩu CTV</button>
-      <button class="btn btn-outline" onclick="removeCtvPassword()" style="color:var(--danger)">🗑️ Xóa mật khẩu</button>
+      <button class="btn btn-primary" onclick="approveCTV()">✅ Cấp quyền đăng nhập</button>
+      <button class="btn btn-outline" onclick="revokeCtv()" style="color:var(--danger)">🚫 Thu hồi quyền</button>
     </div>
     <div style="color:var(--danger);font-size:13px;margin-top:8px" id="ctvPwErr"></div>
   </div>
@@ -766,40 +768,10 @@ let _cache = { customers: [], bank: {}, activities: [] };
 let _db = null;
 let _fbInitialized = false;
 let _nvtdAuthed = false;
-let _loginAttempts = 0;
-let _cachedNvtdHash = null;
-const MAX_ATTEMPTS = 5;
-const LOCKOUT_MS = 30000; // 30 giây
-let _lockedUntil = 0;
+const NVTD_EMAIL = 'nvtd@sothu.app';
 
 // ==================== AUTH ====================
-async function hashPw(pw) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
-}
-
 function safeKey(s) { return (s || '').replace(/[.#$[\]/]/g, '_'); }
-
-function _checkLocked() {
-  if (Date.now() < _lockedUntil) {
-    const sec = Math.ceil((_lockedUntil - Date.now()) / 1000);
-    document.getElementById('loginErr').textContent = `⛔ Quá nhiều lần sai. Thử lại sau ${sec}s`;
-    return true;
-  }
-  return false;
-}
-
-function _recordFailedAttempt(errEl) {
-  _loginAttempts++;
-  const remaining = MAX_ATTEMPTS - _loginAttempts;
-  if (_loginAttempts >= MAX_ATTEMPTS) {
-    _lockedUntil = Date.now() + LOCKOUT_MS;
-    _loginAttempts = 0;
-    document.getElementById(errEl).textContent = '⛔ Đã khóa 30 giây do nhập sai quá nhiều lần';
-  } else {
-    document.getElementById(errEl).textContent = `❌ Mật khẩu không đúng (còn ${remaining} lần)`;
-  }
-}
 
 function _showApp() {
   document.getElementById('loginOverlay').style.display = 'none';
@@ -807,21 +779,44 @@ function _showApp() {
   renderAll(); loadBankInfo(); renderCtvLinks(); populateCtvPwSelect();
 }
 
+function showNvtdLoginForm() {
+  document.getElementById('loginFormLogin').style.display = '';
+  document.getElementById('loginFormSetup').style.display = 'none';
+  document.getElementById('loginTitle').textContent = 'Đăng nhập NVTD';
+  document.getElementById('loginSub').textContent = 'Nhập mật khẩu để quản lý sổ thu tiền';
+  document.getElementById('loginErr').textContent = '';
+  setTimeout(() => document.getElementById('pwLogin').focus(), 50);
+}
+
+function showNvtdSetupForm() {
+  document.getElementById('loginFormSetup').style.display = '';
+  document.getElementById('loginFormLogin').style.display = 'none';
+  document.getElementById('loginTitle').textContent = '🔑 Tạo tài khoản NVTD';
+  document.getElementById('loginSub').textContent = 'Lần đầu sử dụng — tạo mật khẩu để bảo vệ dữ liệu';
+  document.getElementById('loginErr').textContent = '';
+  setTimeout(() => document.getElementById('pwSetup1').focus(), 50);
+}
+
 async function nvtdLogin() {
-  if (_checkLocked()) return;
   const pw = document.getElementById('pwLogin').value;
   document.getElementById('loginErr').textContent = '';
   if (!pw) { document.getElementById('loginErr').textContent = 'Vui lòng nhập mật khẩu'; return; }
   if (!_db) { document.getElementById('loginErr').textContent = 'Chưa kết nối Firebase'; return; }
-  // Hash được cache trong onValue, không cần đọc Firebase thêm
-  const h = await hashPw(pw);
-  if (h === _cachedNvtdHash) {
-    _loginAttempts = 0;
-    sessionStorage.setItem('sothu_nvtd_ok', '1');
-    _nvtdAuthed = true;
-    _showApp();
-  } else {
-    _recordFailedAttempt('loginErr');
+  const btn = document.getElementById('btnNvtdLogin');
+  btn.disabled = true; btn.textContent = '⏳ Đang đăng nhập...';
+  try {
+    await firebase.auth().signInWithEmailAndPassword(NVTD_EMAIL, pw);
+    // onAuthStateChanged will take over
+  } catch (e) {
+    btn.disabled = false; btn.textContent = '🔓 Đăng nhập';
+    const errMap = {
+      'auth/wrong-password': '❌ Mật khẩu không đúng',
+      'auth/invalid-credential': '❌ Mật khẩu không đúng',
+      'auth/user-not-found': '❌ Chưa có tài khoản. Bấm "Lần đầu sử dụng?" bên dưới.',
+      'auth/too-many-requests': '⛔ Quá nhiều lần thử. Firebase đã tạm khóa — thử lại sau vài phút.',
+      'auth/network-request-failed': '⚠️ Lỗi mạng. Kiểm tra kết nối internet.',
+    };
+    document.getElementById('loginErr').textContent = errMap[e.code] || ('❌ ' + e.message);
     document.getElementById('pwLogin').value = '';
     document.getElementById('pwLogin').focus();
   }
@@ -831,20 +826,30 @@ async function nvtdSetupPassword() {
   const pw1 = document.getElementById('pwSetup1').value;
   const pw2 = document.getElementById('pwSetup2').value;
   document.getElementById('loginErr').textContent = '';
-  if (pw1.length < 4) { document.getElementById('loginErr').textContent = 'Mật khẩu cần ít nhất 4 ký tự'; return; }
+  if (pw1.length < 6) { document.getElementById('loginErr').textContent = 'Mật khẩu cần ít nhất 6 ký tự'; return; }
   if (pw1 !== pw2) { document.getElementById('loginErr').textContent = 'Mật khẩu không khớp'; return; }
   if (!_db) { document.getElementById('loginErr').textContent = 'Chưa kết nối Firebase'; return; }
-  const h = await hashPw(pw1);
-  await _db.ref('/data/auth/nvtdPwHash').set(h);
-  sessionStorage.setItem('sothu_nvtd_ok', '1');
-  _nvtdAuthed = true;
-  _showApp();
+  const btn = document.getElementById('btnNvtdSetup');
+  btn.disabled = true; btn.textContent = '⏳ Đang tạo...';
+  try {
+    await firebase.auth().createUserWithEmailAndPassword(NVTD_EMAIL, pw1);
+    // onAuthStateChanged will take over
+  } catch (e) {
+    btn.disabled = false; btn.textContent = '✅ Tạo tài khoản & Vào app';
+    if (e.code === 'auth/email-already-in-use') {
+      document.getElementById('loginErr').textContent = '❌ Tài khoản đã tồn tại. Vui lòng đăng nhập.';
+      showNvtdLoginForm();
+    } else if (e.code === 'auth/weak-password') {
+      document.getElementById('loginErr').textContent = '❌ Mật khẩu quá yếu (cần ít nhất 6 ký tự)';
+    } else {
+      document.getElementById('loginErr').textContent = '❌ ' + e.message;
+    }
+  }
 }
 
 function nvtdLogout() {
   if (!confirm('Bạn có chắc muốn đăng xuất không?')) return;
-  sessionStorage.removeItem('sothu_nvtd_ok');
-  location.reload();
+  firebase.auth().signOut().then(() => location.reload());
 }
 
 async function nvtdChangePassword() {
@@ -852,39 +857,43 @@ async function nvtdChangePassword() {
   const n1  = document.getElementById('pwChangeNew1').value;
   const n2  = document.getElementById('pwChangeNew2').value;
   document.getElementById('pwChangeErr').textContent = '';
-  if (!_db) return;
-  const snap = await _db.ref('/data/auth/nvtdPwHash').get();
-  const stored = snap.val();
-  if (stored && await hashPw(cur) !== stored) {
-    document.getElementById('pwChangeErr').textContent = '❌ Mật khẩu hiện tại không đúng'; return;
-  }
-  if (n1.length < 4) { document.getElementById('pwChangeErr').textContent = 'Mật khẩu mới cần ít nhất 4 ký tự'; return; }
+  if (n1.length < 6) { document.getElementById('pwChangeErr').textContent = 'Mật khẩu mới cần ít nhất 6 ký tự'; return; }
   if (n1 !== n2) { document.getElementById('pwChangeErr').textContent = 'Mật khẩu mới không khớp'; return; }
-  await _db.ref('/data/auth/nvtdPwHash').set(await hashPw(n1));
-  document.getElementById('pwChangeCurrent').value = '';
-  document.getElementById('pwChangeNew1').value = '';
-  document.getElementById('pwChangeNew2').value = '';
-  showToast('✅ Đã đổi mật khẩu NVTD thành công!');
+  try {
+    const user = firebase.auth().currentUser;
+    const credential = firebase.auth.EmailAuthProvider.credential(NVTD_EMAIL, cur);
+    await user.reauthenticateWithCredential(credential);
+    await user.updatePassword(n1);
+    document.getElementById('pwChangeCurrent').value = '';
+    document.getElementById('pwChangeNew1').value = '';
+    document.getElementById('pwChangeNew2').value = '';
+    showToast('✅ Đã đổi mật khẩu thành công!');
+  } catch (e) {
+    const errMap = {
+      'auth/wrong-password': '❌ Mật khẩu hiện tại không đúng',
+      'auth/invalid-credential': '❌ Mật khẩu hiện tại không đúng',
+      'auth/weak-password': '❌ Mật khẩu mới quá yếu (cần ít nhất 6 ký tự)',
+      'auth/too-many-requests': '⛔ Quá nhiều lần thử. Vui lòng thử lại sau.',
+    };
+    document.getElementById('pwChangeErr').textContent = errMap[e.code] || ('❌ ' + e.message);
+  }
 }
 
-async function saveCtvPassword() {
+async function approveCTV() {
   const ctv = document.getElementById('ctvPwSelect').value.trim();
-  const pw  = document.getElementById('ctvPwInput').value;
   document.getElementById('ctvPwErr').textContent = '';
   if (!ctv) { document.getElementById('ctvPwErr').textContent = 'Chọn CTV trước'; return; }
-  if (pw.length < 4) { document.getElementById('ctvPwErr').textContent = 'Mật khẩu cần ít nhất 4 ký tự'; return; }
   if (!_db) return;
-  await _db.ref('/data/auth/ctvPw/' + safeKey(ctv)).set(await hashPw(pw));
-  document.getElementById('ctvPwInput').value = '';
-  showToast('✅ Đã đặt mật khẩu cho CTV: ' + ctv);
+  await _db.ref('/ctvAllowed/' + safeKey(ctv)).set(true);
+  showToast('✅ Đã cấp quyền đăng nhập cho CTV: ' + ctv);
 }
 
-async function removeCtvPassword() {
+async function revokeCtv() {
   const ctv = document.getElementById('ctvPwSelect').value.trim();
   if (!ctv || !_db) return;
-  if (!confirm('Xóa mật khẩu CTV "' + ctv + '"? CTV sẽ không cần đăng nhập nữa.')) return;
-  await _db.ref('/data/auth/ctvPw/' + safeKey(ctv)).remove();
-  showToast('🗑️ Đã xóa mật khẩu của: ' + ctv);
+  if (!confirm('Thu hồi quyền truy cập của CTV "' + ctv + '"?\nCTV sẽ không đăng nhập được cho đến khi được cấp lại.')) return;
+  await _db.ref('/ctvAllowed/' + safeKey(ctv)).remove();
+  showToast('🗑️ Đã thu hồi quyền của: ' + ctv);
 }
 
 function populateCtvPwSelect() {
@@ -931,50 +940,44 @@ function cacheFromVal(val) {
   };
 }
 
+let _dataListenerOn = false;
+
 function initFirebase(cfg, showSuccessToast = false) {
   if (_fbInitialized) return;
+  let _firstAuthEvent = false;
   try {
     if (!firebase.apps.length) firebase.initializeApp(cfg);
     _db = firebase.database();
     _fbInitialized = true;
-    firebase.auth().signInAnonymously()
-      .then(cred => {
-        _db.ref('/data').on('value', snapshot => {
-          const val = snapshot.val() || {};
-          _cache = cacheFromVal(val);
-          // Cache hash locally — không để client re-fetch từ Firebase mỗi lần login
-          if (val.auth && val.auth.nvtdPwHash) _cachedNvtdHash = val.auth.nvtdPwHash;
-          if (_nvtdAuthed) {
-            renderAll(); loadBankInfo(); renderCtvLinks();
-            populateCtvPwSelect();
-          } else {
-            // Show login or setup form
-            document.getElementById('loginWaiting').style.display = 'none';
-            const pwHash = val.auth && val.auth.nvtdPwHash;
-            if (!pwHash) {
-              document.getElementById('loginTitle').textContent = '🔑 Tạo mật khẩu NVTD';
-              document.getElementById('loginSub').textContent = 'Lần đầu sử dụng — tạo mật khẩu để bảo vệ dữ liệu';
-              document.getElementById('loginFormSetup').style.display = '';
-              document.getElementById('loginFormLogin').style.display = 'none';
-              document.getElementById('pwSetup1').focus();
-            } else {
-              document.getElementById('loginFormLogin').style.display = '';
-              document.getElementById('loginFormSetup').style.display = 'none';
-              document.getElementById('pwLogin').focus();
-            }
-          }
-        });
-        hideFbError();
-        updateFbStatus(true);
+
+    firebase.auth().onAuthStateChanged(user => {
+      if (!_firstAuthEvent) {
+        _firstAuthEvent = true;
+        hideFbError(); updateFbStatus(true);
         if (showSuccessToast) showToast('🔥 Kết nối Firebase thành công!');
-      })
-      .catch(e => {
-        _fbInitialized = false;
-        _db = null;
-        updateFbStatus(false);
-        console.error('[Firebase Auth Error]', e.code, e.message, e);
-        if (showSuccessToast) showFbError(e.code || '', e.message);
-      });
+      }
+
+      if (user && user.email === NVTD_EMAIL) {
+        _nvtdAuthed = true;
+        document.getElementById('loginOverlay').style.display = 'none';
+        if (!_dataListenerOn) {
+          _dataListenerOn = true;
+          _db.ref('/data').on('value', snapshot => {
+            _cache = cacheFromVal(snapshot.val() || {});
+            renderAll(); loadBankInfo(); renderCtvLinks(); populateCtvPwSelect();
+          });
+        }
+      } else if (user) {
+        // Logged in as wrong account — sign out
+        firebase.auth().signOut();
+      } else {
+        // Not logged in — show login form
+        document.getElementById('loginWaiting').style.display = 'none';
+        document.getElementById('loginFormLogin').style.display = '';
+        document.getElementById('loginFormSetup').style.display = 'none';
+        setTimeout(() => document.getElementById('pwLogin').focus(), 50);
+      }
+    });
   } catch (e) {
     _fbInitialized = false;
     _db = null;
@@ -992,12 +995,12 @@ function showFbError(code, message) {
   msg.textContent = '(' + (code || '?') + ') ' + message;
   let h = '';
   if (code === 'auth/operation-not-allowed' || code === 'auth/admin-restricted-operation') {
-    h = '👉 <strong>Anonymous Authentication chưa được bật.</strong> Làm theo đúng thứ tự:<br>'
+    h = '👉 <strong>Email/Password Authentication chưa được bật.</strong> Làm theo đúng thứ tự:<br>'
       + '1. Vào <a href="https://console.firebase.google.com/" target="_blank" style="color:var(--primary)">console.firebase.google.com</a><br>'
-      + '2. Chọn đúng project (<code>sothutienmini</code>)<br>'
+      + '2. Chọn đúng project của bạn<br>'
       + '3. Menu trái → <strong>Build</strong> → <strong>Authentication</strong><br>'
       + '4. Bấm tab <strong>Sign-in method</strong><br>'
-      + '5. Tìm dòng <strong>Anonymous</strong> → bấm vào → bật toggle <strong>Enable</strong> → bấm <strong>Save</strong><br>'
+      + '5. Tìm dòng <strong>Email/Password</strong> → bấm vào → bật toggle <strong>Enable</strong> → bấm <strong>Save</strong><br>'
       + '6. Quay lại đây → bấm <strong>🔄 Reset &amp; kết nối lại</strong> → nhập lại API Key + URL → Kết nối';
   } else if (code === 'auth/invalid-api-key' || message.toLowerCase().includes('api key') || message.toLowerCase().includes('api-key')) {
     h = '👉 <strong>API Key không hợp lệ.</strong> Vào Firebase Console → Project Settings → Web App → copy lại API Key.';
@@ -1101,12 +1104,6 @@ function saveSiteUrl() {
 }
 
 window.addEventListener('load', () => {
-  // Kiểm tra session đăng nhập trước
-  if (sessionStorage.getItem('sothu_nvtd_ok') === '1') {
-    _nvtdAuthed = true;
-    document.getElementById('loginOverlay').style.display = 'none';
-  }
-
   // Load + tự động lưu URL site nếu đang chạy trên HTTP
   const savedUrl = localStorage.getItem(SITE_URL_KEY);
   if (savedUrl) {
@@ -1133,20 +1130,16 @@ window.addEventListener('load', () => {
     document.getElementById('fbApiKey').value = cfg.apiKey;
     document.getElementById('fbDbUrl').value = cfg.databaseURL;
     initFirebase(cfg);
-    // onValue will call renderAll + loadBankInfo + renderCtvLinks
   } else {
-    // No Firebase: load from local fallback — show setup form (no password possible)
+    // No Firebase: local-only mode, no authentication
     document.getElementById('loginWaiting').style.display = 'none';
-    document.getElementById('loginTitle').textContent = '🔑 Tạo mật khẩu NVTD';
-    document.getElementById('loginSub').textContent = 'Tạo mật khẩu để bảo vệ dữ liệu (lưu cục bộ)';
-    document.getElementById('loginFormSetup').style.display = '';
-    document.getElementById('loginFormLogin').style.display = 'none';
+    document.getElementById('loginOverlay').style.display = 'none';
     try {
       const local = localStorage.getItem('sothu_local');
       if (local) _cache = JSON.parse(local);
     } catch {}
     updateFbStatus(false);
-    // Render will happen after login
+    renderAll(); loadBankInfo(); renderCtvLinks(); populateCtvPwSelect();
   }
 });
 
