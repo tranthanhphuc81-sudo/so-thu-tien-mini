@@ -657,7 +657,10 @@ function toggleQR(id) {
   openQRId = id;
 
   if (!bank || !bank.account) {
-    showToast('⚠️ NVTD chưa cấu hình tài khoản ngân hàng!');
+    const img = document.getElementById('qrimg_' + id);
+    if (img) img.src = '';
+    const acctDiv = document.getElementById('qr_' + id)?.querySelector('.qr-acct');
+    if (acctDiv) acctDiv.textContent = '⚠️ NVTD chưa lưu thông tin tài khoản ngân hàng';
     return;
   }
 
