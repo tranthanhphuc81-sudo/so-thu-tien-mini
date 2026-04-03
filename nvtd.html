@@ -1012,10 +1012,7 @@ function initFirebase(cfg, showSuccessToast = false) {
             renderAll(); loadBankInfo(); renderCtvLinks(); populateCtvPwSelect();
           }, err => {
             _dataListenerOn = false;
-            showToast('⚠️ Permission denied khi đọc dữ liệu. Cần cập nhật Firebase Rules:\n'
-              + 'RTDB → Rules → Copy từ tab Thiết lập → Publish');
-            showFbError('permission-denied',
-              'Không đọc được /data. Vào tab Thiết lập → bấm "📋 Copy Rules JSON" → Dán vào Firebase Console → Publish.');
+            showFbError('permission-denied', 'Không đọc được /data (permission denied).');
           });
         }
       } else if (user) {
@@ -1057,8 +1054,19 @@ function showFbError(code, message) {
     h = '👉 <strong>API Key không hợp lệ.</strong> Vào Firebase Console → Project Settings → Web App → copy lại API Key.';
   } else if (code === 'auth/network-request-failed') {
     h = '👉 <strong>Lỗi mạng.</strong> Kiểm tra kết nối internet, tắt VPN nếu đang dùng, thử lại.';
-  } else if (message.toLowerCase().includes('permission') || message.toLowerCase().includes('denied')) {
-    h = '👉 <strong>Bị từ chối quyền.</strong> Vào Realtime Database → Rules → dán Rules mới → Publish (xem thẻ bên dưới).';
+  } else if (code === 'permission-denied' || message.toLowerCase().includes('permission') || message.toLowerCase().includes('denied')) {
+    const cfg = getFbCfg();
+    const pid = cfg ? deriveProjectId(cfg.databaseURL) : '';
+    const rulesUrl = pid
+      ? `https://console.firebase.google.com/project/${pid}/database/${pid}-default-rtdb/rules`
+      : 'https://console.firebase.google.com/';
+    const rulesJson = (document.getElementById('fbRulesJson') || {}).textContent || '';
+    h = '👉 <strong>Firebase Rules chưa được cập nhật.</strong> Làm theo các bước sau:<br>'
+      + '1. Bấm nút bên dưới để mở trang Rules<br>'
+      + '2. Xóa hết nội dung cũ trong ô Rules<br>'
+      + '3. Bấm <strong>📋 Copy Rules JSON</strong> trong thẻ Bảo mật bên dưới → Dán vào<br>'
+      + '4. Bấm <strong>Publish</strong><br>'
+      + `<a href="${rulesUrl}" target="_blank" style="display:inline-block;margin-top:10px;padding:8px 18px;background:var(--primary);color:#fff;border-radius:8px;text-decoration:none;font-weight:700;font-size:0.97rem">🔗 Mở Firebase Console → Rules</a>`;
   } else if (code === 'auth/configuration-not-found') {
     h = '👉 <strong>Cấu hình Auth chưa đúng.</strong> Kiểm tra lại API Key và Database URL. Đảm bảo project Firebase còn hoạt động.';
   } else {
@@ -1087,6 +1095,14 @@ function deriveAuthDomain(databaseURL) {
   // https://{projectId}.firebaseio.com
   const m2 = (databaseURL || '').match(/https:\/\/([^.]+)\.firebaseio\.com/);
   if (m2) return m2[1] + '.firebaseapp.com';
+  return '';
+}
+
+function deriveProjectId(databaseURL) {
+  const m = (databaseURL || '').match(/https:\/\/(.+)-default-rtdb\./);
+  if (m) return m[1];
+  const m2 = (databaseURL || '').match(/https:\/\/([^.]+)\.firebaseio\.com/);
+  if (m2) return m2[1];
   return '';
 }
 
