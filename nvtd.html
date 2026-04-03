@@ -1459,7 +1459,7 @@ function readExcelFile(file) {
       // Auto-detect columns by keyword matching
       const colName   = findColumn(headers, ['tên khách hàng', 'họ và tên', 'họ tên', 'tên chủ hộ', 'tên kh', 'khách hàng', 'tên']);
       const colCode   = findColumn(headers, ['mã khách hàng', 'mã kh', 'mskh', 'mã số kh', 'mã số', 'mã']);
-      const colAmount  = findColumn(headers, ['dư nợ hbt', 'dư nợ', 'tổng nợ', 'nợ gốc', 'số tiền vay', 'số tiền cần thu', 'số tiền', 'tiền nợ', 'nợ']);
+      const colAmount  = findColumn(headers, ['nợ cần phải thu', 'nợ cần thu', 'dư nợ hbt', 'dư nợ', 'tổng nợ', 'nợ gốc', 'số tiền vay', 'số tiền cần thu', 'số tiền', 'tiền nợ', 'nợ']);
       const colCtvCode = findColumn(headers, ['mã ctv', 'ma ctv', 'mãctv']);
       const colCtvName = findColumn(headers, ['họ tên ctv', 'ho ten ctv', 'tên ctv', 'ten ctv', 'họ và tên ctv']);
 
@@ -1522,7 +1522,7 @@ function showExcelPreview() {
 
   document.getElementById('excelColMap').innerHTML =
     buildSelect('👤 Tên khách hàng <span style="color:var(--danger)">*</span>', 'exColName', colName) +
-    buildSelect('💰 Số tiền cần thu <span style="color:var(--danger)">*</span>', 'exColAmount', colAmount) +
+    buildSelect('💰 Nợ cần phải thu (dùng cho mã QR) <span style="color:var(--danger)">*</span>', 'exColAmount', colAmount) +
     buildSelect('🔑 Mã đối soát (tuỳ chọn)', 'exColCode', colCode) +
     buildSelect('👥 Tên CTV phụ trách', 'exColCtvName', colCtvName != null ? colCtvName : -1);
 
