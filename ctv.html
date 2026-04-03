@@ -637,13 +637,25 @@ function initFirebase(cfg, ctv) {
                 : [],
             };
             _showCtvApp(ctv);
+          }, err => {
+            // Permission denied hoặc lỗi đọc data
+            _dataListenerCtvOn = false;
+            document.getElementById('loadingScreen').style.display = 'none';
+            document.getElementById('ctvLoginOverlay').classList.remove('show');
+            document.getElementById('noData').style.display = 'block';
+            document.getElementById('noDataMsg').textContent = '⚠️ Không đọc được dữ liệu: ' + err.message
+              + '\n\nNVTD cần cập nhật Firebase Rules mới (xem tab Thiết lập).';
           });
         }
       } else if (user) {
         // Logged in as wrong account — sign out
         firebase.auth().signOut();
       } else {
-        // Not logged in — check approval then show form
+        // Not logged in — reset buttons, check approval then show form
+        const btnL = document.getElementById('btnCtvLogin');
+        const btnS = document.getElementById('btnCtvSetup');
+        if (btnL) { btnL.disabled = false; btnL.textContent = '🔓 Đăng nhập'; }
+        if (btnS) { btnS.disabled = false; btnS.textContent = '✅ Tạo mật khẩu & Vào app'; }
         _db.ref('/ctvAllowed/' + safeKey(ctv)).get().then(snap => {
           document.getElementById('loadingScreen').style.display = 'none';
           if (!snap.exists()) {
