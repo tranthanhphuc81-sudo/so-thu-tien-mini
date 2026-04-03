@@ -514,7 +514,7 @@ function safeKey(s) { return (s || '').replace(/[.#$[\]/]/g, '_'); }
 function ctvEmail(name) {
   try {
     const b64 = btoa(encodeURIComponent((name || '').trim())).replace(/[+/=]/g, '');
-    return 'ctv+' + b64.slice(0, 50) + '@sothu.app';
+    return ('ctv+' + b64.slice(0, 50) + '@sothu.app').toLowerCase();
   } catch { return 'ctv+unknown@sothu.app'; }
 }
 
