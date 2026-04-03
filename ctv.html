@@ -365,21 +365,32 @@
 
     <!-- Form đăng nhập -->
     <div id="ctvFormLogin" style="display:none">
-      <input type="password" id="ctvPwInput" placeholder="Mật khẩu" autocomplete="current-password"
-             style="width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;font-size:15px;margin-bottom:10px"
-             onkeydown="if(event.key==='Enter')ctvLogin()">
-      <button class="btn btn-success" style="width:100%;padding:12px" onclick="ctvLogin()">🔓 Đăng nhập</button>
+      <div class="pw-wrap" style="margin-bottom:10px">
+        <input type="password" id="ctvPwInput" placeholder="Mật khẩu" autocomplete="current-password"
+               style="padding:12px;border:1px solid var(--border);border-radius:10px;font-size:15px"
+               onkeydown="if(event.key==='Enter')ctvLogin()">
+        <button class="pw-eye" type="button" onclick="togglePw('ctvPwInput',this)" tabindex="-1">👁️</button>
+      </div>
+      <button id="btnCtvLogin" class="btn btn-success" style="width:100%;padding:12px" onclick="ctvLogin()">🔓 Đăng nhập</button>
+      <p style="text-align:center;margin-top:12px;font-size:13px;color:var(--muted)">Lần đầu? <a href="#" style="color:var(--primary);text-decoration:none" onclick="event.preventDefault();showCtvSetupForm()">Tạo mật khẩu</a></p>
     </div>
 
     <!-- Form tạo mật khẩu lần đầu -->
     <div id="ctvFormSetup" style="display:none">
-      <input type="password" id="ctvPwSetup1" placeholder="Tạo mật khẩu (tối thiểu 4 ký tự)" autocomplete="new-password"
-             style="width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;font-size:15px;margin-bottom:10px"
-             onkeydown="if(event.key==='Enter')ctvSetupPassword()">
-      <input type="password" id="ctvPwSetup2" placeholder="Nhập lại mật khẩu" autocomplete="new-password"
-             style="width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;font-size:15px;margin-bottom:10px"
-             onkeydown="if(event.key==='Enter')ctvSetupPassword()">
-      <button class="btn btn-success" style="width:100%;padding:12px" onclick="ctvSetupPassword()">✅ Tạo mật khẩu & Vào app</button>
+      <div class="pw-wrap" style="margin-bottom:10px">
+        <input type="password" id="ctvPwSetup1" placeholder="Tạo mật khẩu (tối thiểu 6 ký tự)" autocomplete="new-password"
+               style="padding:12px;border:1px solid var(--border);border-radius:10px;font-size:15px"
+               onkeydown="if(event.key==='Enter')ctvSetupPassword()">
+        <button class="pw-eye" type="button" onclick="togglePw('ctvPwSetup1',this)" tabindex="-1">👁️</button>
+      </div>
+      <div class="pw-wrap" style="margin-bottom:10px">
+        <input type="password" id="ctvPwSetup2" placeholder="Nhập lại mật khẩu" autocomplete="new-password"
+               style="padding:12px;border:1px solid var(--border);border-radius:10px;font-size:15px"
+               onkeydown="if(event.key==='Enter')ctvSetupPassword()">
+        <button class="pw-eye" type="button" onclick="togglePw('ctvPwSetup2',this)" tabindex="-1">👁️</button>
+      </div>
+      <button id="btnCtvSetup" class="btn btn-success" style="width:100%;padding:12px" onclick="ctvSetupPassword()">✅ Tạo mật khẩu & Vào app</button>
+      <p style="text-align:center;margin-top:12px;font-size:13px;color:var(--muted)">Đã có mật khẩu? <a href="#" style="color:var(--primary);text-decoration:none" onclick="event.preventDefault();showCtvLoginForm()">Đăng nhập</a></p>
     </div>
 
     <div class="login-err" id="ctvLoginErr"></div>
