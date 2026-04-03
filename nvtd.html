@@ -1010,6 +1010,12 @@ function initFirebase(cfg, showSuccessToast = false) {
           _db.ref('/data').on('value', snapshot => {
             _cache = cacheFromVal(snapshot.val() || {});
             renderAll(); loadBankInfo(); renderCtvLinks(); populateCtvPwSelect();
+          }, err => {
+            _dataListenerOn = false;
+            showToast('⚠️ Permission denied khi đọc dữ liệu. Cần cập nhật Firebase Rules:\n'
+              + 'RTDB → Rules → Copy từ tab Thiết lập → Publish');
+            showFbError('permission-denied',
+              'Không đọc được /data. Vào tab Thiết lập → bấm "📋 Copy Rules JSON" → Dán vào Firebase Console → Publish.');
           });
         }
       } else if (user) {
