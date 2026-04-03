@@ -714,6 +714,7 @@
       <button class="btn btn-outline" onclick="revokeCtv()" style="color:var(--danger)">🚫 Thu hồi quyền</button>
     </div>
     <div style="color:var(--danger);font-size:13px;margin-top:8px" id="ctvPwErr"></div>
+    <div id="ctvAllowedList" style="margin-top:14px"></div>
   </div>
 
   <div class="card">
@@ -907,6 +908,7 @@ async function approveCTV() {
   if (!_db) return;
   await _db.ref('/ctvAllowed/' + safeKey(ctv)).set(true);
   showToast('✅ Đã cấp quyền đăng nhập cho CTV: ' + ctv);
+  renderCtvAllowedList();
 }
 
 async function revokeCtv() {
@@ -915,6 +917,27 @@ async function revokeCtv() {
   if (!confirm('Thu hồi quyền truy cập của CTV "' + ctv + '"?\nCTV sẽ không đăng nhập được cho đến khi được cấp lại.')) return;
   await _db.ref('/ctvAllowed/' + safeKey(ctv)).remove();
   showToast('🗑️ Đã thu hồi quyền của: ' + ctv);
+  renderCtvAllowedList();
+}
+
+async function renderCtvAllowedList() {
+  const el = document.getElementById('ctvAllowedList');
+  if (!el || !_db) return;
+  const snap = await _db.ref('/ctvAllowed').get();
+  const allowed = snap.val() || {};
+  const ctvSet = [...new Set(_cache.customers.map(c => c.ctv).filter(Boolean))];
+  if (!ctvSet.length) { el.innerHTML = ''; return; }
+  el.innerHTML = '<div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:8px">Trạng thái quyền truy cập:</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:8px">'
+    + ctvSet.map(c => {
+        const ok = allowed[safeKey(c)];
+        return `<span style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:20px;font-size:13px;font-weight:600;
+          background:${ok ? '#e6f9ed' : '#fff3f3'};color:${ok ? '#1a7f37' : '#b91c1c'};
+          border:1px solid ${ok ? '#86efac' : '#fca5a5'}">
+          ${ok ? '✅' : '⛔'} ${escHtml(c)}
+        </span>`;
+      }).join('')
+    + '</div>';
 }
 
 function populateCtvPwSelect() {
@@ -923,6 +946,7 @@ function populateCtvPwSelect() {
   const ctvSet = new Set(_cache.customers.map(c => c.ctv).filter(Boolean));
   sel.innerHTML = '<option value="">-- Chọn CTV --</option>' +
     [...ctvSet].map(c => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('');
+  renderCtvAllowedList();
 }
 
 function getFbCfg() {
