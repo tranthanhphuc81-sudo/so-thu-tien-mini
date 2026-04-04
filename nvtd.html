@@ -2593,7 +2593,8 @@ function confirmExcelImport() {
   }
 
   const data = getData();
-  let count = 0;
+  let addCount = 0;
+  let updCount = 0;
 
   _excelParsed.dataRows.forEach(row => {
     const name   = String(row[colName] || '').trim();
@@ -2604,14 +2605,26 @@ function confirmExcelImport() {
     const amt        = isPrepaid ? 0 : rawAmt;
     const prepaidAmt = isPrepaid ? Math.abs(rawAmt) : 0;
     const code   = colCode >= 0 ? String(row[colCode] || '').trim() : '';
-    if (!name || (!isPrepaid && amt <= 0)) return;
+    if (!isPrepaid && amt <= 0) return;
 
     const rowCtv = perRowCtv
       ? (String(row[_excelParsed.colCtvName] || '').trim() || 'Chưa phân công')
       : ctv;
 
-    const finalCode = code || 'MS' + Date.now() + Math.floor(Math.random() * 1000);
-    if (!data.customers.find(c => c.name === name && c.ctv === rowCtv)) {
+    const existing = data.customers.find(c => c.name === name && c.ctv === rowCtv);
+    if (existing) {
+      // Upsert: cập nhật số tiền và mã, giữ nguyên trạng thái thanh toán
+      existing.amount = amt;
+      if (code) existing.code = code;
+      if (isPrepaid && existing.status !== 'paid') {
+        existing.status = 'paid';
+        existing.paidAt = existing.paidAt || Date.now();
+        existing.paidAmount = prepaidAmt;
+        existing.note = existing.note || '💰 Trả trước kỳ này';
+      }
+      updCount++;
+    } else {
+      const finalCode = code || 'MS' + Date.now() + Math.floor(Math.random() * 1000);
       data.customers.push({
         id: 'kh_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
         name, amount: amt, code: finalCode, ctv: rowCtv,
@@ -2620,9 +2633,15 @@ function confirmExcelImport() {
         paidAmount: isPrepaid ? prepaidAmt : undefined,
         billImg: null, note: isPrepaid ? '💰 Trả trước kỳ này' : '',
       });
-      count++;
+      addCount++;
     }
   });
+
+  const total = addCount + updCount;
+  if (total === 0) {
+    showToast('⚠️ Không có dữ liệu nào được nhập (file trống hoặc sai cột)');
+    return;
+  }
 
   saveData(data);
   closeModal('excelModal');
@@ -2637,7 +2656,14 @@ function confirmExcelImport() {
   if (hintReset) hintReset.style.display = 'none';
   renderAll();
   renderCtvLinks();
-  showToast(`✅ Đã nhập ${count} khách hàng từ Excel!`);
+
+  let msg = `✅ Nhập xong! Thêm mới: ${addCount} KH`;
+  if (updCount > 0) msg += ` · Cập nhật: ${updCount} KH`;
+  showToast(msg, 3500);
+
+  // Tự chuyển sang tab Danh sách KH
+  const listBtn = document.querySelector('.tab-btn[onclick*="tab-list"]');
+  if (listBtn) listBtn.click();
 }
 </script>
 </body>
