@@ -653,6 +653,27 @@
     <div style="color:var(--danger);font-size:13px;margin-top:8px" id="pwChangeErr"></div>
   </div>
 
+  <div class="card" id="sec-backup">
+    <div class="card-title">💾 Backup &amp; Phục hồi dữ liệu</div>
+    <div class="section-note">
+      💡 <strong>Backup</strong>: Tải toàn bộ dữ liệu (khách hàng, lịch sử thu, ngân hàng) về máy dưới dạng file JSON.<br>
+      ⚠️ <strong>Phục hồi</strong>: Nạp file backup vào hệ thống. <span style="color:var(--danger);font-weight:700">DỮ LIỆU HIỆN TẠI SẼ BỊ GHI ĐÈ HOÀN TOÀN.</span>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:14px">
+      <button class="btn btn-primary" onclick="backupData()">⬇️ Tải backup (.json)</button>
+      <button class="btn btn-outline" onclick="document.getElementById('restoreFileInput').click()">⬆️ Phục hồi từ file backup</button>
+      <input type="file" id="restoreFileInput" accept=".json" style="display:none" onchange="handleRestoreFile(this)">
+    </div>
+    <div id="restorePreview" style="display:none;margin-top:16px;padding:14px;background:#fff8e1;border:1.5px solid var(--warning);border-radius:10px">
+      <div style="font-weight:700;font-size:15px;margin-bottom:10px">📋 Xác nhận phục hồi</div>
+      <div id="restorePreviewBody" style="font-size:13px;margin-bottom:12px;line-height:1.8;color:#333"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-danger" onclick="confirmRestore()">✅ Xác nhận ghi đè dữ liệu</button>
+        <button class="btn btn-outline btn-sm" onclick="cancelRestore()">❌ Hủy</button>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <!-- ===================== TAB DASHBOARD ===================== -->
@@ -1418,6 +1439,7 @@ const SIDE_NAV_CONFIG = {
     { id: 'sec-website',  label: '🌐 Địa chỉ website' },
     { id: 'sec-links',    label: '🔗 Link CTV' },
     { id: 'sec-password', label: '🔐 Đổi mật khẩu' },
+    { id: 'sec-backup',   label: '💾 Backup & Phục hồi' },
   ],
   'tab-dashboard': [
     { id: 'sec-progress', label: '📈 Tiến độ' },
@@ -1553,6 +1575,99 @@ Bùi Thị Hà | 750000 | KH008
 Vũ Văn Inh | 1000000 | KH009
 Đỗ Thị Kim | 550000 | KH010`;
   importCustomers();
+}
+
+// ===================== BACKUP & RESTORE =====================
+function backupData() {
+  if (!_fbInitialized && !localStorage.getItem('sothu_local')) {
+    showToast('⚠️ Chưa có dữ liệu để backup!'); return;
+  }
+  const data = _cache;
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const label = `${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  const fileName = `sothu-backup-${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.json`;
+  const paid = data.customers.filter(c => c.status === 'paid').length;
+  const backup = {
+    version: 1,
+    exportedAt: now.toISOString(),
+    exportedAtLabel: label,
+    customerCount: data.customers.length,
+    paidCount: paid,
+    data: {
+      bank: data.bank || {},
+      customers: data.customers,
+      activities: data.activities || [],
+    },
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = fileName; a.click();
+  URL.revokeObjectURL(url);
+  showToast(`✅ Đã tải backup: ${data.customers.length} khách hàng`);
+}
+
+let _pendingRestore = null;
+
+function handleRestoreFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      if (!parsed.data || !Array.isArray(parsed.data.customers)) {
+        showToast('❌ File backup không hợp lệ!'); input.value = ''; return;
+      }
+      _pendingRestore = parsed;
+      const paid = parsed.data.customers.filter(c => c.status === 'paid').length;
+      const pending = parsed.data.customers.length - paid;
+      const totalAmt = parsed.data.customers.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+      document.getElementById('restorePreviewBody').innerHTML =
+        `📅 <strong>Ngày backup:</strong> ${parsed.exportedAtLabel || parsed.exportedAt}<br>` +
+        `👥 <strong>Số khách hàng:</strong> ${parsed.data.customers.length} (✅ đã thu: ${paid} · ⏳ chưa thu: ${pending})<br>` +
+        `💰 <strong>Tổng tiền cần thu:</strong> ${totalAmt.toLocaleString('vi-VN')} ₫<br>` +
+        `📋 <strong>Lịch sử hoạt động:</strong> ${(parsed.data.activities || []).length} bản ghi<br>` +
+        `<span style="color:var(--danger);font-weight:700">⚠️ Toàn bộ dữ liệu hiện tại (${_cache.customers.length} khách hàng) sẽ bị xóa và thay thế!</span>`;
+      document.getElementById('restorePreview').style.display = '';
+      document.getElementById('restorePreview').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } catch {
+      showToast('❌ Lỗi đọc file – không phải JSON hợp lệ!');
+    }
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function cancelRestore() {
+  _pendingRestore = null;
+  document.getElementById('restorePreview').style.display = 'none';
+}
+
+function confirmRestore() {
+  if (!_pendingRestore) return;
+  const d = _pendingRestore.data;
+  const customersObj = {};
+  d.customers.forEach(c => { customersObj[c.id] = c; });
+  const activitiesObj = {};
+  (d.activities || []).forEach((a, i) => { activitiesObj['act_' + a.at + '_' + i] = a; });
+  const firebaseData = { bank: d.bank || {}, customers: customersObj, activities: activitiesObj };
+
+  if (_db) {
+    _db.ref('/data').set(firebaseData)
+      .then(() => {
+        showToast(`✅ Đã phục hồi ${d.customers.length} khách hàng từ backup!`);
+        cancelRestore();
+      })
+      .catch(err => showToast('❌ Lỗi phục hồi: ' + err.message));
+  } else {
+    _cache = { customers: d.customers, bank: d.bank || {}, activities: d.activities || [] };
+    localStorage.setItem('sothu_local', JSON.stringify(_cache));
+    renderAll(); loadBankInfo(); renderCtvLinks();
+    showToast(`✅ Đã phục hồi ${d.customers.length} khách hàng từ backup!`);
+    cancelRestore();
+  }
 }
 
 function clearAllData() {
@@ -1699,10 +1814,10 @@ function renderCustomerTable() {
     <tr class="${c.status === 'paid' ? 'paid' : ''}">
       <td>${i + 1}</td>
       <td><strong>${escHtml(c.name)}</strong></td>
-      <td>${c.amount === 0 && c.paidAmount > 0 ? `<span style="font-weight:700;color:#2e7d32">💰 Đã thu trước: ${c.paidAmount.toLocaleString('vi-VN')} ₫</span>` : `<strong style="color:#e65100">${c.amount.toLocaleString('vi-VN')} ₫</strong>${c.paidAmount != null && c.paidAmount !== c.amount ? `<br><span style="font-size:11px;color:#2e7d32;font-weight:600">✔ Đã thu: ${c.paidAmount.toLocaleString('vi-VN')} ₫</span><br><span style="font-size:11px;font-weight:700;color:${c.paidAmount < c.amount ? '#e65100' : '#2e7d32'}">${c.paidAmount < c.amount ? '⚠️ Còn thiếu' : '💰 Trả trước'}: ${Math.abs(c.paidAmount - c.amount).toLocaleString('vi-VN')} ₫</span>` : ''}`}</td>
+      <td><strong style="color:#e65100">${c.amount.toLocaleString('vi-VN')} ₫</strong>${c.paidAmount != null && c.paidAmount !== c.amount ? `<br><span style="font-size:11px;color:#2e7d32;font-weight:600">✔ Đã thu: ${c.paidAmount.toLocaleString('vi-VN')} ₫</span><br><span style="font-size:11px;font-weight:700;color:${c.paidAmount < c.amount ? '#e65100' : '#2e7d32'}">${c.paidAmount < c.amount ? '⚠️ Còn thiếu' : '💰 Trả trước'}: ${Math.abs(c.paidAmount - c.amount).toLocaleString('vi-VN')} ₫</span>` : ''}</td>
       <td><code style="font-size:12px">${escHtml(c.code)}</code></td>
       <td>${escHtml(c.ctv)}</td>
-      <td><span class="badge ${c.status === 'paid' ? 'badge-paid' : 'badge-pending'}">${c.status === 'paid' ? (c.amount === 0 && c.paidAmount > 0 ? '💰 Đã thu trước' : '✅ Đã thu') : '⏳ Chưa thu'}</span></td>
+      <td><span class="badge ${c.status === 'paid' ? 'badge-paid' : 'badge-pending'}">${c.status === 'paid' ? '✅ Đã thu' : '⏳ Chưa thu'}</span></td>
       <td style="font-size:12px">${c.payMethod === 'cash' ? '💵 Tiền mặt' : c.payMethod === 'transfer' ? '🏦 Chuyển khoản' : '<span style="color:var(--muted)">—</span>'}</td>
       <td style="font-size:12px;color:var(--muted)">${c.paidAt ? new Date(c.paidAt).toLocaleString('vi-VN') : '—'}</td>
       <td>
@@ -2331,7 +2446,7 @@ function updateExcelPreview() {
 
   const validRows = dataRows.filter(row => {
     const name = colName >= 0 ? String(row[colName] || '').trim() : '';
-    const raw  = colAmount >= 0 ? String(row[colAmount] || '').replace(/[^0-9.\-]/g, '') : '0';
+    const raw  = colAmount >= 0 ? String(row[colAmount]).replace(/[^0-9.\-]/g, '') : '0';
     const amt  = parseFloat(raw) || 0;
     return name && amt !== 0;
   });
@@ -2456,8 +2571,7 @@ function confirmExcelImport() {
   }
 
   const data = getData();
-  let addCount = 0;
-  let updCount = 0;
+  let count = 0;
 
   _excelParsed.dataRows.forEach(row => {
     const name   = String(row[colName] || '').trim();
@@ -2468,26 +2582,14 @@ function confirmExcelImport() {
     const amt        = isPrepaid ? 0 : rawAmt;
     const prepaidAmt = isPrepaid ? Math.abs(rawAmt) : 0;
     const code   = colCode >= 0 ? String(row[colCode] || '').trim() : '';
-    if (!isPrepaid && amt <= 0) return;
+    if (!name || (!isPrepaid && amt <= 0)) return;
 
     const rowCtv = perRowCtv
       ? (String(row[_excelParsed.colCtvName] || '').trim() || 'Chưa phân công')
       : ctv;
 
-    const existing = data.customers.find(c => c.name === name && c.ctv === rowCtv);
-    if (existing) {
-      // Upsert: update amount (and code if provided), keep payment status intact
-      existing.amount = amt;
-      if (code) existing.code = code;
-      if (isPrepaid && existing.status !== 'paid') {
-        existing.status = 'paid';
-        existing.paidAt = existing.paidAt || Date.now();
-        existing.paidAmount = prepaidAmt;
-        existing.note = existing.note || '💰 Trả trước kỳ này';
-      }
-      updCount++;
-    } else {
-      const finalCode = code || 'MS' + Date.now() + Math.floor(Math.random() * 1000);
+    const finalCode = code || 'MS' + Date.now() + Math.floor(Math.random() * 1000);
+    if (!data.customers.find(c => c.name === name && c.ctv === rowCtv)) {
       data.customers.push({
         id: 'kh_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
         name, amount: amt, code: finalCode, ctv: rowCtv,
@@ -2496,7 +2598,7 @@ function confirmExcelImport() {
         paidAmount: isPrepaid ? prepaidAmt : undefined,
         billImg: null, note: isPrepaid ? '💰 Trả trước kỳ này' : '',
       });
-      addCount++;
+      count++;
     }
   });
 
@@ -2513,16 +2615,7 @@ function confirmExcelImport() {
   if (hintReset) hintReset.style.display = 'none';
   renderAll();
   renderCtvLinks();
-  const total = addCount + updCount;
-  let msg = total > 0
-    ? `✅ Nhập xong! Thêm mới: ${addCount} KH` + (updCount > 0 ? ` · Cập nhật: ${updCount} KH` : '')
-    : '⚠️ Không có dữ liệu nào được nhập (file trống hoặc sai cột)';
-  showToast(msg, 3500);
-  // Auto-navigate to customer list if anything was imported
-  if (total > 0) {
-    const listBtn = document.querySelector('.tab-btn[onclick*="tab-list"]');
-    if (listBtn) listBtn.click();
-  }
+  showToast(`✅ Đã nhập ${count} khách hàng từ Excel!`);
 }
 </script>
 </body>
