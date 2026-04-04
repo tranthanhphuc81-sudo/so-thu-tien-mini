@@ -416,6 +416,7 @@
     <div class="subtitle">Phần mềm quản lý thu tiền CTV</div>
   </div>
   <div class="role-badge">👔 NVTD</div>
+  <span id="connBadge" style="margin-left:6px;font-size:12px;padding:3px 10px;border-radius:12px;background:rgba(255,255,255,0.15);color:#fff;white-space:nowrap" title="Trạng thái kết nối">⏳ Đang xác thực</span>
   <button class="btn" style="margin-left:8px;padding:5px 10px;font-size:12px;background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.4)" onclick="nvtdLogout()" title="Đăng xuất">🚪</button>
 </header>
 
@@ -1025,6 +1026,14 @@ function initFirebase(cfg, showSuccessToast = false) {
     _db = firebase.database();
     _fbInitialized = true;
 
+    _db.ref('.info/connected').on('value', snap => {
+      if (snap.val() === true) {
+        updateConnBadge(_nvtdAuthed ? 'online' : 'waiting');
+      } else {
+        if (_nvtdAuthed) updateConnBadge('offline');
+      }
+    });
+
     firebase.auth().onAuthStateChanged(user => {
       if (!_firstAuthEvent) {
         _firstAuthEvent = true;
@@ -1034,6 +1043,7 @@ function initFirebase(cfg, showSuccessToast = false) {
 
       if (user && user.email === NVTD_EMAIL) {
         _nvtdAuthed = true;
+        updateConnBadge('online');
         document.getElementById('loginOverlay').style.display = 'none';
         if (!_dataListenerOn) {
           _dataListenerOn = true;
@@ -1042,7 +1052,15 @@ function initFirebase(cfg, showSuccessToast = false) {
             renderAll(); loadBankInfo(); renderCtvLinks(); populateCtvPwSelect();
           }, err => {
             _dataListenerOn = false;
-            showFbError('permission-denied', 'Không đọc được /data (permission denied).');
+            updateConnBadge('noauth');
+            _nvtdAuthed = false;
+            // Phiên hết hạn → hiện lại form đăng nhập
+            document.getElementById('loginOverlay').style.display = '';
+            document.getElementById('loginWaiting').style.display = 'none';
+            document.getElementById('loginFormLogin').style.display = '';
+            document.getElementById('loginFormSetup').style.display = 'none';
+            document.getElementById('loginErr').textContent = '⚠️ Phiên đăng nhập hết hạn, vui lòng đăng nhập lại.';
+            setTimeout(() => document.getElementById('pwLogin')?.focus(), 100);
           });
         }
       } else if (user) {
@@ -1050,6 +1068,7 @@ function initFirebase(cfg, showSuccessToast = false) {
         firebase.auth().signOut();
       } else {
         // Not logged in — show login form
+        updateConnBadge('noauth');
         document.getElementById('loginWaiting').style.display = 'none';
         document.getElementById('loginFormLogin').style.display = '';
         document.getElementById('loginFormSetup').style.display = 'none';
@@ -1146,6 +1165,22 @@ function connectFirebase() {
   saveFbCfg(cfg);
   showToast('⏳ Đang kết nối...');
   initFirebase(cfg, true);
+}
+
+function updateConnBadge(state) {
+  const el = document.getElementById('connBadge');
+  if (!el) return;
+  const cfg = {
+    online:  { icon: '🟢', label: 'Đã đăng nhập',   bg: 'rgba(52,168,83,0.3)',   color: '#a8f0c6' },
+    offline: { icon: '🔴', label: 'Mất kết nối',     bg: 'rgba(234,67,53,0.3)',   color: '#ffa8a8' },
+    noauth:  { icon: '🔴', label: 'Chưa đăng nhập',  bg: 'rgba(234,67,53,0.3)',   color: '#ffa8a8' },
+    waiting: { icon: '⏳', label: 'Đang xác thực',   bg: 'rgba(255,255,255,0.15)', color: '#fff' },
+  };
+  const c = cfg[state] || cfg.waiting;
+  el.innerHTML = c.icon + ' ' + c.label;
+  el.style.background = c.bg;
+  el.style.color = c.color;
+  el.title = c.label;
 }
 
 function updateFbStatus(connected, msg) {

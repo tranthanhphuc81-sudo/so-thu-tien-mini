@@ -424,6 +424,7 @@
       <div class="sub">Công cụ CTV</div>
     </div>
     <div class="ctv-name" id="headerCtvName">CTV</div>
+    <span id="connBadge" style="margin-left:6px;font-size:11px;padding:3px 9px;border-radius:12px;background:rgba(255,255,255,0.15);color:#fff;white-space:nowrap">⏳ Đang kết nối</span>
   </header>
 
   <div class="stats-bar" id="statsBar">
@@ -622,6 +623,21 @@ async function ctvSetupPassword() {
 
 function getData() { return _cache; }
 
+function updateConnBadge(state) {
+  const el = document.getElementById('connBadge');
+  if (!el) return;
+  const cfg = {
+    online:  { icon: '🟢', label: 'Đã đăng nhập',  bg: 'rgba(52,168,83,0.3)',    color: '#a8f0c6' },
+    offline: { icon: '🔴', label: 'Mất kết nối',    bg: 'rgba(234,67,53,0.3)',    color: '#ffa8a8' },
+    noauth:  { icon: '🔴', label: 'Chưa đăng nhập', bg: 'rgba(234,67,53,0.3)',    color: '#ffa8a8' },
+    waiting: { icon: '⏳', label: 'Đang kết nối',  bg: 'rgba(255,255,255,0.15)', color: '#fff' },
+  };
+  const c = cfg[state] || cfg.waiting;
+  el.innerHTML = c.icon + ' ' + c.label;
+  el.style.background = c.bg;
+  el.style.color = c.color;
+}
+
 function saveData(data) {
   _cache = data;
   if (!_db) return;
@@ -640,10 +656,19 @@ function initFirebase(cfg, ctv) {
     if (!firebase.apps.length) firebase.initializeApp(cfg);
     _db = firebase.database();
 
+    _db.ref('.info/connected').on('value', snap => {
+      if (snap.val() === true) {
+        updateConnBadge(_ctvAuthed ? 'online' : 'waiting');
+      } else {
+        if (_ctvAuthed) updateConnBadge('offline');
+      }
+    });
+
     firebase.auth().onAuthStateChanged(user => {
       if (user && user.email === ctvEmail(ctv)) {
         // Authenticated as this CTV
         _ctvAuthed = true;
+        updateConnBadge('online');
         if (!_dataListenerCtvOn) {
           _dataListenerCtvOn = true;
           _db.ref('/data').on('value', snapshot => {
@@ -657,13 +682,14 @@ function initFirebase(cfg, ctv) {
             };
             _showCtvApp(ctv);
           }, err => {
-            // Permission denied hoặc lỗi đọc data
+            // Permission denied / phiên hết hạn → hiện lại form đăng nhập
             _dataListenerCtvOn = false;
+            _ctvAuthed = false;
+            updateConnBadge('noauth');
             document.getElementById('loadingScreen').style.display = 'none';
-            document.getElementById('ctvLoginOverlay').classList.remove('show');
-            document.getElementById('noData').style.display = 'block';
-            document.getElementById('noDataMsg').textContent = '⚠️ Không đọc được dữ liệu: ' + err.message
-              + '\n\nNVTD cần cập nhật Firebase Rules mới (xem tab Thiết lập).';
+            document.getElementById('ctvLoginOverlay').classList.add('show');
+            document.getElementById('ctvLoginErr').textContent = '⚠️ Phiên đăng nhập hết hạn, vui lòng đăng nhập lại.';
+            showCtvLoginForm();
           });
         }
       } else if (user) {
@@ -671,6 +697,7 @@ function initFirebase(cfg, ctv) {
         firebase.auth().signOut();
       } else {
         // Not logged in — reset buttons, check approval then show form
+        updateConnBadge('noauth');
         const btnL = document.getElementById('btnCtvLogin');
         const btnS = document.getElementById('btnCtvSetup');
         if (btnL) { btnL.disabled = false; btnL.textContent = '🔓 Đăng nhập'; }
