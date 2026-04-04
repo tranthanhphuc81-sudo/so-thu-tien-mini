@@ -892,7 +892,7 @@ function renderPending(list, bank) {
         <img id="qrimg_${c.id}" class="qr-img" src="" alt="QR">
         <div class="qr-name">${escHtml(c.name)}</div>
         <div class="qr-amt">${c.amount.toLocaleString('vi-VN')} ₫</div>
-        <div class="qr-acct">${bank ? `${bank.name} - ${bank.account} - ${bank.holder}` : ''}</div>
+        <div class="qr-acct">${bank ? `${bank.displayName || bank.name} - ${bank.account} - ${bank.holder}` : ''}</div>
         <div class="qr-actions">
           <button class="btn btn-zalo" onclick="shareZalo('${c.id}')">💬 Chia sẻ qua Zalo</button>
           <button class="btn btn-outline" onclick="downloadQRCard('${c.id}')">⬇️ Tải QR</button>
@@ -1070,7 +1070,7 @@ async function downloadQRCard(id) {
   ctx.fillStyle = 'rgba(255,255,255,0.8)';
   ctx.font = '13px Segoe UI, sans-serif';
   if (bank) {
-    ctx.fillText(`${bank.name} - ${bank.account}`, 180, 380);
+    ctx.fillText(`${bank.displayName || bank.name} - ${bank.account}`, 180, 380);
     ctx.fillText(bank.holder, 180, 400);
   }
   ctx.font = 'bold 12px Segoe UI, sans-serif';

@@ -1310,8 +1310,10 @@ function switchTab(id) {
 
 // ==================== BANK INFO ====================
 function saveBankInfo() {
+  const sel = document.getElementById('bankName');
   const bank = {
-    name: document.getElementById('bankName').value,
+    name: sel.value,
+    displayName: sel.options[sel.selectedIndex]?.text || sel.value,
     account: document.getElementById('bankAccount').value.trim(),
     holder: document.getElementById('accountName').value.trim(),
   };
@@ -1630,7 +1632,7 @@ function showQR(id) {
   currentQRCustomer = c;
   document.getElementById('qrModalName').textContent = c.name;
   document.getElementById('qrModalAmount').textContent = c.amount.toLocaleString('vi-VN') + ' ₫';
-  document.getElementById('qrModalAcct').textContent = `${bank.name} - ${bank.account} - ${bank.holder}`;
+  document.getElementById('qrModalAcct').textContent = `${bank.displayName || bank.name} - ${bank.account} - ${bank.holder}`;
 
   // Display VietQR image directly
   const qrContent = buildVietQR(bank, c);
@@ -1701,7 +1703,7 @@ async function downloadQR() {
   // Bank info bottom
   ctx.fillStyle = 'rgba(255,255,255,0.75)';
   ctx.font = '12px Segoe UI, sans-serif';
-  ctx.fillText(`${bank.name} - ${bank.account}`, 160, 350);
+  ctx.fillText(`${bank.displayName || bank.name} - ${bank.account}`, 160, 350);
   ctx.fillText(bank.holder, 160, 368);
 
   const link = document.createElement('a');
