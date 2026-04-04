@@ -656,11 +656,16 @@ function initFirebase(cfg, ctv) {
     if (!firebase.apps.length) firebase.initializeApp(cfg);
     _db = firebase.database();
 
+    let _offlineTimer = null;
     _db.ref('.info/connected').on('value', snap => {
       if (snap.val() === true) {
+        clearTimeout(_offlineTimer); _offlineTimer = null;
         updateConnBadge(_ctvAuthed ? 'online' : 'waiting');
       } else {
-        if (_ctvAuthed) updateConnBadge('offline');
+        // Chờ 6 giây trước khi báo mất kết nối — tránh thông báo giả khi Firebase tự reconnect
+        if (_ctvAuthed && !_offlineTimer) {
+          _offlineTimer = setTimeout(() => { updateConnBadge('offline'); }, 6000);
+        }
       }
     });
 
