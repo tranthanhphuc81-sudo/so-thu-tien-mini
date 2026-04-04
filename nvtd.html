@@ -251,6 +251,19 @@
     .modal { padding: 16px; }
   }
 
+  /* Ẩn cột ít quan trọng trên màn nhỏ */
+  @media (max-width: 768px) {
+    .col-hide-md { display: none !important; }
+    table { font-size: 13px; }
+    th, td { padding: 8px 8px; }
+    /* Nút thao tác: chỉ hiện icon, bỏ chữ */
+    .btn-action-label { display: none; }
+    .btn.btn-sm { min-width: 34px !important; padding: 4px 6px; font-size: 13px; }
+  }
+  @media (max-width: 480px) {
+    .col-hide-sm { display: none !important; }
+  }
+
   /* QR CARD in modal */
   .qr-display {
     display: flex;
@@ -768,14 +781,14 @@
       <table>
         <thead>
           <tr>
-            <th>#</th>
-            <th onclick="setSort('name')" style="cursor:pointer;user-select:none;white-space:nowrap">Tên khách hàng<span id="sort-name" style="opacity:0.3"> ↕</span></th>
+            <th class="col-hide-sm">#</th>
+            <th onclick="setSort('name')" style="cursor:pointer;user-select:none;white-space:nowrap">Tên KH<span id="sort-name" style="opacity:0.3"> ↕</span></th>
             <th onclick="setSort('amount')" style="cursor:pointer;user-select:none;white-space:nowrap">Số tiền<span id="sort-amount" style="opacity:0.3"> ↕</span></th>
-            <th onclick="setSort('code')" style="cursor:pointer;user-select:none;white-space:nowrap">Mã đối soát<span id="sort-code" style="opacity:0.3"> ↕</span></th>
-            <th onclick="setSort('ctv')" style="cursor:pointer;user-select:none;white-space:nowrap">CTV phụ trách<span id="sort-ctv" style="opacity:0.3"> ↕</span></th>
+            <th class="col-hide-md" onclick="setSort('code')" style="cursor:pointer;user-select:none;white-space:nowrap">Mã đối soát<span id="sort-code" style="opacity:0.3"> ↕</span></th>
+            <th class="col-hide-md" onclick="setSort('ctv')" style="cursor:pointer;user-select:none;white-space:nowrap">CTV<span id="sort-ctv" style="opacity:0.3"> ↕</span></th>
             <th onclick="setSort('status')" style="cursor:pointer;user-select:none;white-space:nowrap">Trạng thái<span id="sort-status" style="opacity:0.3"> ↕</span></th>
-            <th onclick="setSort('payMethod')" style="cursor:pointer;user-select:none;white-space:nowrap">Hình thức<span id="sort-payMethod" style="opacity:0.3"> ↕</span></th>
-            <th onclick="setSort('paidAt')" style="cursor:pointer;user-select:none;white-space:nowrap">Thời gian thu<span id="sort-paidAt" style="opacity:0.3"> ↕</span></th>
+            <th class="col-hide-md" onclick="setSort('payMethod')" style="cursor:pointer;user-select:none;white-space:nowrap">Hình thức<span id="sort-payMethod" style="opacity:0.3"> ↕</span></th>
+            <th class="col-hide-md" onclick="setSort('paidAt')" style="cursor:pointer;user-select:none;white-space:nowrap">Thời gian thu<span id="sort-paidAt" style="opacity:0.3"> ↕</span></th>
             <th>Thao tác</th>
           </tr>
         </thead>
@@ -1862,25 +1875,25 @@ function renderCustomerTable() {
 
   tbody.innerHTML = list.map((c, i) => `
     <tr class="${c.status === 'paid' ? 'paid' : ''}">
-      <td>${i + 1}</td>
+      <td class="col-hide-sm">${i + 1}</td>
       <td><strong>${escHtml(c.name)}</strong></td>
       <td><strong style="color:#e65100">${c.amount.toLocaleString('vi-VN')} ₫</strong>${c.paidAmount != null && c.paidAmount !== c.amount ? `<br><span style="font-size:11px;color:#2e7d32;font-weight:600">✔ Đã thu: ${c.paidAmount.toLocaleString('vi-VN')} ₫</span><br><span style="font-size:11px;font-weight:700;color:${c.paidAmount < c.amount ? '#e65100' : '#2e7d32'}">${c.paidAmount < c.amount ? '⚠️ Còn thiếu' : '💰 Trả trước'}: ${Math.abs(c.paidAmount - c.amount).toLocaleString('vi-VN')} ₫</span>` : ''}</td>
-      <td><code style="font-size:12px">${escHtml(c.code)}</code></td>
-      <td>${escHtml(c.ctv)}</td>
-      <td><span class="badge ${c.status === 'paid' ? 'badge-paid' : 'badge-pending'}">${c.status === 'paid' ? '✅ Đã thu' : '⏳ Chưa thu'}</span></td>
-      <td style="font-size:12px">${c.payMethod === 'cash' ? '💵 Tiền mặt' : c.payMethod === 'transfer' ? '🏦 Chuyển khoản' : '<span style="color:var(--muted)">—</span>'}</td>
-      <td style="font-size:12px;color:var(--muted)">${c.paidAt ? new Date(c.paidAt).toLocaleString('vi-VN') : '—'}</td>
+      <td class="col-hide-md"><code style="font-size:12px">${escHtml(c.code)}</code></td>
+      <td class="col-hide-md">${escHtml(c.ctv)}</td>
+      <td><span class="badge ${c.status === 'paid' ? 'badge-paid' : 'badge-pending'}">${c.status === 'paid' ? '✅ Đã thu' : '⏳ Chưa'}</span></td>
+      <td class="col-hide-md" style="font-size:12px">${c.payMethod === 'cash' ? '💵 TM' : c.payMethod === 'transfer' ? '🏦 CK' : '<span style="color:var(--muted)">—</span>'}</td>
+      <td class="col-hide-md" style="font-size:12px;color:var(--muted)">${c.paidAt ? new Date(c.paidAt).toLocaleString('vi-VN') : '—'}</td>
       <td>
-        <div style="display:flex;gap:5px;flex-wrap:wrap">
-          <button class="btn btn-outline btn-sm" style="min-width:52px;justify-content:center" onclick="showQR('${c.id}')">🔲 QR</button>
-          <button class="btn btn-success btn-sm" style="min-width:52px;justify-content:center" onclick="openPayConfirm('${c.id}','cash')">💵 Mặt</button>
-          <button class="btn btn-primary btn-sm" style="min-width:52px;justify-content:center" onclick="openPayConfirm('${c.id}','transfer')">🏦 CK</button>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" style="min-width:36px;justify-content:center" onclick="showQR('${c.id}')">🔲<span class="btn-action-label"> QR</span></button>
+          <button class="btn btn-success btn-sm" style="min-width:36px;justify-content:center" onclick="openPayConfirm('${c.id}','cash')">💵<span class="btn-action-label"> Mặt</span></button>
+          <button class="btn btn-primary btn-sm" style="min-width:36px;justify-content:center" onclick="openPayConfirm('${c.id}','transfer')">🏦<span class="btn-action-label"> CK</span></button>
           ${c.status === 'paid'
-            ? `<button class="btn btn-sm" style="min-width:52px;justify-content:center;background:#f5f5f5;color:#555" onclick="unmarkPaid('${c.id}')">↩️ Hoàn</button>`
+            ? `<button class="btn btn-sm" style="min-width:36px;justify-content:center;background:#f5f5f5;color:#555" onclick="unmarkPaid('${c.id}')">↩️<span class="btn-action-label"> Hoàn</span></button>`
             : ''
           }
-          ${c.billImg ? `<button class="btn btn-sm btn-outline" style="min-width:52px;justify-content:center" onclick="viewBill('${c.id}')">🧾 Bill</button>` : ''}
-          <button class="btn btn-danger btn-sm" style="min-width:52px;justify-content:center" onclick="deleteCustomer('${c.id}')">🗑️ Xóa</button>
+          ${c.billImg ? `<button class="btn btn-sm btn-outline" style="min-width:36px;justify-content:center" onclick="viewBill('${c.id}')">🧾<span class="btn-action-label"> Bill</span></button>` : ''}
+          <button class="btn btn-danger btn-sm" style="min-width:36px;justify-content:center" onclick="deleteCustomer('${c.id}')">🗑️<span class="btn-action-label"> Xóa</span></button>
         </div>
       </td>
     </tr>
