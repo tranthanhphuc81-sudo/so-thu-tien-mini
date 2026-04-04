@@ -2331,7 +2331,7 @@ function updateExcelPreview() {
 
   const validRows = dataRows.filter(row => {
     const name = colName >= 0 ? String(row[colName] || '').trim() : '';
-    const raw  = colAmount >= 0 ? String(row[colAmount]).replace(/[^0-9.\-]/g, '') : '0';
+    const raw  = colAmount >= 0 ? String(row[colAmount] || '').replace(/[^0-9.\-]/g, '') : '0';
     const amt  = parseFloat(raw) || 0;
     return name && amt !== 0;
   });
@@ -2456,7 +2456,8 @@ function confirmExcelImport() {
   }
 
   const data = getData();
-  let count = 0;
+  let addCount = 0;
+  let updCount = 0;
 
   _excelParsed.dataRows.forEach(row => {
     const name   = String(row[colName] || '').trim();
@@ -2467,14 +2468,26 @@ function confirmExcelImport() {
     const amt        = isPrepaid ? 0 : rawAmt;
     const prepaidAmt = isPrepaid ? Math.abs(rawAmt) : 0;
     const code   = colCode >= 0 ? String(row[colCode] || '').trim() : '';
-    if (!name || (!isPrepaid && amt <= 0)) return;
+    if (!isPrepaid && amt <= 0) return;
 
     const rowCtv = perRowCtv
       ? (String(row[_excelParsed.colCtvName] || '').trim() || 'Chưa phân công')
       : ctv;
 
-    const finalCode = code || 'MS' + Date.now() + Math.floor(Math.random() * 1000);
-    if (!data.customers.find(c => c.name === name && c.ctv === rowCtv)) {
+    const existing = data.customers.find(c => c.name === name && c.ctv === rowCtv);
+    if (existing) {
+      // Upsert: update amount (and code if provided), keep payment status intact
+      existing.amount = amt;
+      if (code) existing.code = code;
+      if (isPrepaid && existing.status !== 'paid') {
+        existing.status = 'paid';
+        existing.paidAt = existing.paidAt || Date.now();
+        existing.paidAmount = prepaidAmt;
+        existing.note = existing.note || '💰 Trả trước kỳ này';
+      }
+      updCount++;
+    } else {
+      const finalCode = code || 'MS' + Date.now() + Math.floor(Math.random() * 1000);
       data.customers.push({
         id: 'kh_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
         name, amount: amt, code: finalCode, ctv: rowCtv,
@@ -2483,7 +2496,7 @@ function confirmExcelImport() {
         paidAmount: isPrepaid ? prepaidAmt : undefined,
         billImg: null, note: isPrepaid ? '💰 Trả trước kỳ này' : '',
       });
-      count++;
+      addCount++;
     }
   });
 
@@ -2500,7 +2513,16 @@ function confirmExcelImport() {
   if (hintReset) hintReset.style.display = 'none';
   renderAll();
   renderCtvLinks();
-  showToast(`✅ Đã nhập ${count} khách hàng từ Excel!`);
+  const total = addCount + updCount;
+  let msg = total > 0
+    ? `✅ Nhập xong! Thêm mới: ${addCount} KH` + (updCount > 0 ? ` · Cập nhật: ${updCount} KH` : '')
+    : '⚠️ Không có dữ liệu nào được nhập (file trống hoặc sai cột)';
+  showToast(msg, 3500);
+  // Auto-navigate to customer list if anything was imported
+  if (total > 0) {
+    const listBtn = document.querySelector('.tab-btn[onclick*="tab-list"]');
+    if (listBtn) listBtn.click();
+  }
 }
 </script>
 </body>
