@@ -903,8 +903,31 @@
     <div id="excelColMap" class="form-row" style="margin-bottom:16px"></div>
     <div style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px" id="excelPreviewTable"></div>
     <div id="excelPreviewNote" style="margin-top:10px;padding:10px 14px;border-radius:8px;font-size:13px"></div>
-    <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
-      <button class="btn btn-primary" style="flex:1" onclick="confirmExcelImport()">✅ Nhập <span id="excelImportCount">0</span> khách hàng</button>
+
+    <!-- Chế độ nhập -->
+    <div id="excelModeBox" style="margin-top:14px;border:1.5px solid var(--border);border-radius:10px;overflow:hidden">
+      <label id="excelModeLabelAdd" style="display:flex;align-items:flex-start;gap:10px;padding:12px 16px;cursor:pointer;background:#f8f9fa;border-bottom:1px solid var(--border)">
+        <input type="radio" name="excelImportMode" value="add" checked style="margin-top:3px;accent-color:var(--primary)">
+        <span>
+          <strong>➕ Thêm vào danh sách hiện có</strong><br>
+          <span style="font-size:12px;color:var(--muted)">Giữ nguyên khách hàng cũ, bổ sung thêm từ file Excel này. Khách hàng đã tồn tại sẽ được cập nhật số tiền.</span>
+        </span>
+      </label>
+      <label id="excelModeLabelReplace" style="display:flex;align-items:flex-start;gap:10px;padding:12px 16px;cursor:pointer">
+        <input type="radio" name="excelImportMode" value="replace" style="margin-top:3px;accent-color:var(--danger)">
+        <span>
+          <strong style="color:var(--danger)">🔄 Thay thế toàn bộ — nhập đầu tháng</strong><br>
+          <span style="font-size:12px;color:var(--muted)">Tự động <strong>backup dữ liệu cũ</strong> rồi xóa toàn bộ danh sách hiện tại, thay bằng danh sách mới từ file Excel.</span>
+        </span>
+      </label>
+    </div>
+
+    <div id="excelReplaceWarning" style="display:none;margin-top:10px;padding:10px 14px;background:#fce8e6;border:1.5px solid #ea4335;border-radius:8px;font-size:13px;color:#b71c1c">
+      ⚠️ <strong>Chế độ Thay thế toàn bộ:</strong> Hệ thống sẽ tự động tải file backup về máy bạn trước, sau đó xóa sạch <span id="excelReplaceCount">0</span> khách hàng cũ và nhập danh sách mới từ Excel.
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+      <button class="btn btn-primary" style="flex:1" id="excelConfirmBtn" onclick="confirmExcelImport()">✅ Nhập <span id="excelImportCount">0</span> khách hàng</button>
       <button class="btn btn-outline" onclick="closeModal('excelModal')">Hủy</button>
     </div>
   </div>
@@ -2478,6 +2501,15 @@ function updateExcelPreview() {
 
   document.getElementById('excelImportCount').textContent = validRows.length;
 
+  // Cập nhật radio mode UI
+  const replaceCountEl = document.getElementById('excelReplaceCount');
+  if (replaceCountEl) replaceCountEl.textContent = _cache.customers.length;
+  // Gắn event cho radio để tự cập nhật khi đổi chế độ
+  document.querySelectorAll('input[name="excelImportMode"]').forEach(r => {
+    r.onchange = () => updateExcelModeUI(validRows.length);
+  });
+  updateExcelModeUI(validRows.length);
+
   const noteEl = document.getElementById('excelPreviewNote');
   if (colName < 0 || colAmount < 0) {
     noteEl.style.background = '#fff3e0'; noteEl.style.color = '#e65100';
@@ -2556,6 +2588,25 @@ function updateExcelPreview() {
     </table>`;
 }
 
+function updateExcelModeUI(importCount) {
+  const count = importCount ?? parseInt(document.getElementById('excelImportCount')?.textContent || '0');
+  const currentCount = _cache.customers.length;
+  const modeReplace = document.querySelector('input[name="excelImportMode"][value="replace"]');
+  const isReplace = modeReplace && modeReplace.checked;
+  const replaceWarn = document.getElementById('excelReplaceWarning');
+  const replaceCountEl = document.getElementById('excelReplaceCount');
+  const confirmBtn = document.getElementById('excelConfirmBtn');
+  if (replaceCountEl) replaceCountEl.textContent = currentCount;
+  if (replaceWarn) replaceWarn.style.display = isReplace && currentCount > 0 ? '' : 'none';
+  if (confirmBtn) {
+    confirmBtn.className = isReplace ? 'btn btn-danger' : 'btn btn-primary';
+    confirmBtn.style.flex = '1';
+    confirmBtn.innerHTML = isReplace
+      ? `🔄 Backup &amp; Thay thế — nhập ${count} KH mới`
+      : `✅ Nhập <span id="excelImportCount">${count}</span> khách hàng`;
+  }
+}
+
 function populateCtvDropdown() {
   const inp  = document.getElementById('excelCtvName');
   const sel  = document.getElementById('excelCtvSelect');
@@ -2583,6 +2634,10 @@ function confirmExcelImport() {
   const colAmount = parseInt(document.getElementById('exColAmount').value);
   const colCode   = parseInt(document.getElementById('exColCode').value);
 
+  // Xác định chế độ nhập
+  const modeEl = document.querySelector('input[name="excelImportMode"]:checked');
+  const isReplaceMode = modeEl && modeEl.value === 'replace';
+
   // Determine CTV assignment mode
   const selEl = document.getElementById('excelCtvSelect');
   const isDropdown = selEl && selEl.style.display !== 'none';
@@ -2596,6 +2651,18 @@ function confirmExcelImport() {
   }
 
   const data = getData();
+
+  // Chế độ Thay thế toàn bộ: backup + xóa danh sách cũ trước
+  if (isReplaceMode) {
+    const oldCount = data.customers.length;
+    if (oldCount > 0) {
+      // Tự động tải backup trước khi xóa
+      backupData();
+    }
+    // Xóa toàn bộ khách hàng cũ (giữ bank, activities)
+    data.customers = [];
+  }
+
   let addCount = 0;
   let updCount = 0;
 
@@ -2658,11 +2725,17 @@ function confirmExcelImport() {
   const hintReset = document.getElementById('excelCtvHint');
   if (inpReset) inpReset.style.display = '';
   if (hintReset) hintReset.style.display = 'none';
+  // Reset chế độ nhập về mặc định (Thêm vào)
+  const modeAddEl = document.querySelector('input[name="excelImportMode"][value="add"]');
+  if (modeAddEl) modeAddEl.checked = true;
+  const replaceWarnReset = document.getElementById('excelReplaceWarning');
+  if (replaceWarnReset) replaceWarnReset.style.display = 'none';
   renderAll();
   renderCtvLinks();
 
-  let msg = `✅ Nhập xong! Thêm mới: ${addCount} KH`;
-  if (updCount > 0) msg += ` · Cập nhật: ${updCount} KH`;
+  let msg = isReplaceMode
+    ? `🔄 Đã backup + thay thế toàn bộ! Nhập mới: ${addCount} KH`
+    : `✅ Nhập xong! Thêm mới: ${addCount} KH` + (updCount > 0 ? ` · Cập nhật: ${updCount} KH` : '');
   showToast(msg, 3500);
 
   // Tự chuyển sang tab Danh sách KH
