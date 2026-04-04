@@ -842,6 +842,29 @@
   </div>
 </div>
 
+<!-- =================== MODAL XÁC NHẬN THU TIỀN =================== -->
+<div class="modal-overlay" id="payConfirmModal">
+  <div class="modal" style="max-width:400px">
+    <button class="modal-close" onclick="closeModal('payConfirmModal')">✕</button>
+    <h3 style="margin-bottom:4px;font-size:17px" id="payConfirmTitle">✅ Xác nhận thu tiền</h3>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px" id="payConfirmName"></p>
+    <div style="margin-bottom:14px">
+      <label style="font-size:12px;font-weight:700;color:var(--muted);display:block;margin-bottom:6px">Số tiền cần thu</label>
+      <div id="payConfirmRequired" style="font-size:15px;color:#e65100;font-weight:700;padding:8px 12px;background:#fff3e0;border-radius:8px"></div>
+    </div>
+    <div style="margin-bottom:16px">
+      <label style="font-size:12px;font-weight:700;color:var(--muted);display:block;margin-bottom:6px">✏️ Số tiền thực thu <span style="color:var(--danger)">*</span></label>
+      <input type="number" id="payConfirmAmount" min="0" step="1000"
+        style="width:100%;padding:10px 14px;border:2px solid var(--primary);border-radius:8px;font-size:18px;font-weight:700;color:#1a73e8;box-sizing:border-box;text-align:right" />
+      <div id="payConfirmDiff" style="margin-top:6px;font-size:13px;min-height:20px"></div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-success" style="flex:1" id="payConfirmBtn" onclick="confirmPayNVTD()">✅ Xác nhận</button>
+      <button class="btn btn-outline" style="flex:1" onclick="closeModal('payConfirmModal')">Đóng</button>
+    </div>
+  </div>
+</div>
+
 <!-- =================== MODAL EXCEL PREVIEW =================== -->
 <div class="modal-overlay" id="excelModal">
   <div class="modal" style="max-width:700px;width:100%">
@@ -1556,15 +1579,15 @@ function renderStats() {
   document.getElementById('prog-pct').textContent = pct + '%';
   document.getElementById('prog-bar').style.width = pct + '%';
 
-  const paidAmt = customers.filter(c => c.status === 'paid').reduce((s, c) => s + c.amount, 0);
+  const paidAmt = customers.filter(c => c.status === 'paid').reduce((s, c) => s + (c.paidAmount ?? c.amount), 0);
   const totalAmt = customers.reduce((s, c) => s + c.amount, 0);
   document.getElementById('total-amount').textContent = paidAmt.toLocaleString('vi-VN') + ' ₫';
   document.getElementById('total-need').textContent = totalAmt.toLocaleString('vi-VN') + ' ₫';
 
   const paidList = customers.filter(c => c.status === 'paid');
-  const cashAmt = paidList.filter(c => c.payMethod === 'cash').reduce((s, c) => s + c.amount, 0);
-  const transferAmt = paidList.filter(c => c.payMethod === 'transfer').reduce((s, c) => s + c.amount, 0);
-  const unknownAmt = paidList.filter(c => !c.payMethod).reduce((s, c) => s + c.amount, 0);
+  const cashAmt = paidList.filter(c => c.payMethod === 'cash').reduce((s, c) => s + (c.paidAmount ?? c.amount), 0);
+  const transferAmt = paidList.filter(c => c.payMethod === 'transfer').reduce((s, c) => s + (c.paidAmount ?? c.amount), 0);
+  const unknownAmt = paidList.filter(c => !c.payMethod).reduce((s, c) => s + (c.paidAmount ?? c.amount), 0);
   document.getElementById('amt-cash').textContent = cashAmt.toLocaleString('vi-VN') + ' ₫';
   document.getElementById('cnt-cash').textContent = paidList.filter(c => c.payMethod === 'cash').length + ' khách';
   document.getElementById('amt-transfer').textContent = transferAmt.toLocaleString('vi-VN') + ' ₫';
@@ -1669,7 +1692,7 @@ function renderCustomerTable() {
     <tr class="${c.status === 'paid' ? 'paid' : ''}">
       <td>${i + 1}</td>
       <td><strong>${escHtml(c.name)}</strong></td>
-      <td><strong style="color:#e65100">${c.amount.toLocaleString('vi-VN')} ₫</strong></td>
+      <td><strong style="color:#e65100">${c.amount.toLocaleString('vi-VN')} ₫</strong>${c.paidAmount != null && c.paidAmount !== c.amount ? `<br><span style="font-size:11px;color:#2e7d32">Thực thu: ${c.paidAmount.toLocaleString('vi-VN')} ₫</span>` : ''}</td>
       <td><code style="font-size:12px">${escHtml(c.code)}</code></td>
       <td>${escHtml(c.ctv)}</td>
       <td><span class="badge ${c.status === 'paid' ? 'badge-paid' : 'badge-pending'}">${c.status === 'paid' ? '✅ Đã thu' : '⏳ Chưa thu'}</span></td>
@@ -1679,8 +1702,8 @@ function renderCustomerTable() {
         <div style="display:flex;gap:6px;flex-wrap:wrap">
           <button class="btn btn-outline btn-sm" onclick="showQR('${c.id}')">🔲 QR</button>
           ${c.status === 'pending'
-            ? `<button class="btn btn-success btn-sm" onclick="markPaidNVTD('${c.id}','cash')">💵 Mặt</button>
-               <button class="btn btn-primary btn-sm" onclick="markPaidNVTD('${c.id}','transfer')">🏦 CK</button>`
+            ? `<button class="btn btn-success btn-sm" onclick="openPayConfirm('${c.id}','cash')">💵 Mặt</button>
+               <button class="btn btn-primary btn-sm" onclick="openPayConfirm('${c.id}','transfer')">🏦 CK</button>`
             : `<button class="btn btn-sm" style="background:#f5f5f5;color:#555" onclick="unmarkPaid('${c.id}')">↩️ Hoàn tác</button>`
           }
           ${c.billImg ? `<button class="btn btn-sm btn-outline" onclick="viewBill('${c.id}')">🧾 Bill</button>` : ''}
@@ -1706,27 +1729,74 @@ function deleteCustomer(id) {
   showToast('🗑️ Đã xóa');
 }
 
-function markPaidNVTD(id, payMethod) {
+let _payConfirmId = null;
+let _payConfirmMethod = null;
+
+function openPayConfirm(id, payMethod) {
+  const { customers } = getData();
+  const c = customers.find(x => x.id === id);
+  if (!c) return;
+  _payConfirmId = id;
+  _payConfirmMethod = payMethod;
+  const label = payMethod === 'cash' ? '💵 Tiền mặt' : '🏦 Chuyển khoản';
+  document.getElementById('payConfirmTitle').textContent = `✅ Xác nhận thu — ${label}`;
+  document.getElementById('payConfirmName').textContent = c.name;
+  document.getElementById('payConfirmRequired').textContent = c.amount.toLocaleString('vi-VN') + ' ₫';
+  const inp = document.getElementById('payConfirmAmount');
+  inp.value = c.amount;
+  inp.oninput = updatePayConfirmDiff;
+  updatePayConfirmDiff();
+  openModal('payConfirmModal');
+  setTimeout(() => { inp.focus(); inp.select(); }, 120);
+}
+
+function updatePayConfirmDiff() {
+  const { customers } = getData();
+  const c = customers.find(x => x.id === _payConfirmId);
+  if (!c) return;
+  const entered = parseFloat(document.getElementById('payConfirmAmount').value) || 0;
+  const diff = entered - c.amount;
+  const el = document.getElementById('payConfirmDiff');
+  if (entered === 0) { el.textContent = ''; return; }
+  if (diff < 0) {
+    el.innerHTML = `<span style="color:#e65100;font-weight:600">⚠️ Còn thiếu ${Math.abs(diff).toLocaleString('vi-VN')} ₫</span>`;
+  } else if (diff > 0) {
+    el.innerHTML = `<span style="color:#2e7d32;font-weight:600">✅ Thu dư ${diff.toLocaleString('vi-VN')} ₫</span>`;
+  } else {
+    el.innerHTML = `<span style="color:#2e7d32;font-weight:600">✅ Đúng số tiền cần thu</span>`;
+  }
+}
+
+function confirmPayNVTD() {
+  const paidAmount = parseFloat(document.getElementById('payConfirmAmount').value);
+  if (!paidAmount || paidAmount < 0) { showToast('⚠️ Vui lòng nhập số tiền hợp lệ!'); return; }
+  closeModal('payConfirmModal');
+  markPaidNVTD(_payConfirmId, _payConfirmMethod, paidAmount);
+}
+
+function markPaidNVTD(id, payMethod, paidAmount) {
   const data = getData();
   const c = data.customers.find(x => x.id === id);
   if (!c) return;
   const paidAt = Date.now();
   const actKey = 'act_' + paidAt;
-  const act = { name: c.name, amount: c.amount, ctv: c.ctv, at: paidAt, type: 'paid', payMethod };
+  const actualAmt = (paidAmount != null) ? paidAmount : c.amount;
+  const act = { name: c.name, amount: actualAmt, ctv: c.ctv, at: paidAt, type: 'paid', payMethod };
   if (_db) {
-    _db.ref('/data/customers/' + id).update({ status: 'paid', paidAt, payMethod });
+    _db.ref('/data/customers/' + id).update({ status: 'paid', paidAt, payMethod, paidAmount: actualAmt });
     _db.ref('/data/activities/' + actKey).set(act);
   } else {
     c.status = 'paid';
     c.paidAt = paidAt;
     c.payMethod = payMethod;
+    c.paidAmount = actualAmt;
     data.activities = data.activities || [];
     data.activities.unshift(act);
     if (data.activities.length > 50) data.activities = data.activities.slice(0, 50);
     saveData(data);
     renderAll();
   }
-  showToast(`✅ Đã xác nhận thu tiền của ${c.name}`);
+  showToast(`✅ Đã xác nhận thu ${actualAmt.toLocaleString('vi-VN')} ₫ của ${c.name}`);
 }
 
 function unmarkPaid(id) {
