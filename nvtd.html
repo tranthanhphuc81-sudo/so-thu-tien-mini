@@ -1129,12 +1129,15 @@ function saveData(data) {
   // → tránh mất dữ liệu nếu Firebase write chưa hoàn tất mà user đã refresh
   try { localStorage.setItem('sothu_local', JSON.stringify(data)); } catch {}
   if (!_db) return;
+  // Sanitize: loại bỏ giá trị undefined trước khi gửi Firebase
+  // (Firebase RTDB throw nếu gặp undefined trong object)
+  const clean = JSON.parse(JSON.stringify(data));
   const customersObj = {};
-  data.customers.forEach(c => { customersObj[c.id] = c; });
+  clean.customers.forEach(c => { customersObj[c.id] = c; });
   const activitiesObj = {};
-  (data.activities || []).forEach((a, i) => { activitiesObj['act_' + a.at + '_' + i] = a; });
+  (clean.activities || []).forEach((a, i) => { activitiesObj['act_' + a.at + '_' + i] = a; });
   _db.ref('/data').update({
-    bank: data.bank || {},
+    bank: clean.bank || {},
     customers: customersObj,
     activities: activitiesObj,
   }).catch(err => showToast('⚠️ Lỗi lưu Firebase: ' + err.message));
@@ -2625,14 +2628,15 @@ function confirmExcelImport() {
       updCount++;
     } else {
       const finalCode = code || 'MS' + Date.now() + Math.floor(Math.random() * 1000);
-      data.customers.push({
+      const newCust = {
         id: 'kh_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
         name, amount: amt, code: finalCode, ctv: rowCtv,
         status: isPrepaid ? 'paid' : 'pending',
         paidAt: isPrepaid ? Date.now() : null,
-        paidAmount: isPrepaid ? prepaidAmt : undefined,
         billImg: null, note: isPrepaid ? '💰 Trả trước kỳ này' : '',
-      });
+      };
+      if (isPrepaid) newCust.paidAmount = prepaidAmt;
+      data.customers.push(newCust);
       addCount++;
     }
   });
