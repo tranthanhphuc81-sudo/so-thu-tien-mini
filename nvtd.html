@@ -820,16 +820,16 @@
       <img id="qrCanvas" style="width:min(220px,100%);height:auto;aspect-ratio:1/1;background:#fff;border-radius:8px;padding:8px;box-sizing:border-box" alt="QR">
       <div class="qr-name" id="qrModalName"></div>
       <div class="qr-acct" id="qrModalAcct"></div>
-    </div>
-    <div style="margin-top:14px">
-      <label style="font-size:12px;color:var(--muted);font-weight:600;display:block;margin-bottom:4px">✏️ Số tiền (có thể chỉnh sửa)</label>
-      <div style="display:flex;gap:8px;align-items:center">
-        <input type="text" inputmode="numeric" id="qrAmountInput"
-          style="flex:1;padding:8px 12px;border:2px solid var(--primary);border-radius:8px;font-size:16px;font-weight:700;color:#e65100;text-align:right"
-          oninput="fmtNumInput(this); refreshQR()" />
-        <span style="font-size:14px;font-weight:600;color:#e65100">₫</span>
+      <div style="width:100%;margin-top:4px">
+        <label style="font-size:11px;color:rgba(255,255,255,0.75);font-weight:600;display:block;text-align:center;margin-bottom:6px">✏️ Chỉnh số tiền</label>
+        <div style="display:flex;align-items:center;background:rgba(255,255,255,0.15);border-radius:10px;padding:6px 12px;gap:6px">
+          <input type="text" inputmode="numeric" id="qrAmountInput"
+            style="flex:1;background:transparent;border:none;font-size:18px;font-weight:800;color:#FFD700;text-align:center;outline:none;min-width:0"
+            oninput="fmtNumInput(this); refreshQR()" />
+          <span style="font-size:15px;font-weight:700;color:#FFD700;flex-shrink:0">₫</span>
+        </div>
+        <div id="qrAmountWarn" style="margin-top:5px;font-size:11px;min-height:15px;text-align:center;color:#FFD700"></div>
       </div>
-      <div id="qrAmountWarn" style="margin-top:4px;font-size:12px;min-height:16px"></div>
     </div>
     <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
       <button class="btn btn-success" style="flex:1" onclick="downloadQR()">⬇️ Tải ảnh QR</button>
