@@ -266,9 +266,12 @@
       <a href="#nvtd-forgot">🔑 Quên mật khẩu NVTD</a>
       <a href="#ctv-manage">👥 Quản lý CTV</a>
       <a href="#ctv-access">🚦 Cấp quyền CTV</a>
+      <a href="#ctv-reset-pw">🔄 Reset mật khẩu CTV</a>
+      <a href="#ctv-links">🔗 Link CTV &amp; Rút gọn</a>
       <a href="#ctv-guide">💳 Hướng dẫn dành cho CTV</a>
       <hr class="divider">
       <a href="#dashboard">📊 Tổng quan &amp; Báo cáo</a>
+      <a href="#amount-warnings">⚠️ Cảnh báo số tiền</a>
       <a href="#qr">🔲 Tạo mã QR thanh toán</a>
       <a href="#faq">❓ Câu hỏi thường gặp</a>
     </nav>
@@ -293,16 +296,17 @@
               <li>Nhập danh sách khách hàng</li>
               <li>Phân nhóm khách hàng cho CTV</li>
               <li>Cấp / thu hồi quyền đăng nhập CTV</li>
-              <li>Xem toàn bộ tổng quan &amp; tiến độ</li>
+              <li>Reset mật khẩu CTV nếu cần</li>
+              <li>Xem tổng quan, tiến độ &amp; cảnh báo số tiền</li>
               <li>Kiểm tra bill do CTV xác nhận</li>
-              <li>Tạo QR thanh toán cho từng KH</li>
+              <li>Tạo QR thanh toán &amp; rút gọn link CTV</li>
             </ul>
           </div>
           <div class="role-card ctv">
             <h3>👥 CTV (Cộng tác viên)</h3>
             <ul>
               <li>Xem danh sách KH được phân công</li>
-              <li>Xác nhận đã thu tiền (có bill)</li>
+              <li>Xác nhận đã thu tiền (có bill &amp; cảnh báo)</li>
               <li>Tạo QR để KH chuyển khoản</li>
               <li>Chia sẻ QR qua Zalo</li>
               <li>Tra cứu KH đã / chưa thu</li>
@@ -427,6 +431,10 @@
       ".read": true,
       ".write": "auth != null && auth.token.email === 'nvtd@sothu.app'"
     },
+    "ctvForceReset": {
+      ".read": true,
+      ".write": "auth != null"
+    },
     "data": {
       ".read": "auth != null",
       ".write": "auth != null"
@@ -437,6 +445,7 @@
         <table>
           <tr><th>Node</th><th>Ai đọc được</th><th>Ai ghi được</th></tr>
           <tr><td><code>/ctvAllowed</code></td><td>Tất cả (để CTV kiểm tra quyền)</td><td>Chỉ NVTD (đã đăng nhập)</td></tr>
+          <tr><td><code>/ctvForceReset</code></td><td>Tất cả (để CTV phát hiện yêu cầu đổi mật khẩu)</td><td>Đã đăng nhập Firebase</td></tr>
           <tr><td><code>/data</code></td><td>Đã đăng nhập Firebase</td><td>Đã đăng nhập Firebase</td></tr>
           <tr><td>Các node khác</td><td>Không ai</td><td>Không ai</td></tr>
         </table>
@@ -720,7 +729,7 @@ Lê Văn Cường | 1200000</pre>
           <li>
             <div class="step-body">
               <div class="step-title">Vào Firebase Console</div>
-              <div class="step-desc">Trị yếu: <code>console.firebase.google.com</code> → Chọn dự án của bạn.</div>
+              <div class="step-desc">Truy cập: <code>console.firebase.google.com</code> → Chọn dự án của bạn.</div>
             </div>
           </li>
           <li>
@@ -767,7 +776,7 @@ Lê Văn Cường | 1200000</pre>
           </tr>
           <tr>
             <td><strong>🔑 Cấp quyền đăng nhập CTV</strong></td>
-            <td>Chọn CTV từ dropdown → Cấp quyền hoặc thu hồi. Mỗi CTV có badge ✅ / ⛔.</td>
+            <td>Danh sách tất cả CTV với checkbox, cấp/thu hồi hàng loạt hoặc từng người, tìm kiếm theo tên. Mỗi CTV có badge ✅ / ⛔ và nút <strong>🔄 Reset mật khẩu</strong>.</td>
           </tr>
           <tr>
             <td><strong>🧾 Bill đã xác nhận</strong></td>
@@ -799,28 +808,99 @@ Lê Văn Cường | 1200000</pre>
           </li>
           <li>
             <div class="step-body">
-              <div class="step-title">Chọn CTV trong dropdown</div>
-              <div class="step-desc">Thẻ <strong>🔑 Cấp quyền đăng nhập CTV</strong> → Dropdown <strong>Chọn CTV</strong> → Chọn tên CTV muốn cấp.</div>
+              <div class="step-title">Tìm CTV cần cấp quyền</div>
+              <div class="step-desc">Thẻ <strong>🔑 Cấp quyền đăng nhập CTV</strong> hiển thị danh sách tất cả CTV. Dùng ô <strong>Tìm tên CTV...</strong> để lọc nhanh nếu có nhiều CTV.</div>
             </div>
           </li>
           <li>
             <div class="step-body">
               <div class="step-title">Cấp quyền</div>
-              <div class="step-desc">Bấm <span class="ui-btn success">✅ Cấp quyền đăng nhập</span>. Badge của CTV đó đổi thành ✅.</div>
+              <div class="step-desc">
+                <strong>Một CTV:</strong> Bấm <span class="ui-btn success" style="font-size:11px">✅ Cấp quyền</span> ngay trên dòng của CTV đó.<br>
+                <strong>Nhiều CTV cùng lúc:</strong> Tick checkbox → Bấm <span class="ui-btn success" style="font-size:11px">✅ Cấp đã chọn</span> hoặc <span class="ui-btn success" style="font-size:11px">✅ Cấp tất cả</span>.
+              </div>
             </div>
           </li>
           <li>
             <div class="step-body">
               <div class="step-title">Gửi link cho CTV</div>
-              <div class="step-desc">Tab <strong>⚙️ Thiết lập</strong> → Thẻ <strong>🔗 Link công cụ CTV</strong> → Mỗi CTV có một link riêng → Bấm nút copy hoặc Zalo để gửi ngay.</div>
+              <div class="step-desc">Tab <strong>⚙️ Thiết lập</strong> → Thẻ <strong>🔗 Link công cụ CTV</strong> → Mỗi CTV có link riêng → Bấm <strong>📋 Copy</strong> hoặc dùng nút <strong>✂️ Rút gọn</strong> để lấy link ngắn trước khi gửi. Xem chi tiết tại <a href="#ctv-links" style="color:var(--primary)">mục Link CTV &amp; Rút gọn</a>.</div>
             </div>
           </li>
         </ol>
 
         <h4 style="font-size:14px;margin:16px 0 8px">Thu hồi quyền</h4>
         <p style="font-size:13px;color:var(--muted)">
-          Chọn CTV → Bấm <span class="ui-btn danger" style="font-size:11px">🚫 Thu hồi quyền</span>. CTV đó sẽ không đăng nhập được nữa. Dữ liệu họ đã xác nhận vẫn giữ nguyên.
+          Tick checkbox CTV → Bấm <span class="ui-btn danger" style="font-size:11px">🚫 Thu hồi đã chọn</span>. CTV đó sẽ không đăng nhập được nữa. Dữ liệu họ đã xác nhận vẫn giữ nguyên.
         </p>
+      </div>
+    </section>
+
+    <!-- ======================================================= -->
+    <section id="ctv-reset-pw">
+      <div class="card">
+        <div class="card-title">🔄 Reset mật khẩu CTV</div>
+
+        <p style="font-size:14px;margin-bottom:14px">
+          NVTD có thể buộc một CTV phải tạo mật khẩu mới vào lần đăng nhập tiếp theo — hữu ích khi CTV quên mật khẩu hoặc cần bảo mật lại.
+        </p>
+
+        <h4 style="font-size:15px;margin-bottom:10px">Phía NVTD</h4>
+        <ol class="steps">
+          <li>
+            <div class="step-body">
+              <div class="step-title">Mở thẻ Cấp quyền</div>
+              <div class="step-desc">Tab <strong>👥 Quản lý CTV</strong> → Thẻ <strong>🔑 Cấp quyền đăng nhập CTV</strong>.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Bấm Reset mật khẩu</div>
+              <div class="step-desc">Tìm dòng CTV cần reset → Bấm nút <span class="ui-btn outline" style="font-size:11px">🔄 Reset mật khẩu</span>. Nút đổi thành <span class="badge gray">⏳ Chờ đổi mật khẩu</span> — flagged cho CTV biết.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Hủy nếu cần</div>
+              <div class="step-desc">Bấm lại nút đó → Chọn hủy. Flag được xóa và CTV không cần đổi mật khẩu nữa.</div>
+            </div>
+          </li>
+        </ol>
+
+        <h4 style="font-size:15px;margin:16px 0 10px">Phía CTV</h4>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:10px">
+          Khi CTV đăng nhập trong khi có flag reset, sau khi xác thực xong sẽ <strong>xuất hiện màn hình bắt buộc đổi mật khẩu</strong> trước khi vào app. CTV nhập mật khẩu mới, nhập lại và xác nhận — sau đó vào app bình thường.
+        </p>
+
+        <div class="note info">
+          Dữ liệu đã xác nhận không bị mất. &ldquo;Reset&rdquo; chỉ buộc CTV đặt lại mật khẩu đăng nhập, không xóa bất kỳ dữ liệu nào.
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================= -->
+    <section id="ctv-links">
+      <div class="card">
+        <div class="card-title">🔗 Link công cụ CTV &amp; Rút gọn</div>
+
+        <p style="font-size:14px;margin-bottom:14px">
+          Trong tab <strong>⚙️ Thiết lập</strong> → Thẻ <strong>🔗 Link công cụ CTV</strong>, mỗi CTV có một link riêng để gửi.
+        </p>
+
+        <table>
+          <tr><th>Nút</th><th>Tác dụng</th></tr>
+          <tr><td>📋 Copy</td><td>Sao chép link đầy đủ vào clipboard</td></tr>
+          <tr><td>🔗 Test</td><td>Mở link trong tab mới để kiểm tra</td></tr>
+          <tr><td>✂️ Rút gọn</td><td>Gọi TinyURL API tạo link ngắn, hiển thị ô copy bên dưới</td></tr>
+        </table>
+
+        <div class="note info" style="margin-top:12px">
+          <strong>Tìm kiếm nhanh:</strong> Nhập tên CTV vào ô tìm trên danh sách — lọc theo tên thời gian thực.
+        </div>
+
+        <div class="note warn" style="margin-top:10px">
+          Link chứa tham số <code>cfg=</code> (Firebase config dưới dạng base64) nên khá dài. CTV chỉ cần mở link <strong>một lần</strong> — app tự lưu vào bộ nhớ trình duyệt, lần sau không cần link dài nữa. Dùng <strong>✂️ Rút gọn</strong> nếu muốn chia sẻ link gọn qua Zalo.
+        </div>
       </div>
     </section>
 
@@ -883,6 +963,15 @@ Lê Văn Cường | 1200000</pre>
           </li>
         </ol>
 
+        <div class="note warn" style="margin-top:12px">
+          <strong>⚠️ Cảnh báo số tiền khi xác nhận:</strong>
+          <ul style="margin:6px 0 0 18px;font-size:13px">
+            <li>Số tiền = 0 → không thể xác nhận</li>
+            <li>Số tiền gấp hơn 3 lần số nợ gốc → cảnh báo ngôn có thể nhập sai, cần xác nhận thêm</li>
+            <li>Chênh lệch hơn 20% so với số nợ gốc → cảnh báo để kiểm tra trước khi tiếp tục</li>
+          </ul>
+        </div>
+
         <h4 style="font-size:15px;margin:16px 0 10px">Tạo QR để khách chuyển khoản</h4>
         <ol class="steps">
           <li>
@@ -915,8 +1004,40 @@ Lê Văn Cường | 1200000</pre>
           <tr><td>Ô thống kê (xanh/xanh lá/cam/xám)</td><td>Tổng KH | Đã thu | Chưa thu | Tiến độ %</td></tr>
           <tr><td>Thanh tiến độ</td><td>Phần trăm KH đã nộp tiền</td></tr>
           <tr><td>Tổng tiền đã thu</td><td>Tổng số tiền đã thu thực tế</td></tr>
+          <tr><td>⚠️ Cảnh báo số tiền bất thường</td><td>Tự động phát hiện KH nộp thừa, thiếu hoặc bất thường (&gt;3× nợ gốc). Chỉ hiện khi có vấn đề.</td></tr>
           <tr><td>Hoạt động gần đây</td><td>Lịch sử xác nhận mới nhất (ai, bao nhiêu, lúc nào)</td></tr>
         </table>
+      </div>
+    </section>
+
+    <!-- ======================================================= -->
+    <section id="amount-warnings">
+      <div class="card">
+        <div class="card-title">⚠️ Cảnh báo số tiền bất thường</div>
+
+        <p style="font-size:14px;margin-bottom:14px">
+          Hệ thống tự động so sánh số tiền CTV xác nhận với số nợ gốc và cảnh báo những trường hợp bất thường.
+        </p>
+
+        <h4 style="font-size:15px;margin-bottom:10px">Cảnh báo trong Tab Tổng quan (NVTD)</h4>
+        <table>
+          <tr><th>Loại</th><th>Màu</th><th>Điều kiện</th></tr>
+          <tr><td>🚨 Bất thường</td><td style="color:#b71c1c">Thẻ đỏ</td><td>Tiền xác nhận &gt; 3 lần số nợ gốc</td></tr>
+          <tr><td>⚠️ Thiếu tiền</td><td style="color:#c67c00">Thẻ vàng</td><td>Tiền xác nhận &lt; số nợ gốc (kèm tổng thiếu)</td></tr>
+          <tr><td>💰 Thừa tiền</td><td style="color:#0d47a1">Thẻ xanh</td><td>Tiền xác nhận &gt; nợ gốc nhưng ≤ 3 lần (kèm tổng thừa)</td></tr>
+        </table>
+
+        <h4 style="font-size:15px;margin:16px 0 10px">Cảnh báo trong Bảng Danh sách KH</h4>
+        <table>
+          <tr><th>Dấu hiệu</th><th>Ý nghĩa</th></tr>
+          <tr><td>Dòng nền đỏ nhạt + 🚨</td><td>Số tiền bất thường (&gt;3×)</td></tr>
+          <tr><td>Dòng nền vàng nhạt + ⚠️</td><td>Chưa thu đủ số nợ</td></tr>
+          <tr><td>Biểu tượng 💰 (xanh)</td><td>Thu thừa</td></tr>
+        </table>
+
+        <div class="note info" style="margin-top:12px">
+          Thẻ cảnh báo trên Dashboard chỉ hiện khi có vấn đề. Nếu tất cả số tiền bình thường thì thẻ ẩn đi.
+        </div>
       </div>
     </section>
 
