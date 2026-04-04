@@ -1752,9 +1752,12 @@ function openPayConfirm(id, payMethod) {
   const label = payMethod === 'cash' ? '💵 Tiền mặt' : '🏦 Chuyển khoản';
   document.getElementById('payConfirmTitle').textContent = `✅ Xác nhận thu — ${label}`;
   document.getElementById('payConfirmName').textContent = c.name;
-  document.getElementById('payConfirmRequired').textContent = c.amount.toLocaleString('vi-VN') + ' ₫';
+  const remainingAmt = (c.paidAmount != null && c.paidAmount < c.amount) ? c.amount - c.paidAmount : c.amount;
+  const reqEl = document.getElementById('payConfirmRequired');
+  reqEl.textContent = remainingAmt.toLocaleString('vi-VN') + ' ₫';
+  reqEl.previousElementSibling.textContent = (c.paidAmount != null && c.paidAmount < c.amount) ? 'Phần còn thiếu' : 'Số tiền cần thu';
   const inp = document.getElementById('payConfirmAmount');
-  setNumInput(inp, c.amount);
+  setNumInput(inp, remainingAmt);
   updatePayConfirmDiff();
   openModal('payConfirmModal');
   setTimeout(() => { inp.focus(); inp.select(); }, 120);
@@ -1765,7 +1768,8 @@ function updatePayConfirmDiff() {
   const c = customers.find(x => x.id === _payConfirmId);
   if (!c) return;
   const entered = readNumInput(document.getElementById('payConfirmAmount'));
-  const diff = entered - c.amount;
+  const targetAmt = (c.paidAmount != null && c.paidAmount < c.amount) ? c.amount - c.paidAmount : c.amount;
+  const diff = entered - targetAmt;
   const el = document.getElementById('payConfirmDiff');
   if (entered === 0) { el.textContent = ''; return; }
   if (diff < 0) {
@@ -1791,22 +1795,23 @@ function markPaidNVTD(id, payMethod, paidAmount) {
   const paidAt = Date.now();
   const actKey = 'act_' + paidAt;
   const actualAmt = (paidAmount != null) ? paidAmount : c.amount;
+  const newTotal = (c.paidAmount ?? 0) + actualAmt;
   const act = { name: c.name, amount: actualAmt, ctv: c.ctv, at: paidAt, type: 'paid', payMethod };
   if (_db) {
-    _db.ref('/data/customers/' + id).update({ status: 'paid', paidAt, payMethod, paidAmount: actualAmt });
+    _db.ref('/data/customers/' + id).update({ status: 'paid', paidAt, payMethod, paidAmount: newTotal });
     _db.ref('/data/activities/' + actKey).set(act);
   } else {
     c.status = 'paid';
     c.paidAt = paidAt;
     c.payMethod = payMethod;
-    c.paidAmount = actualAmt;
+    c.paidAmount = newTotal;
     data.activities = data.activities || [];
     data.activities.unshift(act);
     if (data.activities.length > 50) data.activities = data.activities.slice(0, 50);
     saveData(data);
     renderAll();
   }
-  showToast(`✅ Đã xác nhận thu ${actualAmt.toLocaleString('vi-VN')} ₫ của ${c.name}`);
+  showToast(`✅ Đã xác nhận thu ${actualAmt.toLocaleString('vi-VN')} ₫ của ${c.name}${newTotal !== actualAmt ? ' (tổng: ' + newTotal.toLocaleString('vi-VN') + ' ₫)' : ''}`);
 }
 
 function unmarkPaid(id) {

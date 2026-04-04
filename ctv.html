@@ -1165,14 +1165,15 @@ function openConfirm(id) {
   document.getElementById('confirmNote').value = '';
   document.getElementById('billInput').value = '';
 
+  const remainingAmt = (c.paidAmount != null && c.paidAmount < c.amount) ? c.amount - c.paidAmount : c.amount;
   document.getElementById('confirmInfo').innerHTML = `
     <div style="font-weight:800;font-size:16px;margin-bottom:4px">👤 ${escHtml(c.name)}</div>
-    <div style="color:var(--danger);font-size:14px;font-weight:700">💰 Cần thu: ${c.amount.toLocaleString('vi-VN')} ₫</div>
+    <div style="color:var(--danger);font-size:14px;font-weight:700">💰 ${c.paidAmount != null && c.paidAmount < c.amount ? 'Phần còn thiếu' : 'Cần thu'}: ${remainingAmt.toLocaleString('vi-VN')} ₫</div>
     <div style="color:var(--muted);font-size:13px;margin-top:4px">Mã: ${escHtml(c.code)}</div>
   `;
 
   const amtInp = document.getElementById('confirmAmount');
-  setNumInput(amtInp, c.amount);
+  setNumInput(amtInp, remainingAmt);
   document.getElementById('confirmAmountDiff').textContent = '';
 
   document.getElementById('confirmModal').classList.add('open');
@@ -1193,7 +1194,8 @@ function updateConfirmDiff() {
   const c = data.customers.find(x => x.id === confirmingId);
   if (!c) return;
   const entered = readNumInput(document.getElementById('confirmAmount'));
-  const diff = entered - c.amount;
+  const targetAmt = (c.paidAmount != null && c.paidAmount < c.amount) ? c.amount - c.paidAmount : c.amount;
+  const diff = entered - targetAmt;
   const el = document.getElementById('confirmAmountDiff');
   if (entered === 0) { el.textContent = ''; return; }
   if (diff < 0) {
@@ -1256,7 +1258,8 @@ function submitConfirm() {
   const note = document.getElementById('confirmNote').value.trim();
   const payMethod = selectedPayMethod;
   const paidAmount = readNumInput(document.getElementById('confirmAmount')) || c.amount;
-  const updates = { status: 'paid', paidAt, note, payMethod, paidAmount };
+  const newTotal = (c.paidAmount ?? 0) + paidAmount;
+  const updates = { status: 'paid', paidAt, note, payMethod, paidAmount: newTotal };
   if (billBase64) updates.billImg = billBase64;
 
   const actKey = 'act_' + paidAt;
@@ -1270,7 +1273,7 @@ function submitConfirm() {
     c.status = 'paid';
     c.paidAt = paidAt;
     c.note = note;
-    c.paidAmount = paidAmount;
+    c.paidAmount = newTotal;
     if (billBase64) c.billImg = billBase64;
     data.activities = data.activities || [];
     data.activities.unshift(act);
@@ -1292,7 +1295,7 @@ function submitConfirm() {
     renderLists();
   }
 
-  showToast(`✅ Đã xác nhận thu ${paidAmount.toLocaleString('vi-VN')} ₫ của ${c.name}!`, 3000);
+  showToast(`✅ Đã xác nhận thu ${paidAmount.toLocaleString('vi-VN')} ₫ của ${c.name}${newTotal !== paidAmount ? ' (tổng: ' + newTotal.toLocaleString('vi-VN') + ' ₫)' : ''}!`, 3000);
 }
 
 // ==================== MODAL BACKDROP ====================
