@@ -747,6 +747,11 @@
     </div>
   </div>
 
+  <div class="card" id="sec-amount-warnings" style="display:none">
+    <div class="card-title">⚠️ Cảnh báo số tiền bất thường</div>
+    <div id="amount-warnings-list"></div>
+  </div>
+
   <div class="card" id="sec-activity">
     <div class="card-title">📋 Hoạt động gần đây</div>
     <div id="recent-activity">
@@ -1822,6 +1827,77 @@ function renderStats() {
   document.getElementById('cnt-transfer').textContent = paidList.filter(c => c.payMethod === 'transfer').length + ' khách';
   document.getElementById('amt-unknown').textContent = unknownAmt.toLocaleString('vi-VN') + ' ₫';
   document.getElementById('cnt-unknown').textContent = paidList.filter(c => !c.payMethod).length + ' khách';
+
+  renderAmountWarnings(customers);
+}
+
+function renderAmountWarnings(customers) {
+  const card = document.getElementById('sec-amount-warnings');
+  const list = document.getElementById('amount-warnings-list');
+  if (!card || !list) return;
+
+  const paid = customers.filter(c => c.status === 'paid');
+
+  // Nhóm 1: thiếu tiền (paidAmount < amount)
+  const underpaid = paid.filter(c => c.paidAmount != null && c.paidAmount < c.amount);
+  // Nhóm 2: thừa tiền (paidAmount > amount)
+  const overpaid = paid.filter(c => c.paidAmount != null && c.paidAmount > c.amount);
+  // Nhóm 3: số tiền bất thường (>3x yêu cầu)
+  const abnormal = paid.filter(c => c.paidAmount != null && c.paidAmount > c.amount * 3);
+
+  const fmt = v => (v || 0).toLocaleString('vi-VN') + ' ₫';
+
+  if (!underpaid.length && !overpaid.length && !abnormal.length) {
+    card.style.display = 'none';
+    return;
+  }
+  card.style.display = '';
+
+  let html = '';
+
+  if (abnormal.length) {
+    html += `<div style="background:#fce8e6;border:1.5px solid #ea4335;border-radius:10px;padding:12px 14px;margin-bottom:12px">
+      <div style="font-size:13px;font-weight:800;color:#b71c1c;margin-bottom:8px">🚨 Số tiền bất thường (gấp >3x yêu cầu) — ${abnormal.length} khách</div>
+      ${abnormal.map(c => `<div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid rgba(234,67,53,0.15)">
+        <span><strong>${escHtml(c.name)}</strong> <span style="color:var(--muted);font-size:12px">(${escHtml(c.ctv||'')})</span></span>
+        <span style="color:#b71c1c;font-weight:700">${fmt(c.paidAmount)} / yêu cầu ${fmt(c.amount)}</span>
+      </div>`).join('')}
+    </div>`;
+  }
+
+  if (underpaid.length) {
+    const totalShort = underpaid.reduce((s, c) => s + (c.amount - c.paidAmount), 0);
+    html += `<div style="background:#fff8e1;border:1.5px solid var(--warning);border-radius:10px;padding:12px 14px;margin-bottom:12px">
+      <div style="font-size:13px;font-weight:800;color:#c67c00;margin-bottom:8px">⚠️ Thanh toán thiếu tiền — ${underpaid.length} khách (tổng thiếu: <strong>${fmt(totalShort)}</strong>)</div>
+      ${underpaid.map(c => {
+        const short = c.amount - c.paidAmount;
+        const pct = Math.round(short / c.amount * 100);
+        return `<div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid rgba(251,188,4,0.2)">
+          <span><strong>${escHtml(c.name)}</strong> <span style="color:var(--muted);font-size:12px">(${escHtml(c.ctv||'')})</span></span>
+          <span style="color:#c67c00;font-weight:700">Thiếu ${fmt(short)} (${pct}%)</span>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  if (overpaid.length && !abnormal.some(c => overpaid.includes(c))) {
+    const totalOver = overpaid.filter(c => c.paidAmount <= c.amount * 3).reduce((s, c) => s + (c.paidAmount - c.amount), 0);
+    const normalOver = overpaid.filter(c => c.paidAmount <= c.amount * 3);
+    if (normalOver.length) {
+      html += `<div style="background:#eff6ff;border:1.5px solid #93c5fd;border-radius:10px;padding:12px 14px">
+        <div style="font-size:13px;font-weight:800;color:#1e40af;margin-bottom:8px">💰 Thanh toán thừa tiền (dư kỳ sau) — ${normalOver.length} khách (tổng dư: <strong>${fmt(totalOver)}</strong>)</div>
+        ${normalOver.map(c => {
+          const over = c.paidAmount - c.amount;
+          return `<div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid rgba(147,197,253,0.3)">
+            <span><strong>${escHtml(c.name)}</strong> <span style="color:var(--muted);font-size:12px">(${escHtml(c.ctv||'')})</span></span>
+            <span style="color:#1e40af;font-weight:700">Dư ${fmt(over)}</span>
+          </div>`;
+        }).join('')}
+      </div>`;
+    }
+  }
+
+  list.innerHTML = html;
 }
 
 // ==================== TABLE ====================
@@ -1916,14 +1992,25 @@ function renderCustomerTable() {
     return;
   }
 
-  tbody.innerHTML = list.map((c, i) => `
-    <tr class="${c.status === 'paid' ? 'paid' : ''}">
+  tbody.innerHTML = list.map((c, i) => {
+    const isAbnormal = c.status === 'paid' && c.paidAmount != null && c.paidAmount > c.amount * 3;
+    const isUnderpaid = c.status === 'paid' && c.paidAmount != null && c.paidAmount < c.amount;
+    const isOverpaid = c.status === 'paid' && c.paidAmount != null && c.paidAmount > c.amount && !isAbnormal;
+    const rowStyle = isAbnormal ? 'background:#fce8e6' : isUnderpaid ? 'background:#fff8e1' : '';
+    const amtCell = c.paidAmount != null && c.paidAmount !== c.amount
+      ? `<br><span style="font-size:11px;color:#2e7d32;font-weight:600">✔ Đã thu: ${c.paidAmount.toLocaleString('vi-VN')} ₫</span>
+         <br><span style="font-size:11px;font-weight:700;color:${isAbnormal ? '#b71c1c' : isUnderpaid ? '#e65100' : '#1565c0'}">
+           ${isAbnormal ? '🚨 Bất thường!' : isUnderpaid ? '⚠️ Còn thiếu' : '💰 Trả trước'}: ${Math.abs(c.paidAmount - c.amount).toLocaleString('vi-VN')} ₫
+         </span>`
+      : '';
+    return `
+    <tr class="${c.status === 'paid' ? 'paid' : ''}" style="${rowStyle}">
       <td class="col-hide-sm">${i + 1}</td>
       <td><strong>${escHtml(c.name)}</strong></td>
-      <td><strong style="color:#e65100">${c.amount.toLocaleString('vi-VN')} ₫</strong>${c.paidAmount != null && c.paidAmount !== c.amount ? `<br><span style="font-size:11px;color:#2e7d32;font-weight:600">✔ Đã thu: ${c.paidAmount.toLocaleString('vi-VN')} ₫</span><br><span style="font-size:11px;font-weight:700;color:${c.paidAmount < c.amount ? '#e65100' : '#2e7d32'}">${c.paidAmount < c.amount ? '⚠️ Còn thiếu' : '💰 Trả trước'}: ${Math.abs(c.paidAmount - c.amount).toLocaleString('vi-VN')} ₫</span>` : ''}</td>
+      <td><strong style="color:#e65100">${c.amount.toLocaleString('vi-VN')} ₫</strong>${amtCell}</td>
       <td class="col-hide-md"><code style="font-size:12px">${escHtml(c.code)}</code></td>
       <td class="col-hide-md">${escHtml(c.ctv)}</td>
-      <td><span class="badge ${c.status === 'paid' ? 'badge-paid' : 'badge-pending'}">${c.status === 'paid' ? '✅ Đã thu' : '⏳ Chưa'}</span></td>
+      <td><span class="badge ${c.status === 'paid' ? 'badge-paid' : 'badge-pending'}">${c.status === 'paid' ? '✅ Đã thu' : '⏳ Chưa'}</span>${isAbnormal ? ' <span title="Số tiền bất thường">🚨</span>' : isUnderpaid ? ' <span title="Thiếu tiền">⚠️</span>' : isOverpaid ? ' <span title="Thừa tiền">💰</span>' : ''}</td>
       <td class="col-hide-md" style="font-size:12px">${c.payMethod === 'cash' ? '💵 TM' : c.payMethod === 'transfer' ? '🏦 CK' : '<span style="color:var(--muted)">—</span>'}</td>
       <td class="col-hide-md" style="font-size:12px;color:var(--muted)">${c.paidAt ? new Date(c.paidAt).toLocaleString('vi-VN') : '—'}</td>
       <td>
@@ -1939,8 +2026,8 @@ function renderCustomerTable() {
           <button class="btn btn-danger btn-sm" style="min-width:36px;justify-content:center" onclick="deleteCustomer('${c.id}')">🗑️<span class="btn-action-label"> Xóa</span></button>
         </div>
       </td>
-    </tr>
-  `).join('');
+    </tr>`;
+  }).join('');
 }
 
 function deleteCustomer(id) {

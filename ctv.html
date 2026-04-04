@@ -1258,10 +1258,17 @@ function updateConfirmDiff() {
   const entered = readNumInput(document.getElementById('confirmAmount'));
   const targetAmt = (c.paidAmount != null && c.paidAmount < c.amount) ? c.amount - c.paidAmount : c.amount;
   const diff = entered - targetAmt;
+  const diffPct = targetAmt > 0 ? Math.abs(diff) / targetAmt * 100 : 0;
   const el = document.getElementById('confirmAmountDiff');
-  if (entered === 0) { el.textContent = ''; return; }
-  if (diff < 0) {
-    el.innerHTML = `<span style="color:#e65100;font-weight:600">⚠️ Còn thiếu ${Math.abs(diff).toLocaleString('vi-VN')} ₫</span>`;
+  if (entered === 0) { el.innerHTML = `<span style="color:#b71c1c;font-weight:700">🚫 Số tiền không được để trống hay bằng 0</span>`; return; }
+  if (entered > targetAmt * 3) {
+    el.innerHTML = `<span style="color:#b71c1c;font-weight:700">🚨 Số tiền bất thường! Gấp hơn 3 lần yêu cầu (${targetAmt.toLocaleString('vi-VN')} ₫) — kiểm tra lại!</span>`;
+  } else if (diff < 0 && diffPct > 20) {
+    el.innerHTML = `<span style="color:#c62828;font-weight:700">🔴 Thiếu nhiều: còn thiếu ${Math.abs(diff).toLocaleString('vi-VN')} ₫ (${diffPct.toFixed(0)}%) — xác nhận sẽ ghi nhận thanh toán chưa đủ</span>`;
+  } else if (diff < 0) {
+    el.innerHTML = `<span style="color:#e65100;font-weight:600">⚠️ Còn thiếu ${Math.abs(diff).toLocaleString('vi-VN')} ₫ (${diffPct.toFixed(0)}%)</span>`;
+  } else if (diff > 0 && diffPct > 20) {
+    el.innerHTML = `<span style="color:#1565c0;font-weight:700">🔵 Trả thừa ${diff.toLocaleString('vi-VN')} ₫ (${diffPct.toFixed(0)}%) — ghi nhận dư kỳ sau</span>`;
   } else if (diff > 0) {
     el.innerHTML = `<span style="color:#2e7d32;font-weight:600">💰 Trả trước ${diff.toLocaleString('vi-VN')} ₫ cho kỳ sau</span>`;
   } else {
@@ -1314,12 +1321,35 @@ function submitConfirm() {
   const data = getData();
   const c = data.customers.find(x => x.id === confirmingId);
   if (!c) return;
-  if (c.ctv !== ctvName) { showToast('\u26a0\ufe0f Kh\u00f4ng c\u00f3 quy\u1ec1n x\u00e1c nh\u1eadn kh\u00e1ch h\u00e0ng n\u00e0y!'); closeConfirmModal(); return; }
+  if (c.ctv !== ctvName) { showToast('⚠️ Không có quyền xác nhận khách hàng này!'); closeConfirmModal(); return; }
+
+  const paidAmount = readNumInput(document.getElementById('confirmAmount'));
+  const targetAmt = (c.paidAmount != null && c.paidAmount < c.amount) ? c.amount - c.paidAmount : c.amount;
+
+  // Chặn số tiền bằng 0
+  if (!paidAmount || paidAmount === 0) {
+    document.getElementById('confirmAmountDiff').innerHTML = `<span style="color:#b71c1c;font-weight:700">🚫 Vui lòng nhập số tiền thực thu!</span>`;
+    document.getElementById('confirmAmount').focus();
+    return;
+  }
+
+  // Cảnh báo số tiền bất thường (>3x yêu cầu)
+  if (paidAmount > targetAmt * 3) {
+    if (!confirm(`🚨 CẢNH BÁO: Số tiền nhập (${paidAmount.toLocaleString('vi-VN')} ₫) gấp hơn 3 lần số cần thu (${targetAmt.toLocaleString('vi-VN')} ₫).\n\nBạn có chắc chắn muốn tiếp tục?`)) return;
+  }
+
+  // Cảnh báo thiếu hoặc thừa tiền nhiều (>20%)
+  const diffPct = targetAmt > 0 ? Math.abs(paidAmount - targetAmt) / targetAmt * 100 : 0;
+  if (diffPct > 20 && paidAmount !== targetAmt) {
+    const msg = paidAmount < targetAmt
+      ? `⚠️ Số tiền thu được (${paidAmount.toLocaleString('vi-VN')} ₫) THIẾU ${(targetAmt - paidAmount).toLocaleString('vi-VN')} ₫ (${diffPct.toFixed(0)}%) so với yêu cầu.\n\nXác nhận sẽ ghi nhận là thanh toán CHƯA ĐỦ. Tiếp tục?`
+      : `⚠️ Số tiền thu được (${paidAmount.toLocaleString('vi-VN')} ₫) THỪA ${(paidAmount - targetAmt).toLocaleString('vi-VN')} ₫ (${diffPct.toFixed(0)}%) so với yêu cầu.\n\nPhần thừa sẽ được ghi nhận vào kỳ sau. Tiếp tục?`;
+    if (!confirm(msg)) return;
+  }
 
   const paidAt = Date.now();
   const note = document.getElementById('confirmNote').value.trim();
   const payMethod = selectedPayMethod;
-  const paidAmount = readNumInput(document.getElementById('confirmAmount')) || c.amount;
   const newTotal = (c.paidAmount ?? 0) + paidAmount;
   const updates = { status: 'paid', paidAt, note, payMethod, paidAmount: newTotal };
   if (billBase64) updates.billImg = billBase64;
