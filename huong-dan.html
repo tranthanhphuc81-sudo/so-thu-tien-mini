@@ -634,12 +634,63 @@ Lê Văn Cường | 1200000</pre>
           </li>
         </ol>
 
-        <div class="note info">
-          <strong>Tùy chọn khác:</strong> GitHub Pages (miễn phí, cần tài khoản GitHub), Vercel, hoặc bất kỳ hosting nào có HTTPS. Chỉ cần đưa 3 file <code>.html</code> lên là đủ.
-        </div>
-
         <div class="note warn" style="margin-top:12px">
           Mỗi khi cập nhật file HTML, cần kéo thả lại lên Netlify để CTV nhận phiên bản mới. URL sẽ giữ nguyên nếu cùng site.
+        </div>
+
+        <h4 style="font-size:15px;margin:20px 0 10px">Cách 2: GitHub Pages (miễn phí, URL ổn định, dễ cập nhật)</h4>
+
+        <div class="note info" style="margin-bottom:14px">
+          Phù hợp nếu bạn muốn cập nhật file thường xuyên — chỉ cần push code lên GitHub là website tự động cập nhật, không cần kéo thả lại.
+        </div>
+
+        <ol class="steps">
+          <li>
+            <div class="step-body">
+              <div class="step-title">Tạo tài khoản GitHub</div>
+              <div class="step-desc">Vào <code>github.com</code> → Đăng ký tài khoản miễn phí (nếu chưa có).</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Tạo repository mới</div>
+              <div class="step-desc">Bấm <strong>+ → New repository</strong> → Đặt tên repo (ví dụ: <code>so-thu-tien</code>) → Chọn <strong>Public</strong> → Bấm <strong>Create repository</strong>.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Upload 3 file HTML</div>
+              <div class="step-desc">Trong trang repo vừa tạo → Bấm <strong>uploading an existing file</strong> → Kéo thả 3 file <code>index.html</code>, <code>nvtd.html</code>, <code>ctv.html</code>, <code>huong-dan.html</code> → Bấm <strong>Commit changes</strong>.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Bật GitHub Pages</div>
+              <div class="step-desc">Vào tab <strong>Settings</strong> của repo → Menu trái chọn <strong>Pages</strong> → Mục <em>Branch</em> chọn <strong>main</strong>, thư mục <strong>/ (root)</strong> → Bấm <strong>Save</strong>.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Lấy địa chỉ</div>
+              <div class="step-desc">Sau vài giây, GitHub hiển thị URL dạng <code>https://&lt;username&gt;.github.io/&lt;repo-name&gt;/</code>. Copy URL này và lưu vào ô <strong>🌐 Địa chỉ website</strong> trong app.</div>
+            </div>
+          </li>
+        </ol>
+
+        <h4 style="font-size:14px;margin:16px 0 8px">Cập nhật file về sau</h4>
+        <p style="font-size:13px;color:var(--muted)">
+          Vào trang repo trên GitHub → Bấm vào file cần cập nhật → Bấm biểu tượng ✏️ (Edit) → Dán nội dung mới → Bấm <strong>Commit changes</strong>. GitHub Pages tự publish lại sau ~1 phút.
+        </p>
+
+        <div class="note ok" style="margin-top:12px">
+          <strong>So sánh nhanh:</strong><br>
+          <table style="margin-top:8px">
+            <tr><th>Tiêu chí</th><th>Netlify Drop</th><th>GitHub Pages</th></tr>
+            <tr><td>Cần tài khoản</td><td>Không</td><td>Có (GitHub)</td></tr>
+            <tr><td>Cập nhật file</td><td>Kéo thả lại</td><td>Upload / push code</td></tr>
+            <tr><td>URL cố định</td><td>✅</td><td>✅</td></tr>
+            <tr><td>HTTPS</td><td>✅</td><td>✅</td></tr>
+          </table>
         </div>
       </div>
     </section>
