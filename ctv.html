@@ -484,6 +484,14 @@
     <div id="confirmInfo" style="background:#f0fdf4;border-radius:10px;padding:14px;margin-bottom:16px;font-size:14px"></div>
 
     <div class="form-group">
+      <label>✏️ Số tiền thực thu <span style="color:var(--danger)">*</span></label>
+      <input type="number" id="confirmAmount" min="0" step="1000"
+        style="width:100%;padding:10px 14px;border:2px solid var(--primary);border-radius:10px;font-size:20px;font-weight:800;color:#1a73e8;box-sizing:border-box;text-align:right"
+        oninput="updateConfirmDiff()" />
+      <div id="confirmAmountDiff" style="margin-top:6px;font-size:13px;min-height:18px"></div>
+    </div>
+
+    <div class="form-group">
       <label>📸 Tải ảnh bill (khuyến nghị để kiểm chứng)</label>
       <div class="upload-area" onclick="document.getElementById('billInput').click()">
         <div class="icon">📷</div>
@@ -806,8 +814,8 @@ function renderStats() {
   document.getElementById('paidCount').textContent = paid;
 
   const paidList = mine.filter(c => c.status === 'paid');
-  const cashAmt = paidList.filter(c => c.payMethod === 'cash').reduce((s, c) => s + (c.amount || 0), 0);
-  const transferAmt = paidList.filter(c => c.payMethod === 'transfer').reduce((s, c) => s + (c.amount || 0), 0);
+  const cashAmt = paidList.filter(c => c.payMethod === 'cash').reduce((s, c) => s + (c.paidAmount ?? c.amount ?? 0), 0);
+  const transferAmt = paidList.filter(c => c.payMethod === 'transfer').reduce((s, c) => s + (c.paidAmount ?? c.amount ?? 0), 0);
   const fmt = v => v >= 1000000 ? (v/1000000).toFixed(1)+'M' : v >= 1000 ? Math.round(v/1000)+'K' : String(v);
   document.getElementById('s-cash-amt').textContent = fmt(cashAmt) + '₫';
   document.getElementById('s-transfer-amt').textContent = fmt(transferAmt) + '₫';
@@ -1099,11 +1107,16 @@ function openConfirm(id) {
 
   document.getElementById('confirmInfo').innerHTML = `
     <div style="font-weight:800;font-size:16px;margin-bottom:4px">👤 ${escHtml(c.name)}</div>
-    <div style="color:var(--danger);font-size:15px;font-weight:700">💰 ${c.amount.toLocaleString('vi-VN')} ₫</div>
+    <div style="color:var(--danger);font-size:14px;font-weight:700">💰 Cần thu: ${c.amount.toLocaleString('vi-VN')} ₫</div>
     <div style="color:var(--muted);font-size:13px;margin-top:4px">Mã: ${escHtml(c.code)}</div>
   `;
 
+  const amtInp = document.getElementById('confirmAmount');
+  amtInp.value = c.amount;
+  document.getElementById('confirmAmountDiff').textContent = '';
+
   document.getElementById('confirmModal').classList.add('open');
+  setTimeout(() => { amtInp.focus(); amtInp.select(); }, 120);
 }
 
 function closeConfirmModal() {
@@ -1112,6 +1125,24 @@ function closeConfirmModal() {
   billBase64 = null;
   selectedPayMethod = 'cash';
   selectPayMethod('cash');
+  document.getElementById('confirmAmountDiff').textContent = '';
+}
+
+function updateConfirmDiff() {
+  const data = getData();
+  const c = data.customers.find(x => x.id === confirmingId);
+  if (!c) return;
+  const entered = parseFloat(document.getElementById('confirmAmount').value) || 0;
+  const diff = entered - c.amount;
+  const el = document.getElementById('confirmAmountDiff');
+  if (entered === 0) { el.textContent = ''; return; }
+  if (diff < 0) {
+    el.innerHTML = `<span style="color:#e65100;font-weight:600">⚠️ Còn thiếu ${Math.abs(diff).toLocaleString('vi-VN')} ₫</span>`;
+  } else if (diff > 0) {
+    el.innerHTML = `<span style="color:#2e7d32;font-weight:600">✅ Thu dư ${diff.toLocaleString('vi-VN')} ₫</span>`;
+  } else {
+    el.innerHTML = `<span style="color:#2e7d32;font-weight:600">✅ Đúng số tiền cần thu</span>`;
+  }
 }
 
 function previewBill(event) {
@@ -1164,11 +1195,12 @@ function submitConfirm() {
   const paidAt = Date.now();
   const note = document.getElementById('confirmNote').value.trim();
   const payMethod = selectedPayMethod;
-  const updates = { status: 'paid', paidAt, note, payMethod };
+  const paidAmount = parseFloat(document.getElementById('confirmAmount').value) || c.amount;
+  const updates = { status: 'paid', paidAt, note, payMethod, paidAmount };
   if (billBase64) updates.billImg = billBase64;
 
   const actKey = 'act_' + paidAt;
-  const act = { name: c.name, amount: c.amount, ctv: c.ctv, at: paidAt, type: 'paid', payMethod };
+  const act = { name: c.name, amount: paidAmount, ctv: c.ctv, at: paidAt, type: 'paid', payMethod };
 
   if (_db) {
     _db.ref('/data/customers/' + confirmingId).update(updates)
@@ -1178,6 +1210,7 @@ function submitConfirm() {
     c.status = 'paid';
     c.paidAt = paidAt;
     c.note = note;
+    c.paidAmount = paidAmount;
     if (billBase64) c.billImg = billBase64;
     data.activities = data.activities || [];
     data.activities.unshift(act);
@@ -1199,7 +1232,7 @@ function submitConfirm() {
     renderLists();
   }
 
-  showToast(`✅ Đã xác nhận thu tiền của ${c.name}!`, 3000);
+  showToast(`✅ Đã xác nhận thu ${paidAmount.toLocaleString('vi-VN')} ₫ của ${c.name}!`, 3000);
 }
 
 // ==================== MODAL BACKDROP ====================
