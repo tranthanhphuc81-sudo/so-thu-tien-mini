@@ -682,14 +682,11 @@ function initFirebase(cfg, ctv) {
             };
             _showCtvApp(ctv);
           }, err => {
-            // Permission denied / phiên hết hạn → hiện lại form đăng nhập
             _dataListenerCtvOn = false;
-            _ctvAuthed = false;
-            updateConnBadge('noauth');
+            updateConnBadge('offline');
             document.getElementById('loadingScreen').style.display = 'none';
-            document.getElementById('ctvLoginOverlay').classList.add('show');
-            document.getElementById('ctvLoginErr').textContent = '⚠️ Phiên đăng nhập hết hạn, vui lòng đăng nhập lại.';
-            showCtvLoginForm();
+            document.getElementById('noData').style.display = 'block';
+            document.getElementById('noDataMsg').textContent = '⚠️ Không đọc được dữ liệu: ' + err.message + ' — NVTD cần kiểm tra Firebase Rules.';
           });
         }
       } else if (user) {

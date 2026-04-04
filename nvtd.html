@@ -1052,15 +1052,8 @@ function initFirebase(cfg, showSuccessToast = false) {
             renderAll(); loadBankInfo(); renderCtvLinks(); populateCtvPwSelect();
           }, err => {
             _dataListenerOn = false;
-            updateConnBadge('noauth');
-            _nvtdAuthed = false;
-            // Phiên hết hạn → hiện lại form đăng nhập
-            document.getElementById('loginOverlay').style.display = '';
-            document.getElementById('loginWaiting').style.display = 'none';
-            document.getElementById('loginFormLogin').style.display = '';
-            document.getElementById('loginFormSetup').style.display = 'none';
-            document.getElementById('loginErr').textContent = '⚠️ Phiên đăng nhập hết hạn, vui lòng đăng nhập lại.';
-            setTimeout(() => document.getElementById('pwLogin')?.focus(), 100);
+            updateConnBadge('offline');
+            showFbError('permission-denied', 'Không đọc được dữ liệu (/data). Kiểm tra Firebase Rules hoặc quyền truy cập.');
           });
         }
       } else if (user) {
