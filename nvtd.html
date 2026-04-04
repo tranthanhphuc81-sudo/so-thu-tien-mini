@@ -2111,6 +2111,8 @@ function readExcelFile(file) {
       const colAmount  = findColumn(headers, ['nợ cần phải thu', 'nợ cần thu', 'dư nợ hbt', 'dư nợ', 'tổng nợ', 'nợ gốc', 'số tiền vay', 'số tiền cần thu', 'số tiền', 'tiền nợ', 'nợ']);
       const colCtvCode = findColumn(headers, ['mã ctv', 'ma ctv', 'mãctv']);
       const colCtvName = findColumn(headers, ['họ tên ctv', 'ho ten ctv', 'tên ctv', 'ten ctv', 'họ và tên ctv']);
+      const colCash     = findColumn(headers, ['tiền mặt', 'tm', 'tiền tm', 'tiền mặt đã thu', 'đã thu tm', 'doanh thu tm', 'dtm']);
+      const colTransfer = findColumn(headers, ['chuyển khoản', 'ck', 'tiền ck', 'đã thu ck', 'doanh thu ck', 'dtck', 'transfer']);
 
       // Extract unique CTV list from detected column
       const ctvList = [];
@@ -2126,7 +2128,7 @@ function readExcelFile(file) {
         });
       }
 
-      _excelParsed = { headers, dataRows, colName, colCode, colAmount, colCtvCode, colCtvName, ctvList, fileName: file.name };
+      _excelParsed = { headers, dataRows, colName, colCode, colAmount, colCtvCode, colCtvName, colCash, colTransfer, ctvList, fileName: file.name };
 
       const info = document.getElementById('excelFileInfo');
       info.style.display = '';
@@ -2174,7 +2176,9 @@ function showExcelPreview() {
     buildSelect('👤 Tên khách hàng <span style="color:var(--danger)">*</span>', 'exColName', colName) +
     buildSelect('💰 Nợ cần phải thu (dùng cho mã QR) <span style="color:var(--danger)">*</span>', 'exColAmount', colAmount) +
     buildSelect('🔑 Mã đối soát (tuỳ chọn)', 'exColCode', colCode) +
-    buildSelect('👥 Tên CTV phụ trách', 'exColCtvName', colCtvName != null ? colCtvName : -1);
+    buildSelect('👥 Tên CTV phụ trách', 'exColCtvName', colCtvName != null ? colCtvName : -1) +
+    buildSelect('💵 Tiền mặt đã thu (để kiểm tra)', 'exColCash', _excelParsed.colCash) +
+    buildSelect('🏦 Chuyển khoản đã thu (để kiểm tra)', 'exColTransfer', _excelParsed.colTransfer);
 
   updateExcelPreview();
   openModal('excelModal');
@@ -2188,6 +2192,9 @@ function updateExcelPreview() {
   const colAmount  = parseInt(document.getElementById('exColAmount')?.value ?? -1);
   const colCode    = parseInt(document.getElementById('exColCode')?.value ?? -1);
   const colCtvName = parseInt(document.getElementById('exColCtvName')?.value ?? -1);
+  const colCash     = parseInt(document.getElementById('exColCash')?.value ?? -1);
+  const colTransfer = parseInt(document.getElementById('exColTransfer')?.value ?? -1);
+  const hasPayCols  = colCash >= 0 || colTransfer >= 0;
 
   // Rebuild CTV list when column selector changes
   _excelParsed.colCtvName = colCtvName;
@@ -2223,9 +2230,19 @@ function updateExcelPreview() {
   }
 
   const skipped = dataRows.length - validRows.length;
+  let warnCount = 0;
+  if (hasPayCols) {
+    validRows.forEach(row => {
+      const amt      = parseFloat(String(row[colAmount] || '').replace(/[^0-9.]/g, '')) || 0;
+      const cash     = colCash     >= 0 ? (parseFloat(String(row[colCash]     || '').replace(/[^0-9.]/g, '')) || 0) : 0;
+      const transfer = colTransfer >= 0 ? (parseFloat(String(row[colTransfer] || '').replace(/[^0-9.]/g, '')) || 0) : 0;
+      if (cash + transfer < amt) warnCount++;
+    });
+  }
   noteEl.style.background = '#e8f5e9'; noteEl.style.color = '#2e7d32';
-  noteEl.textContent = `✅ ${validRows.length} dòng hợp lệ sẽ được nhập` +
-    (skipped > 0 ? ` · ⚠️ Bỏ qua ${skipped} dòng thiếu tên hoặc số tiền = 0` : '');
+  noteEl.innerHTML = `✅ ${validRows.length} dòng hợp lệ sẽ được nhập` +
+    (skipped > 0 ? ` · ⚠️ Bỏ qua ${skipped} dòng thiếu tên hoặc số tiền = 0` : '') +
+    (warnCount > 0 ? `<br><span style="color:#e65100;font-weight:700">⚠️ ${warnCount} khách hàng có số tiền đã thu THẤP HƠN số tiền cần thu (xem hàng màu cam bên dưới)</span>` : '');
 
   const preview = validRows.slice(0, 12);
   document.getElementById('excelPreviewTable').innerHTML = `
@@ -2234,23 +2251,36 @@ function updateExcelPreview() {
         <tr style="background:#f8f9fa;position:sticky;top:0">
           <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border)">#</th>
           <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border)">Tên khách hàng</th>
-          <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border)">Số tiền</th>
+          <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border)">Cần thu</th>
           <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border)">Mã đối soát</th>
+          ${hasPayCols ? '<th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border)">Đã thu</th><th style="padding:8px 12px;border-bottom:1px solid var(--border)"></th>' : ''}
         </tr>
       </thead>
       <tbody>
         ${preview.map((row, i) => {
-          const name = String(row[colName] || '').trim();
-          const amt  = parseFloat(String(row[colAmount] || '').replace(/[^0-9.]/g, '')) || 0;
-          const code = colCode >= 0 ? String(row[colCode] || '').trim() : '';
-          return `<tr style="border-bottom:1px solid #f0f0f0">
+          const name     = String(row[colName] || '').trim();
+          const amt      = parseFloat(String(row[colAmount] || '').replace(/[^0-9.]/g, '')) || 0;
+          const code     = colCode >= 0 ? String(row[colCode] || '').trim() : '';
+          const cash     = (hasPayCols && colCash     >= 0) ? (parseFloat(String(row[colCash]     || '').replace(/[^0-9.]/g, '')) || 0) : 0;
+          const transfer = (hasPayCols && colTransfer >= 0) ? (parseFloat(String(row[colTransfer] || '').replace(/[^0-9.]/g, '')) || 0) : 0;
+          const paid     = cash + transfer;
+          const isWarn   = hasPayCols && paid < amt;
+          const shortfall = amt - paid;
+          const rowBg    = isWarn ? 'background:#fff3e0' : '';
+          const paidLabel = hasPayCols
+            ? `${paid.toLocaleString('vi-VN')} ₫${colCash >= 0 && colTransfer >= 0 ? '<br><span style="font-size:10px;color:var(--muted)">TM: ' + cash.toLocaleString('vi-VN') + ' · CK: ' + transfer.toLocaleString('vi-VN') + '</span>' : ''}` : '';
+          const warnCell = isWarn
+            ? `<td style="padding:8px 6px;color:#e65100;font-weight:700;white-space:nowrap" title="Còn thiếu ${shortfall.toLocaleString('vi-VN')} ₫">⚠️ Còn thiếu<br><span style="font-size:11px">${shortfall.toLocaleString('vi-VN')} ₫</span></td>`
+            : (hasPayCols ? `<td style="padding:8px 6px;color:#2e7d32">✅</td>` : '');
+          return `<tr style="border-bottom:1px solid #f0f0f0;${rowBg}">
             <td style="padding:8px 12px;color:var(--muted)">${i + 1}</td>
             <td style="padding:8px 12px;font-weight:600">${escHtml(name)}</td>
             <td style="padding:8px 12px;color:#e65100;font-weight:700">${amt.toLocaleString('vi-VN')} ₫</td>
             <td style="padding:8px 12px;font-size:12px;color:var(--muted)">${escHtml(code) || '—'}</td>
+            ${hasPayCols ? `<td style="padding:8px 12px;font-size:12px">${paidLabel}</td>${warnCell}` : ''}
           </tr>`;
         }).join('')}
-        ${validRows.length > 12 ? `<tr><td colspan="4" style="padding:10px;text-align:center;color:var(--muted);font-size:12px">...và ${validRows.length - 12} khách hàng nữa</td></tr>` : ''}
+        ${validRows.length > 12 ? `<tr><td colspan="${hasPayCols ? 6 : 4}" style="padding:10px;text-align:center;color:var(--muted);font-size:12px">...và ${validRows.length - 12} khách hàng nữa</td></tr>` : ''}
       </tbody>
     </table>`;
 }
