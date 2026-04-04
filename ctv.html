@@ -79,6 +79,15 @@
   }
   .stats-bar .pct-text { font-size: 14px; font-weight: 700; white-space: nowrap; }
 
+  /* PAY METHOD */
+  .pay-method-group { display:flex;gap:10px;margin-bottom:14px; }
+  .pay-method-btn {
+    flex:1;padding:10px 8px;border:2px solid var(--border);border-radius:10px;
+    background:#fafafa;cursor:pointer;font-size:14px;font-weight:700;
+    text-align:center;transition:all 0.2s;
+  }
+  .pay-method-btn.selected { border-color:var(--success);background:#f0fdf4;color:#166534; }
+
   /* TABS */
   .tab-bar {
     display: flex;
@@ -420,6 +429,8 @@
   <div class="stats-bar" id="statsBar">
     <div class="stat"><div class="num" id="s-paid">0</div><div class="lbl">Đã thu</div></div>
     <div class="stat"><div class="num" id="s-pending">0</div><div class="lbl">Chưa thu</div></div>
+    <div class="stat"><div class="num" id="s-cash-amt">0₫</div><div class="lbl">💵 Tiền mặt</div></div>
+    <div class="stat"><div class="num" id="s-transfer-amt">0₫</div><div class="lbl">🏦 Chuyển khoản</div></div>
     <div class="progress-mini">
       <div class="bar-track"><div class="bar-fill" id="s-bar" style="width:0%"></div></div>
       <div class="pct-text" id="s-pct">0%</div>
@@ -484,6 +495,13 @@
       <textarea id="confirmNote" placeholder="Ví dụ: KH chuyển khoản lúc 9:30, đã xác nhận..." rows="2"></textarea>
     </div>
 
+    <div class="form-group">
+      <label>💳 Hình thức thanh toán</label>
+      <div class="pay-method-group">
+        <div class="pay-method-btn selected" id="pm-cash" onclick="selectPayMethod('cash')">💵 Tiền mặt</div>
+        <div class="pay-method-btn" id="pm-transfer" onclick="selectPayMethod('transfer')">🏦 Chuyển khoản</div>
+      </div>
+    </div>
     <div style="display:flex;gap:10px">
       <button class="btn btn-success" style="flex:2" onclick="submitConfirm()">✅ Xác nhận đã thu</button>
       <button class="btn btn-gray" style="flex:1;background:#f5f5f5;color:#666" onclick="closeConfirmModal()">Hủy</button>
@@ -692,6 +710,13 @@ function initFirebase(cfg, ctv) {
 let ctvName = '';
 let billBase64 = null;
 let confirmingId = null;
+let selectedPayMethod = 'cash';
+
+function selectPayMethod(method) {
+  selectedPayMethod = method;
+  document.getElementById('pm-cash').classList.toggle('selected', method === 'cash');
+  document.getElementById('pm-transfer').classList.toggle('selected', method === 'transfer');
+}
 
 window.addEventListener('load', () => {
   setTimeout(() => {
@@ -747,6 +772,13 @@ function renderStats() {
   document.getElementById('s-pct').textContent = pct + '%';
   document.getElementById('pendingCount').textContent = pending;
   document.getElementById('paidCount').textContent = paid;
+
+  const paidList = mine.filter(c => c.status === 'paid');
+  const cashAmt = paidList.filter(c => c.payMethod === 'cash').reduce((s, c) => s + (c.amount || 0), 0);
+  const transferAmt = paidList.filter(c => c.payMethod === 'transfer').reduce((s, c) => s + (c.amount || 0), 0);
+  const fmt = v => v >= 1000000 ? (v/1000000).toFixed(1)+'M' : v >= 1000 ? Math.round(v/1000)+'K' : String(v);
+  document.getElementById('s-cash-amt').textContent = fmt(cashAmt) + '₫';
+  document.getElementById('s-transfer-amt').textContent = fmt(transferAmt) + '₫';
 }
 
 // ==================== RENDER LISTS ====================
@@ -816,7 +848,7 @@ function renderPaid(list) {
         <div style="flex:1">
           <div class="name">${escHtml(c.name)}</div>
           <div class="amount" style="color:var(--success)">${c.amount.toLocaleString('vi-VN')} ₫</div>
-          <div class="meta">Đã thu lúc: ${c.paidAt ? new Date(c.paidAt).toLocaleString('vi-VN') : '—'}</div>
+          <div class="meta">Đã thu lúc: ${c.paidAt ? new Date(c.paidAt).toLocaleString('vi-VN') : '—'}${c.payMethod ? ' · <strong>' + (c.payMethod === 'cash' ? '💵 Tiền mặt' : '🏦 Chuyển khoản') + '</strong>' : ''}</div>
           ${c.note ? `<div class="meta">📝 ${escHtml(c.note)}</div>` : ''}
         </div>
       </div>
@@ -1011,6 +1043,8 @@ function closeConfirmModal() {
   document.getElementById('confirmModal').classList.remove('open');
   confirmingId = null;
   billBase64 = null;
+  selectedPayMethod = 'cash';
+  selectPayMethod('cash');
 }
 
 function previewBill(event) {
@@ -1047,11 +1081,12 @@ function submitConfirm() {
 
   const paidAt = Date.now();
   const note = document.getElementById('confirmNote').value.trim();
-  const updates = { status: 'paid', paidAt, note };
+  const payMethod = selectedPayMethod;
+  const updates = { status: 'paid', paidAt, note, payMethod };
   if (billBase64) updates.billImg = billBase64;
 
   const actKey = 'act_' + paidAt;
-  const act = { name: c.name, amount: c.amount, ctv: c.ctv, at: paidAt, type: 'paid' };
+  const act = { name: c.name, amount: c.amount, ctv: c.ctv, at: paidAt, type: 'paid', payMethod };
 
   if (_db) {
     _db.ref('/data/customers/' + confirmingId).update(updates)

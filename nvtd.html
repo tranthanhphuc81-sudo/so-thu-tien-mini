@@ -634,6 +634,23 @@
     <div class="card-title">💰 Tổng tiền đã thu được</div>
     <div style="font-size:36px;font-weight:800;color:var(--success)" id="total-amount">0 ₫</div>
     <div style="font-size:14px;color:var(--muted);margin-top:6px">Tổng cần thu: <strong id="total-need">0 ₫</strong></div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+      <div style="flex:1;min-width:150px;background:#f0fdf4;border-radius:10px;padding:14px;border-left:4px solid var(--success)">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">💵 Tiền mặt</div>
+        <div style="font-size:22px;font-weight:800;color:#166534" id="amt-cash">0 ₫</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px" id="cnt-cash">0 khách</div>
+      </div>
+      <div style="flex:1;min-width:150px;background:#eff6ff;border-radius:10px;padding:14px;border-left:4px solid var(--primary)">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">🏦 Chuyển khoản</div>
+        <div style="font-size:22px;font-weight:800;color:#1e40af" id="amt-transfer">0 ₫</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px" id="cnt-transfer">0 khách</div>
+      </div>
+      <div style="flex:1;min-width:150px;background:#fff8e1;border-radius:10px;padding:14px;border-left:4px solid var(--warning)">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">❓ Chưa rõ hình thức</div>
+        <div style="font-size:22px;font-weight:800;color:#92400e" id="amt-unknown">0 ₫</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px" id="cnt-unknown">0 khách</div>
+      </div>
+    </div>
   </div>
 
   <div class="card">
@@ -673,6 +690,7 @@
             <th>Mã đối soát</th>
             <th>CTV phụ trách</th>
             <th>Trạng thái</th>
+            <th>Hình thức</th>
             <th>Thời gian thu</th>
             <th>Thao tác</th>
           </tr>
@@ -1364,6 +1382,17 @@ function renderStats() {
   const totalAmt = customers.reduce((s, c) => s + c.amount, 0);
   document.getElementById('total-amount').textContent = paidAmt.toLocaleString('vi-VN') + ' ₫';
   document.getElementById('total-need').textContent = totalAmt.toLocaleString('vi-VN') + ' ₫';
+
+  const paidList = customers.filter(c => c.status === 'paid');
+  const cashAmt = paidList.filter(c => c.payMethod === 'cash').reduce((s, c) => s + c.amount, 0);
+  const transferAmt = paidList.filter(c => c.payMethod === 'transfer').reduce((s, c) => s + c.amount, 0);
+  const unknownAmt = paidList.filter(c => !c.payMethod).reduce((s, c) => s + c.amount, 0);
+  document.getElementById('amt-cash').textContent = cashAmt.toLocaleString('vi-VN') + ' ₫';
+  document.getElementById('cnt-cash').textContent = paidList.filter(c => c.payMethod === 'cash').length + ' khách';
+  document.getElementById('amt-transfer').textContent = transferAmt.toLocaleString('vi-VN') + ' ₫';
+  document.getElementById('cnt-transfer').textContent = paidList.filter(c => c.payMethod === 'transfer').length + ' khách';
+  document.getElementById('amt-unknown').textContent = unknownAmt.toLocaleString('vi-VN') + ' ₫';
+  document.getElementById('cnt-unknown').textContent = paidList.filter(c => !c.payMethod).length + ' khách';
 }
 
 // ==================== TABLE ====================
@@ -1393,7 +1422,7 @@ function renderCustomerTable() {
   });
 
   if (!list.length) {
-    tbody.innerHTML = `<tr><td colspan="8"><div class="empty"><div class="icon">🔍</div><p>Không có khách hàng nào</p></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9"><div class="empty"><div class="icon">🔍</div><p>Không có khách hàng nào</p></div></td></tr>`;
     return;
   }
 
@@ -1405,12 +1434,14 @@ function renderCustomerTable() {
       <td><code style="font-size:12px">${escHtml(c.code)}</code></td>
       <td>${escHtml(c.ctv)}</td>
       <td><span class="badge ${c.status === 'paid' ? 'badge-paid' : 'badge-pending'}">${c.status === 'paid' ? '✅ Đã thu' : '⏳ Chưa thu'}</span></td>
+      <td style="font-size:12px">${c.payMethod === 'cash' ? '💵 Tiền mặt' : c.payMethod === 'transfer' ? '🏦 Chuyển khoản' : '<span style="color:var(--muted)">—</span>'}</td>
       <td style="font-size:12px;color:var(--muted)">${c.paidAt ? new Date(c.paidAt).toLocaleString('vi-VN') : '—'}</td>
       <td>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
           <button class="btn btn-outline btn-sm" onclick="showQR('${c.id}')">🔲 QR</button>
           ${c.status === 'pending'
-            ? `<button class="btn btn-success btn-sm" onclick="markPaidNVTD('${c.id}')">✅ Xác nhận</button>`
+            ? `<button class="btn btn-success btn-sm" onclick="markPaidNVTD('${c.id}','cash')">💵 Mặt</button>
+               <button class="btn btn-primary btn-sm" onclick="markPaidNVTD('${c.id}','transfer')">🏦 CK</button>`
             : `<button class="btn btn-sm" style="background:#f5f5f5;color:#555" onclick="unmarkPaid('${c.id}')">↩️ Hoàn tác</button>`
           }
           ${c.billImg ? `<button class="btn btn-sm btn-outline" onclick="viewBill('${c.id}')">🧾 Bill</button>` : ''}
@@ -1436,19 +1467,20 @@ function deleteCustomer(id) {
   showToast('🗑️ Đã xóa');
 }
 
-function markPaidNVTD(id) {
+function markPaidNVTD(id, payMethod) {
   const data = getData();
   const c = data.customers.find(x => x.id === id);
   if (!c) return;
   const paidAt = Date.now();
   const actKey = 'act_' + paidAt;
-  const act = { name: c.name, amount: c.amount, ctv: c.ctv, at: paidAt, type: 'paid' };
+  const act = { name: c.name, amount: c.amount, ctv: c.ctv, at: paidAt, type: 'paid', payMethod };
   if (_db) {
-    _db.ref('/data/customers/' + id).update({ status: 'paid', paidAt });
+    _db.ref('/data/customers/' + id).update({ status: 'paid', paidAt, payMethod });
     _db.ref('/data/activities/' + actKey).set(act);
   } else {
     c.status = 'paid';
     c.paidAt = paidAt;
+    c.payMethod = payMethod;
     data.activities = data.activities || [];
     data.activities.unshift(act);
     if (data.activities.length > 50) data.activities = data.activities.slice(0, 50);
