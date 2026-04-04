@@ -408,6 +408,29 @@
   </div>
 </div>
 
+<!-- MODAL ĐỔI MẬT KHẨU (NVTD yêu cầu) -->
+<div id="ctvChangePwOverlay" style="display:none;position:fixed;inset:0;z-index:10000;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,0.7)">
+  <div style="background:#fff;border-radius:20px;padding:28px 24px;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,0.35)">
+    <div style="font-size:36px;text-align:center;margin-bottom:10px">🔐</div>
+    <h2 style="text-align:center;font-size:17px;font-weight:800;margin-bottom:6px">Cần đổi mật khẩu</h2>
+    <p style="text-align:center;font-size:13px;color:#5f6368;margin-bottom:20px">NVTD yêu cầu bạn tạo mật khẩu mới trước khi tiếp tục.</p>
+    <div class="pw-wrap" style="margin-bottom:10px">
+      <input type="password" id="ctvNewPw1" placeholder="Mật khẩu mới (tối thiểu 6 ký tự)" autocomplete="new-password"
+             style="padding:12px;border:1px solid #e0e0e0;border-radius:10px;font-size:15px;width:100%;box-sizing:border-box"
+             onkeydown="if(event.key==='Enter')document.getElementById('ctvNewPw2').focus()">
+      <button class="pw-eye" type="button" onclick="togglePw('ctvNewPw1',this)" tabindex="-1">👁️</button>
+    </div>
+    <div class="pw-wrap" style="margin-bottom:16px">
+      <input type="password" id="ctvNewPw2" placeholder="Nhập lại mật khẩu mới" autocomplete="new-password"
+             style="padding:12px;border:1px solid #e0e0e0;border-radius:10px;font-size:15px;width:100%;box-sizing:border-box"
+             onkeydown="if(event.key==='Enter')submitCtvChangePw()">
+      <button class="pw-eye" type="button" onclick="togglePw('ctvNewPw2',this)" tabindex="-1">👁️</button>
+    </div>
+    <button id="btnSubmitChangePw" class="btn btn-success" style="width:100%;padding:12px" onclick="submitCtvChangePw()">💾 Lưu mật khẩu mới</button>
+    <div style="color:#ea4335;font-size:13px;margin-top:10px;text-align:center;min-height:18px" id="ctvChangePwErr"></div>
+  </div>
+</div>
+
 <!-- LOADING -->
 <div class="loading-screen" id="loadingScreen">
   <div class="logo">💳</div>
@@ -631,6 +654,34 @@ async function ctvSetupPassword() {
   }
 }
 
+async function submitCtvChangePw() {
+  const pw1 = document.getElementById('ctvNewPw1').value;
+  const pw2 = document.getElementById('ctvNewPw2').value;
+  const errEl = document.getElementById('ctvChangePwErr');
+  errEl.textContent = '';
+  if (pw1.length < 6) { errEl.textContent = 'Mật khẩu cần ít nhất 6 ký tự'; return; }
+  if (pw1 !== pw2) { errEl.textContent = 'Mật khẩu không khớp'; return; }
+  const btn = document.getElementById('btnSubmitChangePw');
+  btn.disabled = true; btn.textContent = '⏳ Đang cập nhật...';
+  try {
+    const user = firebase.auth().currentUser;
+    if (!user) throw new Error('Phiên đăng nhập đã hết, vui lòng tải lại trang.');
+    await user.updatePassword(pw1);
+    // Xóa cờ reset
+    if (_db) await _db.ref('/ctvForceReset/' + safeKey(ctvName)).remove();
+    document.getElementById('ctvChangePwOverlay').style.display = 'none';
+    showToast('✅ Đã đổi mật khẩu thành công!');
+    _showCtvApp(ctvName);
+  } catch (e) {
+    btn.disabled = false; btn.textContent = '💾 Lưu mật khẩu mới';
+    const errMap = {
+      'auth/requires-recent-login': '⚠️ Phiên đăng nhập cũ. Vui lòng đăng xuất và đăng nhập lại.',
+      'auth/weak-password': '❌ Mật khẩu quá yếu (cần ít nhất 6 ký tự)',
+    };
+    errEl.textContent = errMap[e.code] || ('❌ ' + e.message);
+  }
+}
+
 function getData() { return _cache; }
 
 function updateConnBadge(state) {
@@ -695,7 +746,21 @@ function initFirebase(cfg, ctv) {
                 ? Object.values(val.activities).sort((a, b) => (b.at || 0) - (a.at || 0))
                 : [],
             };
-            _showCtvApp(ctv);
+            // Kiểm tra cờ reset mật khẩu trước khi hiện app
+            _db.ref('/ctvForceReset/' + safeKey(ctv)).get().then(resetSnap => {
+              if (resetSnap.val() === true) {
+                document.getElementById('loadingScreen').style.display = 'none';
+                document.getElementById('ctvLoginOverlay').classList.remove('show');
+                const overlay = document.getElementById('ctvChangePwOverlay');
+                overlay.style.display = 'flex';
+                document.getElementById('ctvNewPw1').value = '';
+                document.getElementById('ctvNewPw2').value = '';
+                document.getElementById('ctvChangePwErr').textContent = '';
+                setTimeout(() => document.getElementById('ctvNewPw1').focus(), 50);
+              } else {
+                _showCtvApp(ctv);
+              }
+            }).catch(() => _showCtvApp(ctv));
           }, err => {
             _dataListenerCtvOn = false;
             updateConnBadge('offline');

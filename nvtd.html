@@ -540,6 +540,10 @@
       ".read": true,
       ".write": "auth != null && auth.token.email === 'nvtd@sothu.app'"
     },
+    "ctvForceReset": {
+      ".read": true,
+      ".write": "auth != null"
+    },
     "data": {
       ".read": "auth != null",
       ".write": "auth != null"
@@ -1140,8 +1144,12 @@ function revokeCtv() { revokeSelectedCTV(); }
 async function renderCtvAllowedList() {
   const el = document.getElementById('ctvAllowedList');
   if (!el || !_db) return;
-  const snap = await _db.ref('/ctvAllowed').get();
-  const allowed = snap.val() || {};
+  const [snapAllowed, snapReset] = await Promise.all([
+    _db.ref('/ctvAllowed').get(),
+    _db.ref('/ctvForceReset').get()
+  ]);
+  const allowed = snapAllowed.val() || {};
+  const forceReset = snapReset.val() || {};
   const search = (document.getElementById('ctvAllowedSearch')?.value || '').toLowerCase();
   let ctvSet = [...new Set(_cache.customers.map(c => c.ctv).filter(Boolean))];
   if (search) ctvSet = ctvSet.filter(c => c.toLowerCase().includes(search));
@@ -1149,17 +1157,38 @@ async function renderCtvAllowedList() {
   el.innerHTML = '<div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:8px">Trạng thái quyền truy cập:</div>'
     + ctvSet.map(c => {
         const ok = !!allowed[safeKey(c)];
+        const needReset = !!forceReset[safeKey(c)];
         const key = 'ctv_chk_' + safeKey(c);
         return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;margin-bottom:6px;
-                  background:${ok ? '#f0fdf4' : '#fff8f8'};border:1px solid ${ok ? '#86efac' : '#fca5a5'}">
+                  background:${ok ? '#f0fdf4' : '#fff8f8'};border:1px solid ${ok ? '#86efac' : '#fca5a5'};flex-wrap:wrap">
           <input type="checkbox" id="${key}" value="${escHtml(c)}" style="width:16px;height:16px;cursor:pointer;flex-shrink:0">
-          <label for="${key}" style="flex:1;font-size:14px;font-weight:600;cursor:pointer;color:var(--text)">${escHtml(c)}</label>
+          <label for="${key}" style="flex:1;font-size:14px;font-weight:600;cursor:pointer;color:var(--text);min-width:80px">${escHtml(c)}</label>
           <span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:12px;
             background:${ok ? '#dcfce7' : '#fee2e2'};color:${ok ? '#166534' : '#991b1b'}">
             ${ok ? '✅ Đã cấp quyền' : '⛔ Chưa cấp'}
           </span>
+          ${ok ? `<button onclick="resetCtvPassword('${escHtml(c).replace(/'/g,'\\&#39;')}')"
+            style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:12px;border:none;cursor:pointer;
+            background:${needReset ? '#fef9c3' : '#e0e7ff'};color:${needReset ? '#854d0e' : '#3730a3'}">
+            ${needReset ? '⏳ Chờ đổi mật khẩu' : '🔄 Reset mật khẩu'}
+          </button>` : ''}
         </div>`;
       }).join('');
+}
+
+async function resetCtvPassword(ctvName) {
+  if (!_db) return;
+  const already = (await _db.ref('/ctvForceReset/' + safeKey(ctvName)).get()).val();
+  if (already) {
+    if (!confirm(`Hủy yêu cầu reset mật khẩu của "${ctvName}"?`)) return;
+    await _db.ref('/ctvForceReset/' + safeKey(ctvName)).remove();
+    showToast('✅ Đã hủy yêu cầu reset mật khẩu');
+  } else {
+    if (!confirm(`Yêu cầu "${ctvName}" đổi mật khẩu lần đăng nhập tiếp theo?`)) return;
+    await _db.ref('/ctvForceReset/' + safeKey(ctvName)).set(true);
+    showToast('🔄 Đã gửi yêu cầu reset mật khẩu cho ' + ctvName);
+  }
+  renderCtvAllowedList();
 }
 
 function populateCtvPwSelect() {
