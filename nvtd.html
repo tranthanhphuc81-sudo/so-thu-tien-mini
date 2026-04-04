@@ -2317,6 +2317,8 @@ function renderCtvLinks() {
 
   el.innerHTML = ctvs.map(name => {
     const linkId = 'link_' + name.replace(/\W/g, '_');
+    const shortId = 'short_' + name.replace(/\W/g, '_');
+    const btnId = 'btn_short_' + name.replace(/\W/g, '_');
     const url = `${baseUrl}/ctv.html?ctv=${encodeURIComponent(name)}${cfgParam}`;
     return `
       <div style="margin-bottom:14px">
@@ -2325,10 +2327,55 @@ function renderCtvLinks() {
           <input type="text" value="${escHtml(url)}" readonly id="${linkId}" />
           <button class="btn btn-outline btn-sm" onclick="copyLink('${linkId}')">📋 Copy</button>
           <a href="${escHtml(url)}" target="_blank" class="btn btn-outline btn-sm">🔗 Test</a>
+          <button class="btn btn-outline btn-sm" id="${btnId}" onclick="shortenLink('${linkId}','${shortId}','${btnId}')">✂️ Rút gọn</button>
+        </div>
+        <div id="${shortId}" style="display:none;margin-top:8px">
+          <div class="link-box">
+            <input type="text" readonly style="color:#1565c0;font-weight:700" />
+            <button class="btn btn-outline btn-sm" onclick="copyShortLink('${shortId}')">📋 Copy</button>
+          </div>
         </div>
       </div>
     `;
   }).join('');
+}
+
+async function shortenLink(linkId, shortId, btnId) {
+  const inp = document.getElementById(linkId);
+  const shortBox = document.getElementById(shortId);
+  const btn = document.getElementById(btnId);
+  if (!inp || !shortBox || !btn) return;
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Đang rút gọn...';
+
+  try {
+    const longUrl = inp.value;
+    const res = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`);
+    if (!res.ok) throw new Error('API lỗi');
+    const shortUrl = await res.text();
+    if (!shortUrl.startsWith('http')) throw new Error('Kết quả không hợp lệ');
+
+    const shortInput = shortBox.querySelector('input');
+    shortInput.value = shortUrl;
+    shortBox.style.display = 'block';
+    btn.textContent = '✅ Đã rút gọn';
+    showToast('✂️ Đã rút gọn link thành công!');
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = '✂️ Rút gọn';
+    showToast('❌ Không thể rút gọn link. Kiểm tra kết nối mạng.');
+  }
+}
+
+function copyShortLink(shortId) {
+  const inp = document.getElementById(shortId)?.querySelector('input');
+  if (!inp) return;
+  navigator.clipboard.writeText(inp.value).then(() => showToast('📋 Đã copy link rút gọn!')).catch(() => {
+    inp.select();
+    document.execCommand('copy');
+    showToast('📋 Đã copy link rút gọn!');
+  });
 }
 
 function copyLink(id) {
