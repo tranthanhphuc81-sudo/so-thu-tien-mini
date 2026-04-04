@@ -824,6 +824,7 @@
           oninput="fmtNumInput(this); refreshQR()" />
         <span style="font-size:14px;font-weight:600;color:#e65100">₫</span>
       </div>
+      <div id="qrAmountWarn" style="margin-top:4px;font-size:12px;min-height:16px"></div>
     </div>
     <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
       <button class="btn btn-success" style="flex:1" onclick="downloadQR()">⬇️ Tải ảnh QR</button>
@@ -1761,7 +1762,7 @@ function updatePayConfirmDiff() {
   if (diff < 0) {
     el.innerHTML = `<span style="color:#e65100;font-weight:600">⚠️ Còn thiếu ${Math.abs(diff).toLocaleString('vi-VN')} ₫</span>`;
   } else if (diff > 0) {
-    el.innerHTML = `<span style="color:#2e7d32;font-weight:600">✅ Thu dư ${diff.toLocaleString('vi-VN')} ₫</span>`;
+    el.innerHTML = `<span style="color:#e65100;font-weight:600">⚠️ Thu dư ${diff.toLocaleString('vi-VN')} ₫ (lớn hơn cần thu)</span>`;
   } else {
     el.innerHTML = `<span style="color:#2e7d32;font-weight:600">✅ Đúng số tiền cần thu</span>`;
   }
@@ -1846,6 +1847,7 @@ function showQR(id) {
   document.getElementById('qrModalName').textContent = c.name;
   document.getElementById('qrModalAcct').textContent = `${bank.displayName || bank.name} - ${bank.account} - ${bank.holder}`;
   setNumInput(document.getElementById('qrAmountInput'), c.amount);
+  document.getElementById('qrAmountWarn').textContent = '';
 
   // Display VietQR image directly
   const qrContent = buildVietQR(bank, c);
@@ -1868,6 +1870,14 @@ function refreshQR() {
   const amt = readNumInput(document.getElementById('qrAmountInput')) || 0;
   const custom = Object.assign({}, currentQRCustomer, { amount: amt });
   document.getElementById('qrCanvas').src = buildVietQR(bank, custom);
+  const warnEl = document.getElementById('qrAmountWarn');
+  if (warnEl) {
+    if (amt > currentQRCustomer.amount) {
+      warnEl.innerHTML = `<span style="color:#e65100;font-weight:600">⚠️ Lớn hơn số cần thu (${currentQRCustomer.amount.toLocaleString('vi-VN')} ₫)</span>`;
+    } else {
+      warnEl.textContent = '';
+    }
+  }
 }
 
 async function downloadQR() {

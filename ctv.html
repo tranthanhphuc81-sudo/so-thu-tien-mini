@@ -923,6 +923,7 @@ function renderPending(list, bank) {
             oninput="fmtNumInput(this); refreshCtvQR('${c.id}')" />
           <span style="color:#FFD700;font-weight:700;font-size:13px">₫</span>
         </div>
+        <div id="qrwarn_${c.id}" style="font-size:11px;min-height:14px;color:#e65100;font-weight:600;text-align:center"></div>
         <div class="qr-acct">${bank ? `${bank.displayName || bank.name} - ${bank.account} - ${bank.holder}` : ''}</div>
         <div class="qr-actions">
           <button class="btn btn-zalo" onclick="shareZalo('${c.id}')">💬 Chia sẻ qua Zalo</button>
@@ -1012,6 +1013,10 @@ function refreshCtvQR(id) {
   const bankCode = BANK_CODE_MAP[(bank.name||'').toUpperCase()] || bank.name;
   const amt = readNumInput(document.getElementById('qramt_' + id)) || c.amount;
   img.src = `https://img.vietqr.io/image/${bankCode}-${bank.account}-compact2.png?amount=${amt}&addInfo=${encodeURIComponent(c.name + ' ' + c.code)}&accountName=${encodeURIComponent(bank.holder)}`;
+  const warnEl = document.getElementById('qrwarn_' + id);
+  if (warnEl) {
+    warnEl.textContent = amt > c.amount ? `⚠️ Lớn hơn số cần thu (${c.amount.toLocaleString('vi-VN')} ₫)` : '';
+  }
 }
 
 async function shareZalo(id) {
@@ -1178,7 +1183,7 @@ function updateConfirmDiff() {
   if (diff < 0) {
     el.innerHTML = `<span style="color:#e65100;font-weight:600">⚠️ Còn thiếu ${Math.abs(diff).toLocaleString('vi-VN')} ₫</span>`;
   } else if (diff > 0) {
-    el.innerHTML = `<span style="color:#2e7d32;font-weight:600">✅ Thu dư ${diff.toLocaleString('vi-VN')} ₫</span>`;
+    el.innerHTML = `<span style="color:#e65100;font-weight:600">⚠️ Thu dư ${diff.toLocaleString('vi-VN')} ₫ (lớn hơn cần thu)</span>`;
   } else {
     el.innerHTML = `<span style="color:#2e7d32;font-weight:600">✅ Đúng số tiền cần thu</span>`;
   }
