@@ -1146,7 +1146,7 @@ async function renderCtvAllowedList() {
   if (!el || !_db) return;
   const [snapAllowed, snapReset] = await Promise.all([
     _db.ref('/ctvAllowed').get(),
-    _db.ref('/ctvForceReset').get()
+    _db.ref('/ctvForceReset').get().catch(() => ({ val: () => ({}) }))
   ]);
   const allowed = snapAllowed.val() || {};
   const forceReset = snapReset.val() || {};
