@@ -259,6 +259,16 @@
     /* Nút thao tác: chỉ hiện icon, bỏ chữ */
     .btn-action-label { display: none; }
     .btn.btn-sm { min-width: 34px !important; padding: 4px 6px; font-size: 13px; }
+    /* Toolbar + filter row */
+    #tab-list .toolbar-row { flex-direction: column; align-items: stretch; }
+    #tab-list .toolbar-row .search-wrap { min-width: unset !important; }
+    #tab-list .toolbar-buttons { display: flex; gap: 8px; }
+    #tab-list .toolbar-buttons .btn { flex: 1; }
+    #tab-list .filter-row { flex-direction: column; align-items: stretch; gap: 8px !important; }
+    #tab-list .filter-chips { flex-wrap: wrap; }
+    #tab-list .filter-selects { display: flex; gap: 8px; }
+    #tab-list .filter-selects select { flex: 1; width: 0; }
+    #tab-list .filter-selects .filter-label { display: none; }
   }
   @media (max-width: 480px) {
     .col-hide-sm { display: none !important; }
@@ -745,34 +755,38 @@
 <!-- ===================== TAB LIST ===================== -->
 <div id="tab-list" class="tab-content">
 
-  <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
+  <div class="toolbar-row" style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
     <div class="search-wrap" style="flex:1;min-width:200px;margin-bottom:0">
       <input type="text" id="searchInput" placeholder="Tìm kiếm khách hàng..." oninput="renderCustomerTable()" />
     </div>
-    <button class="btn btn-outline btn-sm" onclick="refreshPage()">🔄 Làm mới</button>
-    <button class="btn btn-primary btn-sm" onclick="generateAllQR()">🖨️ Tạo tất cả QR</button>
+    <div class="toolbar-buttons" style="display:flex;gap:8px">
+      <button class="btn btn-outline btn-sm" onclick="refreshPage()">🔄 Làm mới</button>
+      <button class="btn btn-primary btn-sm" onclick="generateAllQR()">🖨️ Tạo tất cả QR</button>
+    </div>
   </div>
 
-  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:4px">
+  <div class="filter-row" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:4px">
     <div class="filter-chips" style="margin-bottom:0;flex:1">
       <div class="chip active" onclick="setFilter('all', this)">Tất cả</div>
       <div class="chip" onclick="setFilter('pending', this)">⏳ Chưa thu</div>
       <div class="chip" onclick="setFilter('paid', this)">✅ Đã thu</div>
     </div>
-    <div style="display:flex;align-items:center;gap:6px">
-      <span style="font-size:13px;color:var(--muted);white-space:nowrap">👤 CTV:</span>
-      <select id="ctvFilterSelect" onchange="setCtvFilter()" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff;color:var(--text);cursor:pointer">
-        <option value="all">Tất cả</option>
-      </select>
-    </div>
-    <div style="display:flex;align-items:center;gap:6px">
-      <span style="font-size:13px;color:var(--muted);white-space:nowrap">💳 Hình thức:</span>
-      <select id="payMethodFilterSelect" onchange="setPayMethodFilter()" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff;color:var(--text);cursor:pointer">
-        <option value="all">Tất cả</option>
-        <option value="cash">💵 Tiền mặt</option>
-        <option value="transfer">🏦 Chuyển khoản</option>
-        <option value="unknown">❓ Chưa rõ</option>
-      </select>
+    <div class="filter-selects" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:5px">
+        <span class="filter-label" style="font-size:13px;color:var(--muted);white-space:nowrap">👤 CTV:</span>
+        <select id="ctvFilterSelect" onchange="setCtvFilter()" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff;color:var(--text);cursor:pointer">
+          <option value="all">Tất cả</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;gap:5px">
+        <span class="filter-label" style="font-size:13px;color:var(--muted);white-space:nowrap">💳 Hình thức:</span>
+        <select id="payMethodFilterSelect" onchange="setPayMethodFilter()" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff;color:var(--text);cursor:pointer">
+          <option value="all">Tất cả</option>
+          <option value="cash">💵 Tiền mặt</option>
+          <option value="transfer">🏦 Chuyển khoản</option>
+          <option value="unknown">❓ Chưa rõ</option>
+        </select>
+      </div>
     </div>
   </div>
 
