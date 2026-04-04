@@ -25,6 +25,8 @@
   body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
 
   /* HEADER */
+  html { scroll-padding-top: 120px; }
+  .sticky-top { position: sticky; top: 0; z-index: 100; }
   header {
     background: linear-gradient(135deg, #1a73e8, #0d47a1);
     color: #fff;
@@ -33,7 +35,6 @@
     align-items: center;
     gap: 12px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-    position: sticky; top: 0; z-index: 100;
   }
   header .logo { font-size: 28px; }
   header h1 { font-size: 20px; font-weight: 700; }
@@ -434,6 +435,7 @@
   </div>
 </div>
 
+<div class="sticky-top">
 <header>
   <div class="logo">📋</div>
   <div>
@@ -451,6 +453,7 @@
   <button class="tab-btn" onclick="switchTab('tab-list')">📋 Danh sách KH</button>
   <button class="tab-btn" onclick="switchTab('tab-ctv')">👥 Quản lý CTV</button>
 </div>
+</div><!-- end sticky-top -->
 
 <div class="page-layout">
 <aside class="side-nav" id="sideNav"></aside>
@@ -1356,6 +1359,7 @@ function switchTab(id) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   event.currentTarget.classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'instant' });
   updateSideNav(id);
   renderAll();
 }
