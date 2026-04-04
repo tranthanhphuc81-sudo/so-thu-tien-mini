@@ -923,6 +923,7 @@ let _cache = { customers: [], bank: {}, activities: [] };
 let _db = null;
 let _fbInitialized = false;
 let _nvtdAuthed = false;
+let _intentionalClear = false; // true khi user chủ động xóa dữ liệu
 const NVTD_EMAIL = 'nvtd@sothu.app';
 
 function togglePw(id, btn) {
@@ -1186,9 +1187,20 @@ function initFirebase(cfg, showSuccessToast = false) {
         if (!_dataListenerOn) {
           _dataListenerOn = true;
           _db.ref('/data').on('value', snapshot => {
-            _cache = cacheFromVal(snapshot.val() || {});
-            // Đồng bộ localStorage với dữ liệu Firebase mới nhất
-            try { localStorage.setItem('sothu_local', JSON.stringify(_cache)); } catch {}
+            const fbVal = snapshot.val();
+            const hasFbData = !!(fbVal && (fbVal.customers || fbVal.bank));
+            if (hasFbData) {
+              // Firebase có dữ liệu → dùng làm nguồn sự thật
+              _cache = cacheFromVal(fbVal);
+              try { localStorage.setItem('sothu_local', JSON.stringify(_cache)); } catch {}
+            } else if (_intentionalClear) {
+              // User vừa xóa hết → cho phép cache trở thành rỗng
+              _cache = { customers: [], bank: {}, activities: [] };
+              try { localStorage.removeItem('sothu_local'); } catch {}
+              _intentionalClear = false;
+            }
+            // else: Firebase rỗng mà không phải chủ ý xóa
+            //   → giữ nguyên _cache (đã nạp từ localStorage), KHÔNG ghi đè bằng rỗng
             renderAll(); loadBankInfo(); renderCtvLinks(); populateCtvPwSelect();
           }, err => {
             _dataListenerOn = false;
@@ -1680,12 +1692,14 @@ function confirmRestore() {
 
 function clearAllData() {
   if (!confirm('⚠️ Xóa TOÀN BỘ dữ liệu? Hành động này không thể hoàn tác!')) return;
+  _intentionalClear = true;
+  _cache = { customers: [], bank: {}, activities: [] };
+  try { localStorage.removeItem('sothu_local'); } catch {}
   if (_db) {
-    _db.ref('/data').remove().catch(e => showToast('⚠️ Lỗi: ' + e.message));
-    // onValue sẽ cập nhật _cache về rỗng
+    _db.ref('/data').remove().catch(e => { _intentionalClear = false; showToast('⚠️ Lỗi: ' + e.message); });
+    renderAll(); loadBankInfo(); renderCtvLinks();
   } else {
-    localStorage.removeItem('sothu_local');
-    _cache = { customers: [], bank: {}, activities: [] };
+    _intentionalClear = false;
     renderAll();
     loadBankInfo();
     renderCtvLinks();
