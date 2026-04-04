@@ -814,8 +814,16 @@
     <div class="qr-display">
       <img id="qrCanvas" style="width:220px;height:220px;background:#fff;border-radius:8px;padding:8px;box-sizing:border-box" alt="QR">
       <div class="qr-name" id="qrModalName"></div>
-      <div class="qr-amount" id="qrModalAmount"></div>
       <div class="qr-acct" id="qrModalAcct"></div>
+    </div>
+    <div style="margin-top:14px">
+      <label style="font-size:12px;color:var(--muted);font-weight:600;display:block;margin-bottom:4px">✏️ Số tiền (có thể chỉnh sửa)</label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="number" id="qrAmountInput" min="0" step="1000"
+          style="flex:1;padding:8px 12px;border:2px solid var(--primary);border-radius:8px;font-size:16px;font-weight:700;color:#e65100;text-align:right"
+          oninput="refreshQR()" />
+        <span style="font-size:14px;font-weight:600;color:#e65100">₫</span>
+      </div>
     </div>
     <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
       <button class="btn btn-success" style="flex:1" onclick="downloadQR()">⬇️ Tải ảnh QR</button>
@@ -1748,8 +1756,8 @@ function showQR(id) {
 
   currentQRCustomer = c;
   document.getElementById('qrModalName').textContent = c.name;
-  document.getElementById('qrModalAmount').textContent = c.amount.toLocaleString('vi-VN') + ' ₫';
   document.getElementById('qrModalAcct').textContent = `${bank.displayName || bank.name} - ${bank.account} - ${bank.holder}`;
+  document.getElementById('qrAmountInput').value = c.amount;
 
   // Display VietQR image directly
   const qrContent = buildVietQR(bank, c);
@@ -1766,10 +1774,20 @@ function buildVietQR(bank, c) {
   return `https://img.vietqr.io/image/${bankCode}-${bank.account}-compact2.png?amount=${c.amount}&addInfo=${encodeURIComponent(c.name + ' ' + c.code)}&accountName=${encodeURIComponent(bank.holder)}`;
 }
 
+function refreshQR() {
+  if (!currentQRCustomer) return;
+  const { bank } = getData();
+  const amt = parseInt(document.getElementById('qrAmountInput').value, 10) || 0;
+  const custom = Object.assign({}, currentQRCustomer, { amount: amt });
+  document.getElementById('qrCanvas').src = buildVietQR(bank, custom);
+}
+
 async function downloadQR() {
   if (!currentQRCustomer) return;
   const { bank } = getData();
-  const qrUrl = buildVietQR(bank, currentQRCustomer);
+  const amt = parseInt(document.getElementById('qrAmountInput').value, 10) || currentQRCustomer.amount;
+  const qrCustomer = Object.assign({}, currentQRCustomer, { amount: amt });
+  const qrUrl = buildVietQR(bank, qrCustomer);
 
   showToast('⏳ Đang tải ảnh QR...');
   let qrImg;
