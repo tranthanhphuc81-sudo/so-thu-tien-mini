@@ -1708,10 +1708,14 @@ function renderCustomerTable() {
       <td>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
           <button class="btn btn-outline btn-sm" onclick="showQR('${c.id}')">🔲 QR</button>
-          ${c.status === 'pending'
+          ${c.status === 'pending' || (c.paidAmount != null && c.paidAmount < c.amount)
             ? `<button class="btn btn-success btn-sm" onclick="openPayConfirm('${c.id}','cash')">💵 Mặt</button>
                <button class="btn btn-primary btn-sm" onclick="openPayConfirm('${c.id}','transfer')">🏦 CK</button>`
-            : `<button class="btn btn-sm" style="background:#f5f5f5;color:#555" onclick="unmarkPaid('${c.id}')">↩️ Hoàn tác</button>`
+            : ''
+          }
+          ${c.status === 'paid'
+            ? `<button class="btn btn-sm" style="background:#f5f5f5;color:#555" onclick="unmarkPaid('${c.id}')">↩️ Hoàn tác</button>`
+            : ''
           }
           ${c.billImg ? `<button class="btn btn-sm btn-outline" onclick="viewBill('${c.id}')">🧾 Bill</button>` : ''}
           <button class="btn btn-danger btn-sm" onclick="deleteCustomer('${c.id}')">🗑️</button>
