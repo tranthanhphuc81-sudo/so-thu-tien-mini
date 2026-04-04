@@ -725,6 +725,17 @@
 
   <div class="card">
     <div class="card-title">👥 Danh sách CTV & Tiến độ</div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+      <div class="search-wrap" style="flex:1;min-width:160px;margin-bottom:0">
+        <input type="text" id="ctvProgressSearch" placeholder="Tìm tên CTV..." oninput="renderCtvProgress()" />
+      </div>
+      <select id="ctvProgressFilter" onchange="renderCtvProgress()" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff;color:var(--text);cursor:pointer">
+        <option value="all">Tất cả</option>
+        <option value="done">✅ Hoàn thành (100%)</option>
+        <option value="partial">🟡 Đang thu</option>
+        <option value="none">⏳ Chưa thu tiến</option>
+      </select>
+    </div>
     <div id="ctvProgressList">
       <div class="empty"><div class="icon">👤</div><p>Chưa có CTV nào. Hãy nhập danh sách khách hàng với tên CTV.</p></div>
     </div>
@@ -741,7 +752,10 @@
       <button class="btn btn-outline" onclick="selectAllCTV(false)">⬜ Bỏ chọn</button>
     </div>
     <div style="color:var(--danger);font-size:13px;margin-top:6px" id="ctvPwErr"></div>
-    <div id="ctvAllowedList" style="margin-top:10px"></div>
+    <div class="search-wrap" style="margin-top:10px;margin-bottom:4px">
+      <input type="text" id="ctvAllowedSearch" placeholder="Tìm tên CTV..." oninput="renderCtvAllowedList()" />
+    </div>
+    <div id="ctvAllowedList"></div>
   </div>
 
   <div class="card">
@@ -975,8 +989,10 @@ async function renderCtvAllowedList() {
   if (!el || !_db) return;
   const snap = await _db.ref('/ctvAllowed').get();
   const allowed = snap.val() || {};
-  const ctvSet = [...new Set(_cache.customers.map(c => c.ctv).filter(Boolean))];
-  if (!ctvSet.length) { el.innerHTML = ''; return; }
+  const search = (document.getElementById('ctvAllowedSearch')?.value || '').toLowerCase();
+  let ctvSet = [...new Set(_cache.customers.map(c => c.ctv).filter(Boolean))];
+  if (search) ctvSet = ctvSet.filter(c => c.toLowerCase().includes(search));
+  if (!ctvSet.length) { el.innerHTML = search ? '<div style="color:var(--muted);font-size:13px;padding:8px">Không tìm thấy CTV nào</div>' : ''; return; }
   el.innerHTML = '<div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:8px">Trạng thái quyền truy cập:</div>'
     + ctvSet.map(c => {
         const ok = !!allowed[safeKey(c)];
@@ -1746,6 +1762,9 @@ function renderCtvProgress() {
     return;
   }
 
+  const search = (document.getElementById('ctvProgressSearch')?.value || '').toLowerCase();
+  const filter = document.getElementById('ctvProgressFilter')?.value || 'all';
+
   const ctvMap = {};
   customers.forEach(c => {
     if (!ctvMap[c.ctv]) ctvMap[c.ctv] = { total: 0, paid: 0 };
@@ -1757,7 +1776,21 @@ function renderCtvProgress() {
   const _cfgParam = _cfg ? '&cfg=' + encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(_cfg))))) : '';
   const baseUrl = getSiteBaseUrl();
 
-  el.innerHTML = Object.entries(ctvMap).map(([name, s]) => {
+  let entries = Object.entries(ctvMap).filter(([name, s]) => {
+    if (search && !name.toLowerCase().includes(search)) return false;
+    const pct = s.total ? Math.round(s.paid / s.total * 100) : 0;
+    if (filter === 'done' && pct < 100) return false;
+    if (filter === 'partial' && (pct === 0 || pct === 100)) return false;
+    if (filter === 'none' && pct > 0) return false;
+    return true;
+  });
+
+  if (!entries.length) {
+    el.innerHTML = '<div class="empty"><div class="icon">🔍</div><p>Không tìm thấy CTV nào</p></div>';
+    return;
+  }
+
+  el.innerHTML = entries.map(([name, s]) => {
     const pct = s.total ? Math.round(s.paid / s.total * 100) : 0;
     const ctvUrl = baseUrl ? `${baseUrl}/ctv.html?ctv=${encodeURIComponent(name)}${_cfgParam}` : '';
     return `
@@ -1783,10 +1816,27 @@ function renderCtvProgress() {
 // ==================== BILL GALLERY ====================
 function renderBillGallery() {
   const { customers } = getData();
-  const withBill = customers.filter(c => c.billImg && c.status === 'paid');
   const el = document.getElementById('billGallery');
+  const search = (document.getElementById('billSearch')?.value || '').toLowerCase();
+  const ctvFilter = document.getElementById('billCtvFilter')?.value || 'all';
+
+  // Cập nhật dropdown CTV
+  const sel = document.getElementById('billCtvFilter');
+  if (sel) {
+    const ctvs = [...new Set(customers.filter(c => c.billImg && c.status === 'paid').map(c => c.ctv || '').filter(Boolean))].sort((a,b) => a.localeCompare(b,'vi'));
+    const prev = sel.value;
+    sel.innerHTML = '<option value="all">Tất cả CTV</option>' + ctvs.map(n => `<option value="${escHtml(n)}"${n === prev ? ' selected' : ''}>${escHtml(n)}</option>`).join('');
+    if (!ctvs.includes(prev) && prev !== 'all') sel.value = 'all';
+  }
+
+  let withBill = customers.filter(c => c.billImg && c.status === 'paid');
+  if (search) withBill = withBill.filter(c => c.name.toLowerCase().includes(search) || (c.ctv||'').toLowerCase().includes(search));
+  if (ctvFilter !== 'all') withBill = withBill.filter(c => (c.ctv || '') === ctvFilter);
+
   if (!withBill.length) {
-    el.innerHTML = '<div class="empty"><div class="icon">🧾</div><p>Chưa có bill nào.</p></div>';
+    el.innerHTML = search || ctvFilter !== 'all'
+      ? '<div class="empty"><div class="icon">🔍</div><p>Không tìm thấy bill nào</p></div>'
+      : '<div class="empty"><div class="icon">🧾</div><p>Chưa có bill nào.</p></div>';
     return;
   }
   el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px">` +
