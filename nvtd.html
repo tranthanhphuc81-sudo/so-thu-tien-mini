@@ -656,6 +656,9 @@
   <div class="card" id="sec-links">
     <div class="card-title">🔗 Link công cụ CTV</div>
     <p style="font-size:14px;color:var(--muted);margin-bottom:12px">Gửi link này cho CTV để họ mở giao diện thu tiền. CTV có thể ghim vào Cloud Zalo để tiện truy cập.</p>
+    <div class="search-wrap" style="margin-bottom:12px">
+      <input type="text" id="ctvLinkSearch" placeholder="Tìm tên CTV..." oninput="renderCtvLinks()" />
+    </div>
     <div id="ctvLinkList"></div>
     <div class="section-note" style="margin-top:12px">
       📱 Hướng dẫn CTV: Mở link → Ghim vào <strong>"Cloud của tôi"</strong> trên Zalo → Mở ra bất cứ lúc nào cần.
@@ -2410,10 +2413,17 @@ function viewBill(id) {
 function renderCtvLinks() {
   const { customers } = getData();
   const el = document.getElementById('ctvLinkList');
-  const ctvs = [...new Set(customers.map(c => c.ctv))].filter(Boolean);
+  const search = (document.getElementById('ctvLinkSearch')?.value || '').toLowerCase().trim();
+  let ctvs = [...new Set(customers.map(c => c.ctv))].filter(Boolean);
 
   if (!ctvs.length) {
     el.innerHTML = '<p style="color:var(--muted);font-size:14px">Chưa có CTV nào. Hãy nhập danh sách khách hàng.</p>';
+    return;
+  }
+
+  if (search) ctvs = ctvs.filter(c => c.toLowerCase().includes(search));
+  if (!ctvs.length) {
+    el.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:8px">Không tìm thấy CTV nào khớp với "${escHtml(search)}".</div>`;
     return;
   }
 
