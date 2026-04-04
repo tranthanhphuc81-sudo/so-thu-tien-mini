@@ -204,7 +204,7 @@
     position: relative;
   }
   .qr-popup.open { display: flex; }
-  .qr-popup img.qr-img { border-radius: 8px; background: #fff; padding: 8px; width: 200px; height: 200px; box-sizing: border-box; }
+  .qr-popup img.qr-img { border-radius: 8px; background: #fff; padding: 8px; width: min(200px, 100%); height: auto; aspect-ratio: 1/1; box-sizing: border-box; }
   .qr-popup .qr-name { font-size: 18px; font-weight: 800; color: #fff; text-align: center; }
   .qr-popup .qr-amt { font-size: 14px; font-weight: 700; color: #FFD700; }
   .qr-popup .qr-acct { font-size: 11px; color: rgba(255,255,255,0.8); }
@@ -919,7 +919,7 @@ function renderPending(list, bank) {
         <div class="qr-name">${escHtml(c.name)}</div>
         <div style="display:flex;align-items:center;gap:6px;margin:6px 0">
           <input type="text" inputmode="numeric" id="qramt_${c.id}" data-raw="${c.amount}" value="${c.amount.toLocaleString('vi-VN')}"
-            style="width:130px;padding:5px 8px;border:2px solid #FFD700;border-radius:8px;font-size:16px;font-weight:800;color:#e65100;text-align:right;background:rgba(255,255,255,0.95)"
+            style="width:min(130px,55%);padding:5px 8px;border:2px solid #FFD700;border-radius:8px;font-size:16px;font-weight:800;color:#e65100;text-align:right;background:rgba(255,255,255,0.95)"
             oninput="fmtNumInput(this); refreshCtvQR('${c.id}')" />
           <span style="color:#FFD700;font-weight:700;font-size:13px">₫</span>
         </div>
