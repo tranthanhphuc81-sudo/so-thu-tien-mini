@@ -955,12 +955,9 @@ function renderPaid(list) {
           ${c.note ? `<div class="meta">📝 ${escHtml(c.note)}</div>` : ''}
         </div>
       </div>
-      ${c.paidAmount != null && c.paidAmount < c.amount
-        ? `<div class="actions" style="margin-top:10px">
-            <button class="btn btn-success" onclick="openConfirm('${c.id}')">💵 Thu tiếp phần còn thiếu</button>
-           </div>`
-        : `<div class="paid-banner">✅ Đã xác nhận thu tiền thành công</div>`
-      }
+      <div class="actions" style="margin-top:10px">
+        <button class="btn btn-success" onclick="openConfirm('${c.id}')">${c.paidAmount != null && c.paidAmount < c.amount ? '💵 Thu tiếp phần còn thiếu' : '💵 Thu thêm / kỳ sau'}</button>
+      </div>
       ${c.billImg ? `<img src="${safeBillSrc(c.billImg)}" style="width:100%;border-radius:10px;margin-top:10px;max-height:180px;object-fit:cover" />` : ''}
     </div>
   `).join('');
