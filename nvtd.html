@@ -70,8 +70,33 @@
   .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
   .tab-btn:hover { color: var(--primary); background: #f8f9fa; }
 
+  /* LAYOUT SIDEBAR */
+  .page-layout { display: flex; align-items: flex-start; }
+  .side-nav {
+    width: 210px; flex-shrink: 0;
+    position: sticky; top: 112px;
+    max-height: calc(100vh - 112px);
+    overflow-y: auto; background: var(--card);
+    border-right: 1px solid var(--border);
+    box-shadow: 2px 0 6px rgba(0,0,0,0.04);
+    padding: 12px 0;
+  }
+  .side-nav-section { font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing:.08em; text-transform:uppercase; padding: 10px 16px 4px; }
+  .side-nav-item {
+    display: block; width: 100%; text-align: left;
+    padding: 9px 14px 9px 16px;
+    font-size: 13px; color: var(--muted);
+    border: none; border-left: 3px solid transparent;
+    background: none; cursor: pointer;
+    transition: all .15s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .side-nav-item:hover { background: #f0f4f8; color: var(--primary); }
+  .side-nav-item.active { color: var(--primary); border-left-color: var(--primary); background: #e8f0fe; font-weight: 600; }
+  .main-area { flex: 1; min-width: 0; }
+  @media (max-width: 860px) { .side-nav { display: none; } }
+
   /* CONTENT */
-  .tab-content { display: none; padding: 24px; max-width: 1100px; margin: 0 auto; }
+  .tab-content { display: none; padding: 24px; max-width: 1060px; }
   .tab-content.active { display: block; }
 
   /* CARD */
@@ -427,6 +452,10 @@
   <button class="tab-btn" onclick="switchTab('tab-ctv')">👥 Quản lý CTV</button>
 </div>
 
+<div class="page-layout">
+<aside class="side-nav" id="sideNav"></aside>
+<div class="main-area">
+
 <!-- ===================== TAB SETUP ===================== -->
 <div id="tab-setup" class="tab-content active">
 
@@ -484,7 +513,7 @@
     </div>
   </div>
 
-  <div class="card">
+  <div class="card" id="sec-bank">
     <div class="card-title">🏦 Thông tin tài khoản ngân hàng</div>
     <div class="form-row">
       <div class="form-group">
@@ -519,7 +548,7 @@
     <button class="btn btn-primary" onclick="saveBankInfo()">💾 Lưu thông tin</button>
   </div>
 
-  <div class="card">
+  <div class="card" id="sec-import">
     <div class="card-title">📥 Nhập danh sách khách hàng</div>
     <div class="section-note">
       💡 Nhập theo định dạng mỗi dòng: <strong>Tên Khách Hàng | Số tiền | Mã đối soát (tuỳ chọn)</strong><br>
@@ -540,7 +569,7 @@
     </div>
   </div>
 
-  <div class="card">
+  <div class="card" id="sec-excel">
     <div class="card-title">📊 Upload file Excel công nợ</div>
     <div class="section-note">
       💡 Upload file Excel (.xlsx, .xls) báo cáo tình hình công nợ. Hệ thống tự nhận dạng cột <strong>Tên khách hàng</strong>, <strong>Mã KH</strong> và <strong>Số tiền cần thu</strong>. Bạn có thể chỉnh lại trước khi nhập.
@@ -564,7 +593,7 @@
     <div id="excelFileInfo" style="display:none;margin-top:12px;padding:10px 14px;background:#e8f5e9;border-radius:8px;font-size:13px;color:#2e7d32;font-weight:600"></div>
   </div>
 
-  <div class="card">
+  <div class="card" id="sec-website">
     <div class="card-title">🌐 Địa chỉ website (bắt buộc để tạo link CTV)</div>
     <div class="section-note" style="margin-bottom:14px">
       ✅ Ứng dụng đã được deploy lên GitHub Pages tại:<br>
@@ -581,7 +610,7 @@
     <div id="siteUrlStatus" style="margin-top:10px;font-size:13px;display:none"></div>
   </div>
 
-  <div class="card">
+  <div class="card" id="sec-links">
     <div class="card-title">🔗 Link công cụ CTV</div>
     <p style="font-size:14px;color:var(--muted);margin-bottom:12px">Gửi link này cho CTV để họ mở giao diện thu tiền. CTV có thể ghim vào Cloud Zalo để tiện truy cập.</p>
     <div id="ctvLinkList"></div>
@@ -590,7 +619,7 @@
     </div>
   </div>
 
-  <div class="card">
+  <div class="card" id="sec-password">
     <div class="card-title">🔐 Đổi mật khẩu NVTD</div>
     <div class="form-row">
       <div class="form-group" style="flex:1">
@@ -622,7 +651,7 @@
     <div class="stat-card gray"><div class="stat-num" id="stat-pct">0%</div><div class="stat-label">Tiến độ</div></div>
   </div>
 
-  <div class="card">
+  <div class="card" id="sec-progress">
     <div class="card-title">📈 Tiến độ thu tiền tổng thể</div>
     <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-bottom:6px">
       <span id="prog-text">0 / 0 khách hàng đã nộp tiền</span>
@@ -631,7 +660,7 @@
     <div class="progress-wrap"><div class="progress-bar" id="prog-bar" style="width:0%"></div></div>
   </div>
 
-  <div class="card">
+  <div class="card" id="sec-amount">
     <div class="card-title">💰 Tổng tiền đã thu được</div>
     <div style="font-size:36px;font-weight:800;color:var(--success)" id="total-amount">0 ₫</div>
     <div style="font-size:14px;color:var(--muted);margin-top:6px">Tổng cần thu: <strong id="total-need">0 ₫</strong></div>
@@ -654,7 +683,7 @@
     </div>
   </div>
 
-  <div class="card">
+  <div class="card" id="sec-activity">
     <div class="card-title">📋 Hoạt động gần đây</div>
     <div id="recent-activity">
       <div class="empty"><div class="icon">📭</div><p>Chưa có giao dịch nào</p></div>
@@ -723,7 +752,7 @@
 <!-- ===================== TAB CTV ===================== -->
 <div id="tab-ctv" class="tab-content">
 
-  <div class="card">
+  <div class="card" id="sec-ctv-progress">
     <div class="card-title">👥 Danh sách CTV & Tiến độ</div>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
       <div class="search-wrap" style="flex:1;min-width:160px;margin-bottom:0">
@@ -741,7 +770,7 @@
     </div>
   </div>
 
-  <div class="card">
+  <div class="card" id="sec-ctv-access">
     <div class="card-title">🔑 Cấp quyền đăng nhập CTV</div>
     <div class="section-note">Cấp quyền để CTV tự tạo mật khẩu và đăng nhập. Firebase xác thực phía server — mật khẩu không lưu trong database.</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;margin-bottom:4px">
@@ -758,7 +787,7 @@
     <div id="ctvAllowedList"></div>
   </div>
 
-  <div class="card">
+  <div class="card" id="sec-ctv-bills">
     <div class="card-title">🧾 Bill đã xác nhận (Kiểm tra chéo)</div>
     <div class="section-note">NVTD có thể xem bill CTV tải lên để hậu kiểm.</div>
     <div id="billGallery">
@@ -815,6 +844,9 @@
 
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
+
+</div><!-- end main-area -->
+</div><!-- end page-layout -->
 
 <script>
 // ==================== FIREBASE DATA LAYER ====================
@@ -1267,6 +1299,9 @@ function saveSiteUrl() {
 }
 
 window.addEventListener('load', () => {
+  // Khởi tạo sidebar cho tab mặc định (tab-setup)
+  updateSideNav('tab-setup');
+
   // Load + tự động lưu URL site nếu đang chạy trên HTTP
   const savedUrl = localStorage.getItem(SITE_URL_KEY);
   if (savedUrl) {
@@ -1321,7 +1356,63 @@ function switchTab(id) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   event.currentTarget.classList.add('active');
+  updateSideNav(id);
   renderAll();
+}
+
+const SIDE_NAV_CONFIG = {
+  'tab-setup': [
+    { id: 'fbSetupCard',  label: '🔥 Kết nối Firebase' },
+    { id: 'secRulesCard', label: '🛡️ Bảo mật' },
+    { id: 'sec-bank',     label: '🏦 Ngân hàng' },
+    { id: 'sec-import',   label: '📥 Nhập danh sách' },
+    { id: 'sec-excel',    label: '📊 Excel' },
+    { id: 'sec-website',  label: '🌐 Địa chỉ website' },
+    { id: 'sec-links',    label: '🔗 Link CTV' },
+    { id: 'sec-password', label: '🔐 Đổi mật khẩu' },
+  ],
+  'tab-dashboard': [
+    { id: 'sec-progress', label: '📈 Tiến độ' },
+    { id: 'sec-amount',   label: '💰 Tổng tiền' },
+    { id: 'sec-activity', label: '📋 Hoạt động' },
+  ],
+  'tab-list': [],
+  'tab-ctv': [
+    { id: 'sec-ctv-progress', label: '👥 Tiến độ CTV' },
+    { id: 'sec-ctv-access',   label: '🔑 Cấp quyền' },
+    { id: 'sec-ctv-bills',    label: '🧾 Bill' },
+  ],
+};
+
+let _sideNavObserver = null;
+
+function updateSideNav(tabId) {
+  const nav = document.getElementById('sideNav');
+  if (!nav) return;
+  const items = SIDE_NAV_CONFIG[tabId] || [];
+  if (!items.length) { nav.innerHTML = ''; return; }
+  nav.innerHTML = `<div class="side-nav-section">Trong trang</div>` +
+    items.map(s => `<button class="side-nav-item" id="snav-${s.id}" onclick="scrollToSection('${s.id}')">${s.label}</button>`).join('');
+
+  if (_sideNavObserver) _sideNavObserver.disconnect();
+  _sideNavObserver = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      const btn = document.getElementById('snav-' + entry.target.id);
+      if (btn) btn.classList.toggle('active', entry.isIntersecting);
+    });
+  }, { rootMargin: '-10% 0px -70% 0px', threshold: 0 });
+  items.forEach(s => {
+    const el = document.getElementById(s.id);
+    if (el) _sideNavObserver.observe(el);
+  });
+}
+
+function scrollToSection(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const offset = 120;
+  const top = el.getBoundingClientRect().top + window.scrollY - offset;
+  window.scrollTo({ top, behavior: 'smooth' });
 }
 
 // ==================== BANK INFO ====================
