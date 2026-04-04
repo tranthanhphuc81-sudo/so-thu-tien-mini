@@ -899,7 +899,12 @@ function renderPending(list, bank) {
         <button class="qr-close" onclick="toggleQR('${c.id}')">✕</button>
         <img id="qrimg_${c.id}" class="qr-img" src="" alt="QR">
         <div class="qr-name">${escHtml(c.name)}</div>
-        <div class="qr-amt">${c.amount.toLocaleString('vi-VN')} ₫</div>
+        <div style="display:flex;align-items:center;gap:6px;margin:6px 0">
+          <input type="number" id="qramt_${c.id}" value="${c.amount}" min="0" step="1000"
+            style="width:130px;padding:5px 8px;border:2px solid #FFD700;border-radius:8px;font-size:14px;font-weight:800;color:#e65100;text-align:right;background:rgba(255,255,255,0.95)"
+            oninput="refreshCtvQR('${c.id}')" />
+          <span style="color:#FFD700;font-weight:700;font-size:13px">₫</span>
+        </div>
         <div class="qr-acct">${bank ? `${bank.displayName || bank.name} - ${bank.account} - ${bank.holder}` : ''}</div>
         <div class="qr-actions">
           <button class="btn btn-zalo" onclick="shareZalo('${c.id}')">💬 Chia sẻ qua Zalo</button>
@@ -973,8 +978,22 @@ function toggleQR(id) {
   // Build VietQR image URL — display directly as <img>
   const BANK_CODE_MAP = { 'VTB': 'ICB', 'VIETINBANK': 'ICB', 'VIETCOMBANK': 'VCB' };
   const bankCode = BANK_CODE_MAP[(bank.name||'').toUpperCase()] || bank.name;
-  const qrData = `https://img.vietqr.io/image/${bankCode}-${bank.account}-compact2.png?amount=${c.amount}&addInfo=${encodeURIComponent(c.name + ' ' + c.code)}&accountName=${encodeURIComponent(bank.holder)}`;
+  const amt = parseInt(document.getElementById('qramt_' + id)?.value, 10) || c.amount;
+  const qrData = `https://img.vietqr.io/image/${bankCode}-${bank.account}-compact2.png?amount=${amt}&addInfo=${encodeURIComponent(c.name + ' ' + c.code)}&accountName=${encodeURIComponent(bank.holder)}`;
   img.src = qrData;
+}
+
+function refreshCtvQR(id) {
+  const data = getData();
+  const bank = data.bank;
+  const c = data.customers.find(x => x.id === id);
+  if (!c || !bank || !bank.account) return;
+  const img = document.getElementById('qrimg_' + id);
+  if (!img) return;
+  const BANK_CODE_MAP = { 'VTB': 'ICB', 'VIETINBANK': 'ICB', 'VIETCOMBANK': 'VCB' };
+  const bankCode = BANK_CODE_MAP[(bank.name||'').toUpperCase()] || bank.name;
+  const amt = parseInt(document.getElementById('qramt_' + id)?.value, 10) || c.amount;
+  img.src = `https://img.vietqr.io/image/${bankCode}-${bank.account}-compact2.png?amount=${amt}&addInfo=${encodeURIComponent(c.name + ' ' + c.code)}&accountName=${encodeURIComponent(bank.holder)}`;
 }
 
 async function shareZalo(id) {
@@ -985,8 +1004,9 @@ async function shareZalo(id) {
 
   const BANK_CODE_MAP_S = { 'VTB': 'ICB', 'VIETINBANK': 'ICB', 'VIETCOMBANK': 'VCB' };
   const bankCode = BANK_CODE_MAP_S[(bank.name||'').toUpperCase()] || bank.name;
-  const qrUrl = `https://img.vietqr.io/image/${bankCode}-${bank.account}-compact2.png?amount=${c.amount}&addInfo=${encodeURIComponent(c.name + ' ' + c.code)}&accountName=${encodeURIComponent(bank.holder)}`;
-  const text = `💳 ${c.name} – Nộp ${c.amount.toLocaleString('vi-VN')} ₫\nQuét mã QR để thanh toán:\n${qrUrl}`;
+  const amt = parseInt(document.getElementById('qramt_' + id)?.value, 10) || c.amount;
+  const qrUrl = `https://img.vietqr.io/image/${bankCode}-${bank.account}-compact2.png?amount=${amt}&addInfo=${encodeURIComponent(c.name + ' ' + c.code)}&accountName=${encodeURIComponent(bank.holder)}`;
+  const text = `💳 ${c.name} – Nộp ${amt.toLocaleString('vi-VN')} ₫\nQuét mã QR để thanh toán:\n${qrUrl}`;
 
   // Mobile: dùng Web Share API (bao gồm Zalo)
   if (navigator.share) {
@@ -997,7 +1017,7 @@ async function shareZalo(id) {
       const blob = await resp.blob();
       const file = new File([blob], `QR_${c.name}.png`, { type: 'image/png' });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], text: `💳 ${c.name} – nộp ${c.amount.toLocaleString('vi-VN')} ₫` });
+        await navigator.share({ files: [file], text: `💳 ${c.name} – nộp ${amt.toLocaleString('vi-VN')} ₫` });
       } else {
         await navigator.share({ title: c.name, text });
       }
@@ -1021,7 +1041,8 @@ async function downloadQRCard(id) {
 
   const BANK_CODE_MAP2 = { 'VTB': 'ICB', 'VIETINBANK': 'ICB', 'VIETCOMBANK': 'VCB' };
   const bankCode2 = BANK_CODE_MAP2[(bank.name||'').toUpperCase()] || bank.name;
-  const qrUrl = `https://img.vietqr.io/image/${bankCode2}-${bank.account}-compact2.png?amount=${c.amount}&addInfo=${encodeURIComponent(c.name + ' ' + c.code)}&accountName=${encodeURIComponent(bank.holder)}`;
+  const amt = parseInt(document.getElementById('qramt_' + id)?.value, 10) || c.amount;
+  const qrUrl = `https://img.vietqr.io/image/${bankCode2}-${bank.account}-compact2.png?amount=${amt}&addInfo=${encodeURIComponent(c.name + ' ' + c.code)}&accountName=${encodeURIComponent(bank.holder)}`;
 
   showToast('⏳ Đang tải ảnh QR...');
   let qrImg;
@@ -1067,7 +1088,7 @@ async function downloadQRCard(id) {
   // Amount (yellow)
   ctx.font = 'bold 18px Segoe UI, sans-serif';
   ctx.fillStyle = '#FFD700';
-  ctx.fillText(c.amount.toLocaleString('vi-VN') + ' ₫', 180, 76);
+  ctx.fillText(amt.toLocaleString('vi-VN') + ' ₫', 180, 76);
 
   // Code at bottom of white card
   ctx.fillStyle = '#888';
