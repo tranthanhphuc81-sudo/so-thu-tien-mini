@@ -686,6 +686,15 @@
         <option value="all">Tất cả</option>
       </select>
     </div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <span style="font-size:13px;color:var(--muted);white-space:nowrap">💳 Hình thức:</span>
+      <select id="payMethodFilterSelect" onchange="setPayMethodFilter()" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff;color:var(--text);cursor:pointer">
+        <option value="all">Tất cả</option>
+        <option value="cash">💵 Tiền mặt</option>
+        <option value="transfer">🏦 Chuyển khoản</option>
+        <option value="unknown">❓ Chưa rõ</option>
+      </select>
+    </div>
   </div>
 
   <div class="card" style="padding:0">
@@ -696,7 +705,7 @@
             <th>#</th>
             <th onclick="setSort('name')" style="cursor:pointer;user-select:none;white-space:nowrap">Tên khách hàng<span id="sort-name" style="opacity:0.3"> ↕</span></th>
             <th onclick="setSort('amount')" style="cursor:pointer;user-select:none;white-space:nowrap">Số tiền<span id="sort-amount" style="opacity:0.3"> ↕</span></th>
-            <th>Mã đối soát</th>
+            <th onclick="setSort('code')" style="cursor:pointer;user-select:none;white-space:nowrap">Mã đối soát<span id="sort-code" style="opacity:0.3"> ↕</span></th>
             <th onclick="setSort('ctv')" style="cursor:pointer;user-select:none;white-space:nowrap">CTV phụ trách<span id="sort-ctv" style="opacity:0.3"> ↕</span></th>
             <th onclick="setSort('status')" style="cursor:pointer;user-select:none;white-space:nowrap">Trạng thái<span id="sort-status" style="opacity:0.3"> ↕</span></th>
             <th onclick="setSort('payMethod')" style="cursor:pointer;user-select:none;white-space:nowrap">Hình thức<span id="sort-payMethod" style="opacity:0.3"> ↕</span></th>
@@ -1441,6 +1450,7 @@ function renderStats() {
 let currentFilter = 'all';
 let currentSort = { col: null, dir: 'asc' };
 let currentCtvFilter = 'all';
+let currentPayMethodFilter = 'all';
 
 function setFilter(f, el) {
   currentFilter = f;
@@ -1469,6 +1479,11 @@ function setCtvFilter() {
   renderCustomerTable();
 }
 
+function setPayMethodFilter() {
+  currentPayMethodFilter = document.getElementById('payMethodFilterSelect')?.value || 'all';
+  renderCustomerTable();
+}
+
 function populateCtvFilter() {
   const sel = document.getElementById('ctvFilterSelect');
   if (!sel) return;
@@ -1488,7 +1503,11 @@ function renderCustomerTable() {
     const matchFilter = currentFilter === 'all' || c.status === currentFilter;
     const matchSearch = c.name.toLowerCase().includes(search) || (c.code||'').toLowerCase().includes(search) || (c.ctv||'').toLowerCase().includes(search);
     const matchCtv = currentCtvFilter === 'all' || (c.ctv || '') === currentCtvFilter;
-    return matchFilter && matchSearch && matchCtv;
+    const matchPay = currentPayMethodFilter === 'all' ||
+      (currentPayMethodFilter === 'cash' && c.payMethod === 'cash') ||
+      (currentPayMethodFilter === 'transfer' && c.payMethod === 'transfer') ||
+      (currentPayMethodFilter === 'unknown' && !c.payMethod && c.status === 'paid');
+    return matchFilter && matchSearch && matchCtv && matchPay;
   });
 
   if (currentSort.col) {
@@ -1499,6 +1518,7 @@ function renderCustomerTable() {
         case 'amount':    return dir * (a.amount - b.amount);
         case 'ctv':       return dir * (a.ctv||'').localeCompare(b.ctv||'', 'vi');
         case 'status':    return dir * (a.status||'').localeCompare(b.status||'');
+        case 'code':      return dir * (a.code||'').localeCompare(b.code||'', 'vi');
         case 'payMethod': return dir * (a.payMethod||'zzz').localeCompare(b.payMethod||'zzz');
         case 'paidAt':    return dir * ((a.paidAt||0) - (b.paidAt||0));
         default: return 0;
@@ -1506,7 +1526,7 @@ function renderCustomerTable() {
     });
   }
 
-  ['name','amount','ctv','status','payMethod','paidAt'].forEach(col => {
+  ['name','amount','code','ctv','status','payMethod','paidAt'].forEach(col => {
     const el = document.getElementById('sort-' + col);
     if (!el) return;
     if (currentSort.col !== col) { el.textContent = ' ↕'; el.style.opacity = '0.3'; }

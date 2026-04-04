@@ -304,6 +304,8 @@
   .toast.show { opacity: 1; }
 
   /* SEARCH */
+  .sort-chip { padding:5px 12px;border:1px solid var(--border);border-radius:20px;background:#f8f9fa;color:var(--text);font-size:12px;cursor:pointer;white-space:nowrap;transition:all .15s; }
+  .sort-chip.active { background:var(--primary);color:#fff;border-color:var(--primary);font-weight:600; }
   .search-wrap { position: relative; margin-bottom: 14px; }
   .search-wrap input { padding-left: 38px; }
   .search-wrap::before {
@@ -812,14 +814,49 @@ function renderStats() {
 }
 
 // ==================== RENDER LISTS ====================
+let _sortPending = 'default';
+let _sortPaid = 'default';
+
+function setSortPending(s, el) {
+  _sortPending = s;
+  document.querySelectorAll('[id^="sp-"]').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderLists();
+}
+
+function setSortPaid(s, el) {
+  _sortPaid = s;
+  document.querySelectorAll('[id^="sd-"]').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderLists();
+}
+
+function applySort(list, sortKey) {
+  const arr = [...list];
+  switch (sortKey) {
+    case 'name':        return arr.sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+    case 'amount-asc':  return arr.sort((a, b) => a.amount - b.amount);
+    case 'amount-desc': return arr.sort((a, b) => b.amount - a.amount);
+    case 'cash':        return arr.sort((a, b) => (a.payMethod === 'cash' ? -1 : 1) - (b.payMethod === 'cash' ? -1 : 1));
+    case 'transfer':    return arr.sort((a, b) => (a.payMethod === 'transfer' ? -1 : 1) - (b.payMethod === 'transfer' ? -1 : 1));
+    default:            return arr.sort((a, b) => (b.paidAt || 0) - (a.paidAt || 0));
+  }
+}
+
 function renderLists() {
   const data = getData();
   const mine = data.customers.filter(c => c.ctv === ctvName);
   const searchP = (document.getElementById('searchPending')?.value || '').toLowerCase();
   const searchD = (document.getElementById('searchPaid')?.value || '').toLowerCase();
 
-  const pending = mine.filter(c => c.status === 'pending' && c.name.toLowerCase().includes(searchP));
-  const paid = mine.filter(c => c.status === 'paid' && c.name.toLowerCase().includes(searchD));
+  const pending = applySort(
+    mine.filter(c => c.status === 'pending' && c.name.toLowerCase().includes(searchP)),
+    _sortPending
+  );
+  const paid = applySort(
+    mine.filter(c => c.status === 'paid' && c.name.toLowerCase().includes(searchD)),
+    _sortPaid
+  );
 
   renderPending(pending, data.bank);
   renderPaid(paid);
