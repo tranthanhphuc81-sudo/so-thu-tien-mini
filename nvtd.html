@@ -819,9 +819,9 @@
     <div style="margin-top:14px">
       <label style="font-size:12px;color:var(--muted);font-weight:600;display:block;margin-bottom:4px">✏️ Số tiền (có thể chỉnh sửa)</label>
       <div style="display:flex;gap:8px;align-items:center">
-        <input type="number" id="qrAmountInput" min="0" step="1000"
+        <input type="text" inputmode="numeric" id="qrAmountInput"
           style="flex:1;padding:8px 12px;border:2px solid var(--primary);border-radius:8px;font-size:16px;font-weight:700;color:#e65100;text-align:right"
-          oninput="refreshQR()" />
+          oninput="fmtNumInput(this); refreshQR()" />
         <span style="font-size:14px;font-weight:600;color:#e65100">₫</span>
       </div>
     </div>
@@ -854,8 +854,9 @@
     </div>
     <div style="margin-bottom:16px">
       <label style="font-size:12px;font-weight:700;color:var(--muted);display:block;margin-bottom:6px">✏️ Số tiền thực thu <span style="color:var(--danger)">*</span></label>
-      <input type="number" id="payConfirmAmount" min="0" step="1000"
-        style="width:100%;padding:10px 14px;border:2px solid var(--primary);border-radius:8px;font-size:18px;font-weight:700;color:#1a73e8;box-sizing:border-box;text-align:right" />
+      <input type="text" inputmode="numeric" id="payConfirmAmount"
+        style="width:100%;padding:10px 14px;border:2px solid var(--primary);border-radius:8px;font-size:18px;font-weight:700;color:#1a73e8;box-sizing:border-box;text-align:right"
+        oninput="fmtNumInput(this); updatePayConfirmDiff()" />
       <div id="payConfirmDiff" style="margin-top:6px;font-size:13px;min-height:20px"></div>
     </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
@@ -1743,8 +1744,7 @@ function openPayConfirm(id, payMethod) {
   document.getElementById('payConfirmName').textContent = c.name;
   document.getElementById('payConfirmRequired').textContent = c.amount.toLocaleString('vi-VN') + ' ₫';
   const inp = document.getElementById('payConfirmAmount');
-  inp.value = c.amount;
-  inp.oninput = updatePayConfirmDiff;
+  setNumInput(inp, c.amount);
   updatePayConfirmDiff();
   openModal('payConfirmModal');
   setTimeout(() => { inp.focus(); inp.select(); }, 120);
@@ -1754,7 +1754,7 @@ function updatePayConfirmDiff() {
   const { customers } = getData();
   const c = customers.find(x => x.id === _payConfirmId);
   if (!c) return;
-  const entered = parseFloat(document.getElementById('payConfirmAmount').value) || 0;
+  const entered = readNumInput(document.getElementById('payConfirmAmount'));
   const diff = entered - c.amount;
   const el = document.getElementById('payConfirmDiff');
   if (entered === 0) { el.textContent = ''; return; }
@@ -1768,7 +1768,7 @@ function updatePayConfirmDiff() {
 }
 
 function confirmPayNVTD() {
-  const paidAmount = parseFloat(document.getElementById('payConfirmAmount').value);
+  const paidAmount = readNumInput(document.getElementById('payConfirmAmount'));
   if (!paidAmount || paidAmount < 0) { showToast('⚠️ Vui lòng nhập số tiền hợp lệ!'); return; }
   closeModal('payConfirmModal');
   markPaidNVTD(_payConfirmId, _payConfirmMethod, paidAmount);
@@ -1816,6 +1816,24 @@ function unmarkPaid(id) {
 }
 
 // ==================== QR ====================
+// ==================== NUMBER INPUT HELPERS ====================
+function fmtNumInput(el) {
+  const raw = (el.value || '').replace(/\D/g, '');
+  el.dataset.raw = raw;
+  el.value = raw ? parseInt(raw, 10).toLocaleString('vi-VN') : '';
+}
+function readNumInput(el) {
+  if (!el) return 0;
+  const raw = el.dataset.raw || (el.value || '').replace(/\D/g, '');
+  return parseInt(raw, 10) || 0;
+}
+function setNumInput(el, val) {
+  if (!el) return;
+  const n = parseInt(val, 10) || 0;
+  el.dataset.raw = String(n);
+  el.value = n ? n.toLocaleString('vi-VN') : '';
+}
+
 let currentQRCustomer = null;
 
 function showQR(id) {
@@ -1827,7 +1845,7 @@ function showQR(id) {
   currentQRCustomer = c;
   document.getElementById('qrModalName').textContent = c.name;
   document.getElementById('qrModalAcct').textContent = `${bank.displayName || bank.name} - ${bank.account} - ${bank.holder}`;
-  document.getElementById('qrAmountInput').value = c.amount;
+  setNumInput(document.getElementById('qrAmountInput'), c.amount);
 
   // Display VietQR image directly
   const qrContent = buildVietQR(bank, c);
@@ -1847,7 +1865,7 @@ function buildVietQR(bank, c) {
 function refreshQR() {
   if (!currentQRCustomer) return;
   const { bank } = getData();
-  const amt = parseInt(document.getElementById('qrAmountInput').value, 10) || 0;
+  const amt = readNumInput(document.getElementById('qrAmountInput')) || 0;
   const custom = Object.assign({}, currentQRCustomer, { amount: amt });
   document.getElementById('qrCanvas').src = buildVietQR(bank, custom);
 }
@@ -1855,7 +1873,7 @@ function refreshQR() {
 async function downloadQR() {
   if (!currentQRCustomer) return;
   const { bank } = getData();
-  const amt = parseInt(document.getElementById('qrAmountInput').value, 10) || currentQRCustomer.amount;
+  const amt = readNumInput(document.getElementById('qrAmountInput')) || currentQRCustomer.amount;
   const qrCustomer = Object.assign({}, currentQRCustomer, { amount: amt });
   const qrUrl = buildVietQR(bank, qrCustomer);
 

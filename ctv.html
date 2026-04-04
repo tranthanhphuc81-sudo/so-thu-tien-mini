@@ -485,9 +485,9 @@
 
     <div class="form-group">
       <label>✏️ Số tiền thực thu <span style="color:var(--danger)">*</span></label>
-      <input type="number" id="confirmAmount" min="0" step="1000"
+      <input type="text" inputmode="numeric" id="confirmAmount"
         style="width:100%;padding:10px 14px;border:2px solid var(--primary);border-radius:10px;font-size:20px;font-weight:800;color:#1a73e8;box-sizing:border-box;text-align:right"
-        oninput="updateConfirmDiff()" />
+        oninput="fmtNumInput(this); updateConfirmDiff()" />
       <div id="confirmAmountDiff" style="margin-top:6px;font-size:13px;min-height:18px"></div>
     </div>
 
@@ -749,6 +749,24 @@ function initFirebase(cfg, ctv) {
 // ==================== INIT ====================
 let ctvName = '';
 let billBase64 = null;
+// ==================== NUMBER INPUT HELPERS ====================
+function fmtNumInput(el) {
+  const raw = (el.value || '').replace(/\D/g, '');
+  el.dataset.raw = raw;
+  el.value = raw ? parseInt(raw, 10).toLocaleString('vi-VN') : '';
+}
+function readNumInput(el) {
+  if (!el) return 0;
+  const raw = el.dataset.raw || (el.value || '').replace(/\D/g, '');
+  return parseInt(raw, 10) || 0;
+}
+function setNumInput(el, val) {
+  if (!el) return;
+  const n = parseInt(val, 10) || 0;
+  el.dataset.raw = String(n);
+  el.value = n ? n.toLocaleString('vi-VN') : '';
+}
+
 let confirmingId = null;
 let selectedPayMethod = 'cash';
 
@@ -900,9 +918,9 @@ function renderPending(list, bank) {
         <img id="qrimg_${c.id}" class="qr-img" src="" alt="QR">
         <div class="qr-name">${escHtml(c.name)}</div>
         <div style="display:flex;align-items:center;gap:6px;margin:6px 0">
-          <input type="number" id="qramt_${c.id}" value="${c.amount}" min="0" step="1000"
+          <input type="text" inputmode="numeric" id="qramt_${c.id}" data-raw="${c.amount}" value="${c.amount.toLocaleString('vi-VN')}"
             style="width:130px;padding:5px 8px;border:2px solid #FFD700;border-radius:8px;font-size:14px;font-weight:800;color:#e65100;text-align:right;background:rgba(255,255,255,0.95)"
-            oninput="refreshCtvQR('${c.id}')" />
+            oninput="fmtNumInput(this); refreshCtvQR('${c.id}')" />
           <span style="color:#FFD700;font-weight:700;font-size:13px">₫</span>
         </div>
         <div class="qr-acct">${bank ? `${bank.displayName || bank.name} - ${bank.account} - ${bank.holder}` : ''}</div>
@@ -978,7 +996,7 @@ function toggleQR(id) {
   // Build VietQR image URL — display directly as <img>
   const BANK_CODE_MAP = { 'VTB': 'ICB', 'VIETINBANK': 'ICB', 'VIETCOMBANK': 'VCB' };
   const bankCode = BANK_CODE_MAP[(bank.name||'').toUpperCase()] || bank.name;
-  const amt = parseInt(document.getElementById('qramt_' + id)?.value, 10) || c.amount;
+  const amt = readNumInput(document.getElementById('qramt_' + id)) || c.amount;
   const qrData = `https://img.vietqr.io/image/${bankCode}-${bank.account}-compact2.png?amount=${amt}&addInfo=${encodeURIComponent(c.name + ' ' + c.code)}&accountName=${encodeURIComponent(bank.holder)}`;
   img.src = qrData;
 }
@@ -992,7 +1010,7 @@ function refreshCtvQR(id) {
   if (!img) return;
   const BANK_CODE_MAP = { 'VTB': 'ICB', 'VIETINBANK': 'ICB', 'VIETCOMBANK': 'VCB' };
   const bankCode = BANK_CODE_MAP[(bank.name||'').toUpperCase()] || bank.name;
-  const amt = parseInt(document.getElementById('qramt_' + id)?.value, 10) || c.amount;
+  const amt = readNumInput(document.getElementById('qramt_' + id)) || c.amount;
   img.src = `https://img.vietqr.io/image/${bankCode}-${bank.account}-compact2.png?amount=${amt}&addInfo=${encodeURIComponent(c.name + ' ' + c.code)}&accountName=${encodeURIComponent(bank.holder)}`;
 }
 
@@ -1004,7 +1022,7 @@ async function shareZalo(id) {
 
   const BANK_CODE_MAP_S = { 'VTB': 'ICB', 'VIETINBANK': 'ICB', 'VIETCOMBANK': 'VCB' };
   const bankCode = BANK_CODE_MAP_S[(bank.name||'').toUpperCase()] || bank.name;
-  const amt = parseInt(document.getElementById('qramt_' + id)?.value, 10) || c.amount;
+  const amt = readNumInput(document.getElementById('qramt_' + id)) || c.amount;
   const qrUrl = `https://img.vietqr.io/image/${bankCode}-${bank.account}-compact2.png?amount=${amt}&addInfo=${encodeURIComponent(c.name + ' ' + c.code)}&accountName=${encodeURIComponent(bank.holder)}`;
   const text = `💳 ${c.name} – Nộp ${amt.toLocaleString('vi-VN')} ₫\nQuét mã QR để thanh toán:\n${qrUrl}`;
 
@@ -1041,7 +1059,7 @@ async function downloadQRCard(id) {
 
   const BANK_CODE_MAP2 = { 'VTB': 'ICB', 'VIETINBANK': 'ICB', 'VIETCOMBANK': 'VCB' };
   const bankCode2 = BANK_CODE_MAP2[(bank.name||'').toUpperCase()] || bank.name;
-  const amt = parseInt(document.getElementById('qramt_' + id)?.value, 10) || c.amount;
+  const amt = readNumInput(document.getElementById('qramt_' + id)) || c.amount;
   const qrUrl = `https://img.vietqr.io/image/${bankCode2}-${bank.account}-compact2.png?amount=${amt}&addInfo=${encodeURIComponent(c.name + ' ' + c.code)}&accountName=${encodeURIComponent(bank.holder)}`;
 
   showToast('⏳ Đang tải ảnh QR...');
@@ -1133,7 +1151,7 @@ function openConfirm(id) {
   `;
 
   const amtInp = document.getElementById('confirmAmount');
-  amtInp.value = c.amount;
+  setNumInput(amtInp, c.amount);
   document.getElementById('confirmAmountDiff').textContent = '';
 
   document.getElementById('confirmModal').classList.add('open');
@@ -1153,7 +1171,7 @@ function updateConfirmDiff() {
   const data = getData();
   const c = data.customers.find(x => x.id === confirmingId);
   if (!c) return;
-  const entered = parseFloat(document.getElementById('confirmAmount').value) || 0;
+  const entered = readNumInput(document.getElementById('confirmAmount'));
   const diff = entered - c.amount;
   const el = document.getElementById('confirmAmountDiff');
   if (entered === 0) { el.textContent = ''; return; }
@@ -1216,7 +1234,7 @@ function submitConfirm() {
   const paidAt = Date.now();
   const note = document.getElementById('confirmNote').value.trim();
   const payMethod = selectedPayMethod;
-  const paidAmount = parseFloat(document.getElementById('confirmAmount').value) || c.amount;
+  const paidAmount = readNumInput(document.getElementById('confirmAmount')) || c.amount;
   const updates = { status: 'paid', paidAt, note, payMethod, paidAmount };
   if (billBase64) updates.billImg = billBase64;
 
