@@ -1124,10 +1124,10 @@ function getData() { return _cache; }
 
 function saveData(data) {
   _cache = data;
-  if (!_db) {
-    localStorage.setItem('sothu_local', JSON.stringify(data));
-    return;
-  }
+  // Luôn lưu vào localStorage làm buffer an toàn (kể cả khi dùng Firebase)
+  // → tránh mất dữ liệu nếu Firebase write chưa hoàn tất mà user đã refresh
+  try { localStorage.setItem('sothu_local', JSON.stringify(data)); } catch {}
+  if (!_db) return;
   const customersObj = {};
   data.customers.forEach(c => { customersObj[c.id] = c; });
   const activitiesObj = {};
@@ -1187,6 +1187,8 @@ function initFirebase(cfg, showSuccessToast = false) {
           _dataListenerOn = true;
           _db.ref('/data').on('value', snapshot => {
             _cache = cacheFromVal(snapshot.val() || {});
+            // Đồng bộ localStorage với dữ liệu Firebase mới nhất
+            try { localStorage.setItem('sothu_local', JSON.stringify(_cache)); } catch {}
             renderAll(); loadBankInfo(); renderCtvLinks(); populateCtvPwSelect();
           }, err => {
             _dataListenerOn = false;
@@ -1395,6 +1397,12 @@ window.addEventListener('load', () => {
     }
     document.getElementById('fbApiKey').value = cfg.apiKey;
     document.getElementById('fbDbUrl').value = cfg.databaseURL;
+    // Nạp dữ liệu từ localStorage ngay lập tức (trước khi Firebase connect xong)
+    // → người dùng thấy dữ liệu liền, không bị trắng khi đang chờ Firebase
+    try {
+      const localSnapshot = localStorage.getItem('sothu_local');
+      if (localSnapshot) _cache = JSON.parse(localSnapshot);
+    } catch {}
     initFirebase(cfg);
   } else {
     // No Firebase: local-only mode, no authentication
