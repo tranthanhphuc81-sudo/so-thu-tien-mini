@@ -2331,8 +2331,9 @@ function updateExcelPreview() {
 
   const validRows = dataRows.filter(row => {
     const name = colName >= 0 ? String(row[colName] || '').trim() : '';
-    const amt  = colAmount >= 0 ? parseFloat(String(row[colAmount]).replace(/[^0-9.]/g, '')) : 0;
-    return name && amt > 0;
+    const raw  = colAmount >= 0 ? String(row[colAmount]).replace(/[^0-9.\-]/g, '') : '0';
+    const amt  = parseFloat(raw) || 0;
+    return name && amt !== 0;
   });
 
   document.getElementById('excelImportCount').textContent = validRows.length;
@@ -2346,6 +2347,10 @@ function updateExcelPreview() {
   }
 
   const skipped = dataRows.length - validRows.length;
+  const prepaidCount = validRows.filter(row => {
+    const raw = String(row[colAmount] || '').replace(/[^0-9.\-]/g, '');
+    return parseFloat(raw) < 0;
+  }).length;
   let warnCount = 0;
   if (hasPayCols) {
     validRows.forEach(row => {
@@ -2358,6 +2363,7 @@ function updateExcelPreview() {
   noteEl.style.background = '#e8f5e9'; noteEl.style.color = '#2e7d32';
   noteEl.innerHTML = `✅ ${validRows.length} dòng hợp lệ sẽ được nhập` +
     (skipped > 0 ? ` · ⚠️ Bỏ qua ${skipped} dòng thiếu tên hoặc số tiền = 0` : '') +
+    (prepaidCount > 0 ? `<br><span style="color:#2e7d32;font-weight:700">💰 ${prepaidCount} khách hàng có số tiền âm = đã trả trước, sẽ được đánh dấu “Đã thu”</span>` : '') +
     (warnCount > 0 ? `<br><span style="color:#e65100;font-weight:700">⚠️ ${warnCount} khách hàng có số tiền đã thu THẤP HƠN số tiền cần thu (xem hàng màu cam bên dưới)</span>` : '');
 
   const preview = validRows.slice(0, 12);
@@ -2375,23 +2381,32 @@ function updateExcelPreview() {
       <tbody>
         ${preview.map((row, i) => {
           const name     = String(row[colName] || '').trim();
-          const amt      = parseFloat(String(row[colAmount] || '').replace(/[^0-9.]/g, '')) || 0;
+          const raw      = String(row[colAmount] || '').replace(/[^0-9.\-]/g, '');
+          const rawAmt   = parseFloat(raw) || 0;
+          const isPrepaid = rawAmt < 0;
+          const amt      = isPrepaid ? 0 : rawAmt;
+          const prepaidAmt = isPrepaid ? Math.abs(rawAmt) : 0;
           const code     = colCode >= 0 ? String(row[colCode] || '').trim() : '';
           const cash     = (hasPayCols && colCash     >= 0) ? (parseFloat(String(row[colCash]     || '').replace(/[^0-9.]/g, '')) || 0) : 0;
           const transfer = (hasPayCols && colTransfer >= 0) ? (parseFloat(String(row[colTransfer] || '').replace(/[^0-9.]/g, '')) || 0) : 0;
           const paid     = cash + transfer;
-          const isWarn   = hasPayCols && paid < amt;
+          const isWarn   = hasPayCols && !isPrepaid && paid < amt;
           const shortfall = amt - paid;
-          const rowBg    = isWarn ? 'background:#fff3e0' : '';
+          const rowBg    = isPrepaid ? 'background:#e8f5e9' : (isWarn ? 'background:#fff3e0' : '');
           const paidLabel = hasPayCols
             ? `${paid.toLocaleString('vi-VN')} ₫${colCash >= 0 && colTransfer >= 0 ? '<br><span style="font-size:10px;color:var(--muted)">TM: ' + cash.toLocaleString('vi-VN') + ' · CK: ' + transfer.toLocaleString('vi-VN') + '</span>' : ''}` : '';
-          const warnCell = isWarn
-            ? `<td style="padding:8px 6px;color:#e65100;font-weight:700;white-space:nowrap" title="Còn thiếu ${shortfall.toLocaleString('vi-VN')} ₫">⚠️ Còn thiếu<br><span style="font-size:11px">${shortfall.toLocaleString('vi-VN')} ₫</span></td>`
-            : (hasPayCols ? `<td style="padding:8px 6px;color:#2e7d32">✅</td>` : '');
+          const warnCell = isPrepaid
+            ? `<td style="padding:8px 6px;color:#2e7d32;font-weight:700">💰 Trả trước<br><span style="font-size:11px">${prepaidAmt.toLocaleString('vi-VN')} ₫</span></td>`
+            : isWarn
+              ? `<td style="padding:8px 6px;color:#e65100;font-weight:700;white-space:nowrap" title="Còn thiếu ${shortfall.toLocaleString('vi-VN')} ₫">⚠️ Còn thiếu<br><span style="font-size:11px">${shortfall.toLocaleString('vi-VN')} ₫</span></td>`
+              : (hasPayCols ? `<td style="padding:8px 6px;color:#2e7d32">✅</td>` : '');
+          const amtDisplay = isPrepaid
+            ? `<span style="color:#2e7d32;font-weight:700">💰 Trả trước ${prepaidAmt.toLocaleString('vi-VN')} ₫</span>`
+            : `${amt.toLocaleString('vi-VN')} ₫`;
           return `<tr style="border-bottom:1px solid #f0f0f0;${rowBg}">
             <td style="padding:8px 12px;color:var(--muted)">${i + 1}</td>
             <td style="padding:8px 12px;font-weight:600">${escHtml(name)}</td>
-            <td style="padding:8px 12px;color:#e65100;font-weight:700">${amt.toLocaleString('vi-VN')} ₫</td>
+            <td style="padding:8px 12px;color:#e65100;font-weight:700">${amtDisplay}</td>
             <td style="padding:8px 12px;font-size:12px;color:var(--muted)">${escHtml(code) || '—'}</td>
             ${hasPayCols ? `<td style="padding:8px 12px;font-size:12px">${paidLabel}</td>${warnCell}` : ''}
           </tr>`;
@@ -2445,9 +2460,14 @@ function confirmExcelImport() {
 
   _excelParsed.dataRows.forEach(row => {
     const name   = String(row[colName] || '').trim();
-    const amt    = parseFloat(String(row[colAmount] || '').replace(/[^0-9.]/g, '')) || 0;
+    const raw    = String(row[colAmount] || '').replace(/[^0-9.\-]/g, '');
+    const rawAmt = parseFloat(raw) || 0;
+    if (!name || rawAmt === 0) return;
+    const isPrepaid  = rawAmt < 0;
+    const amt        = isPrepaid ? 0 : rawAmt;
+    const prepaidAmt = isPrepaid ? Math.abs(rawAmt) : 0;
     const code   = colCode >= 0 ? String(row[colCode] || '').trim() : '';
-    if (!name || amt <= 0) return;
+    if (!name || (!isPrepaid && amt <= 0)) return;
 
     const rowCtv = perRowCtv
       ? (String(row[_excelParsed.colCtvName] || '').trim() || 'Chưa phân công')
@@ -2458,7 +2478,10 @@ function confirmExcelImport() {
       data.customers.push({
         id: 'kh_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
         name, amount: amt, code: finalCode, ctv: rowCtv,
-        status: 'pending', paidAt: null, billImg: null, note: '',
+        status: isPrepaid ? 'paid' : 'pending',
+        paidAt: isPrepaid ? Date.now() : null,
+        paidAmount: isPrepaid ? prepaidAmt : undefined,
+        billImg: null, note: isPrepaid ? '💰 Trả trước kỳ này' : '',
       });
       count++;
     }
