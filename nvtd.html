@@ -697,20 +697,15 @@
   <div class="card">
     <div class="card-title">🔑 Cấp quyền đăng nhập CTV</div>
     <div class="section-note">Cấp quyền để CTV tự tạo mật khẩu và đăng nhập. Firebase xác thực phía server — mật khẩu không lưu trong database.</div>
-    <div class="form-row" style="margin-top:12px">
-      <div class="form-group" style="flex:1">
-        <label>Chọn CTV</label>
-        <select id="ctvPwSelect" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px">
-          <option value="">-- Chọn CTV --</option>
-        </select>
-      </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;margin-bottom:4px">
+      <button class="btn btn-primary" onclick="approveAllCTV()">✅ Cấp tất cả</button>
+      <button class="btn btn-primary" onclick="approveSelectedCTV()">✅ Cấp đã chọn</button>
+      <button class="btn btn-outline" onclick="revokeSelectedCTV()" style="color:var(--danger)">🚫 Thu hồi đã chọn</button>
+      <button class="btn btn-outline" onclick="selectAllCTV(true)" style="margin-left:auto">☑️ Chọn tất cả</button>
+      <button class="btn btn-outline" onclick="selectAllCTV(false)">⬜ Bỏ chọn</button>
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn btn-primary" onclick="approveCTV()">✅ Cấp quyền đăng nhập</button>
-      <button class="btn btn-outline" onclick="revokeCtv()" style="color:var(--danger)">🚫 Thu hồi quyền</button>
-    </div>
-    <div style="color:var(--danger);font-size:13px;margin-top:8px" id="ctvPwErr"></div>
-    <div id="ctvAllowedList" style="margin-top:14px"></div>
+    <div style="color:var(--danger);font-size:13px;margin-top:6px" id="ctvPwErr"></div>
+    <div id="ctvAllowedList" style="margin-top:10px"></div>
   </div>
 
   <div class="card">
@@ -897,24 +892,47 @@ async function nvtdChangePassword() {
   }
 }
 
-async function approveCTV() {
-  const ctv = document.getElementById('ctvPwSelect').value.trim();
+async function approveSelectedCTV() {
+  const checked = [...document.querySelectorAll('#ctvAllowedList input[type=checkbox]:checked')].map(el => el.value);
   document.getElementById('ctvPwErr').textContent = '';
-  if (!ctv) { document.getElementById('ctvPwErr').textContent = 'Chọn CTV trước'; return; }
+  if (!checked.length) { document.getElementById('ctvPwErr').textContent = 'Chọn ít nhất một CTV'; return; }
   if (!_db) return;
-  await _db.ref('/ctvAllowed/' + safeKey(ctv)).set(true);
-  showToast('✅ Đã cấp quyền đăng nhập cho CTV: ' + ctv);
+  const updates = {};
+  checked.forEach(ctv => { updates['/ctvAllowed/' + safeKey(ctv)] = true; });
+  await _db.ref().update(updates);
+  showToast('✅ Đã cấp quyền cho ' + checked.length + ' CTV');
   renderCtvAllowedList();
 }
 
-async function revokeCtv() {
-  const ctv = document.getElementById('ctvPwSelect').value.trim();
-  if (!ctv || !_db) return;
-  if (!confirm('Thu hồi quyền truy cập của CTV "' + ctv + '"?\nCTV sẽ không đăng nhập được cho đến khi được cấp lại.')) return;
-  await _db.ref('/ctvAllowed/' + safeKey(ctv)).remove();
-  showToast('🗑️ Đã thu hồi quyền của: ' + ctv);
+async function revokeSelectedCTV() {
+  const checked = [...document.querySelectorAll('#ctvAllowedList input[type=checkbox]:checked')].map(el => el.value);
+  if (!checked.length || !_db) return;
+  if (!confirm('Thu hồi quyền của ' + checked.length + ' CTV đã chọn?')) return;
+  for (const ctv of checked) {
+    await _db.ref('/ctvAllowed/' + safeKey(ctv)).remove();
+  }
+  showToast('🗑️ Đã thu hồi quyền của ' + checked.length + ' CTV');
   renderCtvAllowedList();
 }
+
+async function approveAllCTV() {
+  const ctvSet = [...new Set(_cache.customers.map(c => c.ctv).filter(Boolean))];
+  if (!ctvSet.length || !_db) return;
+  if (!confirm('Cấp quyền đăng nhập cho tất cả ' + ctvSet.length + ' CTV?')) return;
+  const updates = {};
+  ctvSet.forEach(ctv => { updates['/ctvAllowed/' + safeKey(ctv)] = true; });
+  await _db.ref().update(updates);
+  showToast('✅ Đã cấp quyền cho tất cả ' + ctvSet.length + ' CTV');
+  renderCtvAllowedList();
+}
+
+function selectAllCTV(checked) {
+  document.querySelectorAll('#ctvAllowedList input[type=checkbox]').forEach(el => { el.checked = checked; });
+}
+
+// kept for backward compatibility (called in places that just need a refresh)
+function approveCTV() { approveSelectedCTV(); }
+function revokeCtv() { revokeSelectedCTV(); }
 
 async function renderCtvAllowedList() {
   const el = document.getElementById('ctvAllowedList');
@@ -924,24 +942,22 @@ async function renderCtvAllowedList() {
   const ctvSet = [...new Set(_cache.customers.map(c => c.ctv).filter(Boolean))];
   if (!ctvSet.length) { el.innerHTML = ''; return; }
   el.innerHTML = '<div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:8px">Trạng thái quyền truy cập:</div>'
-    + '<div style="display:flex;flex-wrap:wrap;gap:8px">'
     + ctvSet.map(c => {
-        const ok = allowed[safeKey(c)];
-        return `<span style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:20px;font-size:13px;font-weight:600;
-          background:${ok ? '#e6f9ed' : '#fff3f3'};color:${ok ? '#1a7f37' : '#b91c1c'};
-          border:1px solid ${ok ? '#86efac' : '#fca5a5'}">
-          ${ok ? '✅' : '⛔'} ${escHtml(c)}
-        </span>`;
-      }).join('')
-    + '</div>';
+        const ok = !!allowed[safeKey(c)];
+        const key = 'ctv_chk_' + safeKey(c);
+        return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;margin-bottom:6px;
+                  background:${ok ? '#f0fdf4' : '#fff8f8'};border:1px solid ${ok ? '#86efac' : '#fca5a5'}">
+          <input type="checkbox" id="${key}" value="${escHtml(c)}" style="width:16px;height:16px;cursor:pointer;flex-shrink:0">
+          <label for="${key}" style="flex:1;font-size:14px;font-weight:600;cursor:pointer;color:var(--text)">${escHtml(c)}</label>
+          <span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:12px;
+            background:${ok ? '#dcfce7' : '#fee2e2'};color:${ok ? '#166534' : '#991b1b'}">
+            ${ok ? '✅ Đã cấp quyền' : '⛔ Chưa cấp'}
+          </span>
+        </div>`;
+      }).join('');
 }
 
 function populateCtvPwSelect() {
-  const sel = document.getElementById('ctvPwSelect');
-  if (!sel) return;
-  const ctvSet = new Set(_cache.customers.map(c => c.ctv).filter(Boolean));
-  sel.innerHTML = '<option value="">-- Chọn CTV --</option>' +
-    [...ctvSet].map(c => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('');
   renderCtvAllowedList();
 }
 
