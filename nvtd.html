@@ -1699,7 +1699,7 @@ function renderCustomerTable() {
     <tr class="${c.status === 'paid' ? 'paid' : ''}">
       <td>${i + 1}</td>
       <td><strong>${escHtml(c.name)}</strong></td>
-      <td><strong style="color:#e65100">${c.amount.toLocaleString('vi-VN')} ₫</strong>${c.paidAmount != null && c.paidAmount !== c.amount ? `<br><span style="font-size:11px;color:#2e7d32;font-weight:600">✔ Đã thu: ${c.paidAmount.toLocaleString('vi-VN')} ₫</span><br><span style="font-size:11px;font-weight:700;color:#e65100">⚠️ ${c.paidAmount < c.amount ? 'Còn thiếu' : 'Thu dư'}: ${Math.abs(c.paidAmount - c.amount).toLocaleString('vi-VN')} ₫</span>` : ''}</td>
+      <td><strong style="color:#e65100">${c.amount.toLocaleString('vi-VN')} ₫</strong>${c.paidAmount != null && c.paidAmount !== c.amount ? `<br><span style="font-size:11px;color:#2e7d32;font-weight:600">✔ Đã thu: ${c.paidAmount.toLocaleString('vi-VN')} ₫</span><br><span style="font-size:11px;font-weight:700;color:${c.paidAmount < c.amount ? '#e65100' : '#2e7d32'}">${c.paidAmount < c.amount ? '⚠️ Còn thiếu' : '💰 Trả trước'}: ${Math.abs(c.paidAmount - c.amount).toLocaleString('vi-VN')} ₫</span>` : ''}</td>
       <td><code style="font-size:12px">${escHtml(c.code)}</code></td>
       <td>${escHtml(c.ctv)}</td>
       <td><span class="badge ${c.status === 'paid' ? 'badge-paid' : 'badge-pending'}">${c.status === 'paid' ? '✅ Đã thu' : '⏳ Chưa thu'}</span></td>
@@ -1775,7 +1775,7 @@ function updatePayConfirmDiff() {
   if (diff < 0) {
     el.innerHTML = `<span style="color:#e65100;font-weight:600">⚠️ Còn thiếu ${Math.abs(diff).toLocaleString('vi-VN')} ₫</span>`;
   } else if (diff > 0) {
-    el.innerHTML = `<span style="color:#e65100;font-weight:600">⚠️ Thu dư ${diff.toLocaleString('vi-VN')} ₫ (lớn hơn cần thu)</span>`;
+    el.innerHTML = `<span style="color:#2e7d32;font-weight:600">💰 Trả trước ${diff.toLocaleString('vi-VN')} ₫ cho kỳ sau</span>`;
   } else {
     el.innerHTML = `<span style="color:#2e7d32;font-weight:600">✅ Đúng số tiền cần thu</span>`;
   }
@@ -1887,7 +1887,7 @@ function refreshQR() {
   const warnEl = document.getElementById('qrAmountWarn');
   if (warnEl) {
     if (amt > currentQRCustomer.amount) {
-      warnEl.innerHTML = `<span style="color:#e65100;font-weight:600">⚠️ Lớn hơn số cần thu (${currentQRCustomer.amount.toLocaleString('vi-VN')} ₫)</span>`;
+      warnEl.innerHTML = `<span style="color:#2e7d32;font-weight:600">💰 Trả trước ${(amt - currentQRCustomer.amount).toLocaleString('vi-VN')} ₫ so với kỳ này</span>`;
     } else {
       warnEl.textContent = '';
     }
