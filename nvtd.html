@@ -441,7 +441,20 @@
         </div>
       </div>
       <button id="btnNvtdLogin" class="btn btn-primary" style="width:100%;margin-top:8px" onclick="nvtdLogin()">🔓 Đăng nhập</button>
-      <p style="text-align:center;margin-top:12px;font-size:13px;color:var(--muted)">Lần đầu sử dụng? <a href="#" style="color:var(--primary);text-decoration:none" onclick="event.preventDefault();showNvtdSetupForm()">Tạo tài khoản</a></p>
+      <p style="text-align:center;margin-top:10px;font-size:13px;color:var(--muted)">Lần đầu sử dụng? <a href="#" style="color:var(--primary);text-decoration:none" onclick="event.preventDefault();showNvtdSetupForm()">Tạo tài khoản</a></p>
+      <p style="text-align:center;margin-top:4px;font-size:13px">
+        <a href="#" style="color:#e53935;text-decoration:none;font-weight:600" onclick="event.preventDefault();toggleForgotPw()">🔑 Quên mật khẩu?</a>
+      </p>
+      <div id="forgotPwPanel" style="display:none;margin-top:14px;background:#fff8e1;border:1.5px solid #fbbc04;border-radius:10px;padding:14px;font-size:13px;line-height:1.8">
+        <div style="font-weight:700;margin-bottom:8px;color:#b45309">📋 Cách đặt lại mật khẩu NVTD</div>
+        <ol style="padding-left:18px;color:#555;margin-bottom:10px">
+          <li>Vào <strong>Firebase Console</strong> → mục <strong>Authentication → Users</strong></li>
+          <li>Tìm tài khoản <code style="background:#f1f3f4;padding:1px 5px;border-radius:4px;color:#c0392b">nvtd@sothu.app</code> → Bấm <strong>⋮ → Delete account</strong></li>
+          <li>Quay lại đây → Bấm <strong>"Tạo mật khẩu mới"</strong> bên dưới</li>
+        </ol>
+        <button class="btn btn-outline btn-sm" id="btnOpenFbAuth" onclick="openFbAuthConsole()" style="margin-bottom:8px;width:100%">🌐 Mở Firebase Console → Authentication</button>
+        <button class="btn btn-primary btn-sm" onclick="showNvtdSetupForm()" style="width:100%">📝 Tạo mật khẩu mới</button>
+      </div>
     </div>
 
     <!-- Form tạo mật khẩu lần đầu -->
@@ -1007,9 +1020,25 @@ function _showApp() {
   renderAll(); loadBankInfo(); renderCtvLinks(); populateCtvPwSelect();
 }
 
+function toggleForgotPw() {
+  const p = document.getElementById('forgotPwPanel');
+  p.style.display = p.style.display === 'none' ? '' : 'none';
+}
+
+function openFbAuthConsole() {
+  const cfg = getFbCfg();
+  const pid = cfg ? deriveProjectId(cfg.databaseURL) : '';
+  const url = pid
+    ? `https://console.firebase.google.com/project/${pid}/authentication/users`
+    : 'https://console.firebase.google.com';
+  window.open(url, '_blank');
+}
+
 function showNvtdLoginForm() {
   document.getElementById('loginFormLogin').style.display = '';
   document.getElementById('loginFormSetup').style.display = 'none';
+  const fp = document.getElementById('forgotPwPanel');
+  if (fp) fp.style.display = 'none';
   document.getElementById('loginTitle').textContent = 'Đăng nhập NVTD';
   document.getElementById('loginSub').textContent = 'Nhập mật khẩu để quản lý sổ thu tiền';
   document.getElementById('loginErr').textContent = '';

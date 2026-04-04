@@ -263,6 +263,7 @@
       <a href="#excel">📊 Nhập từ file Excel</a>
       <a href="#deploy">🌐 Bước 6: Đưa lên web</a>
       <a href="#password">🔐 Tạo mật khẩu NVTD</a>
+      <a href="#nvtd-forgot">🔑 Quên mật khẩu NVTD</a>
       <a href="#ctv-manage">👥 Quản lý CTV</a>
       <a href="#ctv-access">🚦 Cấp quyền CTV</a>
       <a href="#ctv-guide">💳 Hướng dẫn dành cho CTV</a>
@@ -672,7 +673,78 @@ Lê Văn Cường | 1200000</pre>
         <p style="font-size:13px;color:var(--muted)">Tab <strong>⚙️ Thiết lập</strong> → Thẻ <strong>🔐 Đổi mật khẩu NVTD</strong> → Nhập mật khẩu cũ → Nhập mật khẩu mới → Bấm <span class="ui-btn primary">💾 Đổi mật khẩu</span>.</p>
 
         <div class="note danger" style="margin-top:12px">
-          Nếu quên mật khẩu, vào <strong>Firebase Console → Authentication → Users</strong> → Xóa tài khoản <code>nvtd@sothu.app</code> → Quay lại app và tạo mật khẩu mới.
+          <strong>⚠️ Nếu quên mật khẩu và không vào được app</strong> — bấm nút <strong>🔑 Quên mật khẩu?</strong> ngay dưới ô đăng nhập; hoặc xem hướng dẫn chi tiết ở mục <a href="#nvtd-forgot" style="color:#b71c1c;text-decoration:underline">➡ Quên mật khẩu NVTD</a> bên dưới.
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================= -->
+    <section id="nvtd-forgot">
+      <div class="card">
+        <div class="card-title">🔑 Quên mật khẩu NVTD</div>
+
+        <p style="font-size:14px;margin-bottom:14px">
+          Vì email <code>nvtd@sothu.app</code> là email nội bộ (không nhận được thư), Firebase không thể gửi email khôi phục thông thường. Thay vào đó, bạn xóa tài khoản cũ và tạo lại — <strong>dữ liệu không bị mất</strong>.
+        </p>
+
+        <h4 style="font-size:15px;margin-bottom:10px">Cách 1: Dùng nút trong app (nhanh nhất)</h4>
+        <ol class="steps">
+          <li>
+            <div class="step-body">
+              <div class="step-title">Mở trang đăng nhập NVTD</div>
+              <div class="step-desc">Từ trình duyệt, mở lại <code>nvtd.html</code>. Khi màn hình đăng nhập hiện ra, bấm nút <strong>🔑 Quên mật khẩu?</strong> (ngay dưới ô mật khẩu).</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Mở Firebase Console</div>
+              <div class="step-desc">Bấm <span class="ui-btn outline" style="font-size:11px">🌐 Mở Firebase Console → Authentication</span> — nút sẽ mở thẳng trang danh sách user của dự án của bạn.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Xóa tài khoản cũ</div>
+              <div class="step-desc">Tìm dòng <code>nvtd@sothu.app</code> → bấm dấu <strong>⋮ → Delete account</strong> → Xác nhận.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Tạo lại mật khẩu</div>
+              <div class="step-desc">Quay lại app → bấm <span class="ui-btn primary" style="font-size:11px">📝 Tạo mật khẩu mới</span> ngay trong panel đó → Nhập mật khẩu mới → Xong!</div>
+            </div>
+          </li>
+        </ol>
+
+        <h4 style="font-size:15px;margin:20px 0 10px">Cách 2: Thủ công qua Firebase Console</h4>
+        <ol class="steps">
+          <li>
+            <div class="step-body">
+              <div class="step-title">Vào Firebase Console</div>
+              <div class="step-desc">Trị yếu: <code>console.firebase.google.com</code> → Chọn dự án của bạn.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Authentication → Users</div>
+              <div class="step-desc">Menu trái → <strong>Build</strong> → <strong>Authentication</strong> → Tab <strong>Users</strong>.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Xóa tài khoản</div>
+              <div class="step-desc">Tìm <code>nvtd@sothu.app</code> → bấm <strong>⋮ → Delete account</strong>. <em>Dữ liệu khách hàng trong Realtime Database không bị ảnh hưởng.</em></div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Tạo mật khẩu mới</div>
+              <div class="step-desc">Mở lại <code>nvtd.html</code> → <strong>Tạo tài khoản</strong> → Đặt mật khẩu mới → Vào app bình thường.</div>
+            </div>
+          </li>
+        </ol>
+
+        <div class="note ok">
+          Dữ liệu khách hàng, lịch sử thu tiền, thông tin ngân hàng văn đờu ở Firebase Realtime Database và <strong>không liên quan đến tài khoản Authentication</strong>. Xóa account chỉ xóa quyền đăng nhập, không xóa dữ liệu.
         </div>
       </div>
     </section>
@@ -898,6 +970,13 @@ Lê Văn Cường | 1200000</pre>
           <summary>CTV có thể đăng nhập trên nhiều thiết bị không?</summary>
           <div class="detail-body">
             Được. CTV chỉ cần bấm link từ bất kỳ thiết bị nào → Nhập mật khẩu đã tạo → Vào app. Dữ liệu đồng bộ real-time trên mọi thiết bị.
+          </div>
+        </details>
+
+        <details>
+          <summary>NVTD quên mật khẩu và không vào được app</summary>
+          <div class="detail-body">
+            Trên màn hình đăng nhập, bấm <strong>🔑 Quên mật khẩu?</strong> → bấm <strong>🌐 Mở Firebase Console → Authentication</strong> → tìm <code>nvtd@sothu.app</code> → xóa account → quay lại app → tạo mật khẩu mới. Dữ liệu khách hàng không bị mất. Xem hướng dẫn chi tiết tại <a href="#nvtd-forgot" style="color:var(--primary)">mục Quên mật khẩu NVTD</a>.
           </div>
         </details>
 
