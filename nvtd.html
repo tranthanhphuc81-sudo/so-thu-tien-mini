@@ -674,10 +674,18 @@
     <button class="btn btn-primary btn-sm" onclick="generateAllQR()">🖨️ Tạo tất cả QR</button>
   </div>
 
-  <div class="filter-chips">
-    <div class="chip active" onclick="setFilter('all', this)">Tất cả</div>
-    <div class="chip" onclick="setFilter('pending', this)">⏳ Chưa thu</div>
-    <div class="chip" onclick="setFilter('paid', this)">✅ Đã thu</div>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:4px">
+    <div class="filter-chips" style="margin-bottom:0;flex:1">
+      <div class="chip active" onclick="setFilter('all', this)">Tất cả</div>
+      <div class="chip" onclick="setFilter('pending', this)">⏳ Chưa thu</div>
+      <div class="chip" onclick="setFilter('paid', this)">✅ Đã thu</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <span style="font-size:13px;color:var(--muted);white-space:nowrap">👤 CTV:</span>
+      <select id="ctvFilterSelect" onchange="setCtvFilter()" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff;color:var(--text);cursor:pointer">
+        <option value="all">Tất cả</option>
+      </select>
+    </div>
   </div>
 
   <div class="card" style="padding:0">
@@ -686,13 +694,13 @@
         <thead>
           <tr>
             <th>#</th>
-            <th>Tên khách hàng</th>
-            <th>Số tiền</th>
+            <th onclick="setSort('name')" style="cursor:pointer;user-select:none;white-space:nowrap">Tên khách hàng<span id="sort-name" style="opacity:0.3"> ↕</span></th>
+            <th onclick="setSort('amount')" style="cursor:pointer;user-select:none;white-space:nowrap">Số tiền<span id="sort-amount" style="opacity:0.3"> ↕</span></th>
             <th>Mã đối soát</th>
-            <th>CTV phụ trách</th>
-            <th>Trạng thái</th>
-            <th>Hình thức</th>
-            <th>Thời gian thu</th>
+            <th onclick="setSort('ctv')" style="cursor:pointer;user-select:none;white-space:nowrap">CTV phụ trách<span id="sort-ctv" style="opacity:0.3"> ↕</span></th>
+            <th onclick="setSort('status')" style="cursor:pointer;user-select:none;white-space:nowrap">Trạng thái<span id="sort-status" style="opacity:0.3"> ↕</span></th>
+            <th onclick="setSort('payMethod')" style="cursor:pointer;user-select:none;white-space:nowrap">Hình thức<span id="sort-payMethod" style="opacity:0.3"> ↕</span></th>
+            <th onclick="setSort('paidAt')" style="cursor:pointer;user-select:none;white-space:nowrap">Thời gian thu<span id="sort-paidAt" style="opacity:0.3"> ↕</span></th>
             <th>Thao tác</th>
           </tr>
         </thead>
@@ -1275,6 +1283,7 @@ window.addEventListener('load', () => {
 
 function renderAll() {
   renderStats();
+  populateCtvFilter();
   renderCustomerTable();
   renderRecentActivity();
   renderCtvProgress();
@@ -1430,6 +1439,8 @@ function renderStats() {
 
 // ==================== TABLE ====================
 let currentFilter = 'all';
+let currentSort = { col: null, dir: 'asc' };
+let currentCtvFilter = 'all';
 
 function setFilter(f, el) {
   currentFilter = f;
@@ -1443,6 +1454,31 @@ function refreshPage() {
   showToast('🔄 Đã làm mới dữ liệu');
 }
 
+function setSort(col) {
+  if (currentSort.col === col) {
+    currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
+  } else {
+    currentSort.col = col;
+    currentSort.dir = 'asc';
+  }
+  renderCustomerTable();
+}
+
+function setCtvFilter() {
+  currentCtvFilter = document.getElementById('ctvFilterSelect')?.value || 'all';
+  renderCustomerTable();
+}
+
+function populateCtvFilter() {
+  const sel = document.getElementById('ctvFilterSelect');
+  if (!sel) return;
+  const { customers } = getData();
+  const ctvs = [...new Set(customers.map(c => c.ctv || '').filter(Boolean))].sort((a, b) => a.localeCompare(b, 'vi'));
+  const prev = sel.value;
+  sel.innerHTML = '<option value="all">Tất cả</option>' + ctvs.map(n => `<option value="${escHtml(n)}"${n === prev ? ' selected' : ''}>${escHtml(n)}</option>`).join('');
+  if (!ctvs.includes(prev) && prev !== 'all') { sel.value = 'all'; currentCtvFilter = 'all'; }
+}
+
 function renderCustomerTable() {
   const { customers } = getData();
   const search = (document.getElementById('searchInput')?.value || '').toLowerCase();
@@ -1451,7 +1487,30 @@ function renderCustomerTable() {
   let list = customers.filter(c => {
     const matchFilter = currentFilter === 'all' || c.status === currentFilter;
     const matchSearch = c.name.toLowerCase().includes(search) || (c.code||'').toLowerCase().includes(search) || (c.ctv||'').toLowerCase().includes(search);
-    return matchFilter && matchSearch;
+    const matchCtv = currentCtvFilter === 'all' || (c.ctv || '') === currentCtvFilter;
+    return matchFilter && matchSearch && matchCtv;
+  });
+
+  if (currentSort.col) {
+    const dir = currentSort.dir === 'asc' ? 1 : -1;
+    list = [...list].sort((a, b) => {
+      switch (currentSort.col) {
+        case 'name':      return dir * a.name.localeCompare(b.name, 'vi');
+        case 'amount':    return dir * (a.amount - b.amount);
+        case 'ctv':       return dir * (a.ctv||'').localeCompare(b.ctv||'', 'vi');
+        case 'status':    return dir * (a.status||'').localeCompare(b.status||'');
+        case 'payMethod': return dir * (a.payMethod||'zzz').localeCompare(b.payMethod||'zzz');
+        case 'paidAt':    return dir * ((a.paidAt||0) - (b.paidAt||0));
+        default: return 0;
+      }
+    });
+  }
+
+  ['name','amount','ctv','status','payMethod','paidAt'].forEach(col => {
+    const el = document.getElementById('sort-' + col);
+    if (!el) return;
+    if (currentSort.col !== col) { el.textContent = ' ↕'; el.style.opacity = '0.3'; }
+    else { el.textContent = currentSort.dir === 'asc' ? ' ↑' : ' ↓'; el.style.opacity = '1'; }
   });
 
   if (!list.length) {
