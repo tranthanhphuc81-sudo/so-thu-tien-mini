@@ -1019,8 +1019,9 @@ function renderPaid(list) {
           ${c.note ? `<div class="meta">📝 ${escHtml(c.note)}</div>` : ''}
         </div>
       </div>
-      <div class="actions" style="margin-top:10px">
-        <button class="btn btn-success" onclick="openConfirm('${c.id}')">${c.paidAmount != null && c.paidAmount < c.amount ? '💵 Thu tiếp phần còn thiếu' : '💵 Thu thêm / kỳ sau'}</button>
+      <div class="actions" style="margin-top:10px;display:flex;gap:8px">
+        <button class="btn btn-success" style="flex:1" onclick="openConfirm('${c.id}')">${c.paidAmount != null && c.paidAmount < c.amount ? '💵 Thu tiếp phần còn thiếu' : '💵 Thu thêm / kỳ sau'}</button>
+        <button class="btn btn-outline" style="color:#555" onclick="unmarkPaid('${c.id}')">↩️ Hoàn</button>
       </div>
       ${c.billImg ? `<img src="${safeBillSrc(c.billImg)}" style="width:100%;border-radius:10px;margin-top:10px;max-height:180px;object-fit:cover" />` : ''}
     </div>
@@ -1408,6 +1409,31 @@ document.querySelectorAll('.modal-overlay').forEach(m => {
 function safeBillSrc(src) {
   if (!src || typeof src !== 'string') return '';
   return /^data:image\/(png|jpe?g|gif|webp);base64,/.test(src) ? src : '';
+}
+
+function unmarkPaid(id) {
+  if (!confirm('↩️ Hoàn tác xác nhận thu gần nhất của khách hàng này?')) return;
+  const data = getData();
+  const c = data.customers.find(x => x.id === id);
+  if (!c) return;
+  const last = c.lastPaidAmount || 0;
+  const newPaid = Math.max(0, (c.paidAmount ?? 0) - last);
+  const newStatus = newPaid > 0 ? 'paid' : 'pending';
+  const noteArr = (c.note || '').split(', ');
+  if (noteArr.length > 1) noteArr.pop(); else noteArr[0] = '';
+  const newNote = noteArr.join(', ').replace(/^,\s*/, '') || null;
+  const updates = { status: newStatus, paidAmount: newPaid || null, paidAt: newPaid > 0 ? c.paidAt : null, note: newNote, lastPaidAmount: null, lastPaidBy: null };
+  if (c.lastPaidBy === 'ctv') updates.ctvPaid = Math.max(0, (c.ctvPaid ?? 0) - last) || null;
+  if (c.lastPaidBy === 'nvtd') updates.nvtdPaid = Math.max(0, (c.nvtdPaid ?? 0) - last) || null;
+  if (_db) {
+    _db.ref('/data/customers/' + id).update(updates)
+      .catch(e => showToast('⚠️ Lỗi: ' + e.message));
+  } else {
+    Object.assign(c, updates);
+    saveData(data);
+    renderStats(); renderLists();
+  }
+  showToast('↩️ Đã hoàn tác xác nhận thu gần nhất');
 }
 
 function showToast(msg, duration = 2500) {
