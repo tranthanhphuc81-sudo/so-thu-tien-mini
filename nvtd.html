@@ -572,6 +572,21 @@
 
   <div class="card" id="sec-bank">
     <div class="card-title">🏦 Thông tin tài khoản ngân hàng</div>
+    <div class="form-group" style="margin-bottom:14px">
+      <label>Chọn tài khoản có sẵn</label>
+      <select id="presetBankSelect" onchange="applyPresetBank()" style="font-size:13px">
+        <option value="">-- Chọn nhanh tài khoản --</option>
+        <option value="STB|000870406000499">Sacombank – STK: 000870406000499 (PGD Kỳ Hòa)</option>
+        <option value="VCB|0071001031973">Vietcombank – STK: 0071001031973 (PGD 09)</option>
+        <option value="ICB|115000161999">Vietinbank – STK: 115000161999 (CN 10)</option>
+        <option value="BIDV|3101958192">BIDV – STK: 3101958192 (PGD Ngô Gia Tự)</option>
+        <option value="MB|2041100781005">MB – STK: 2041100781005 (PGD Tô Hiến Thành)</option>
+        <option value="STB|060198323988">Sacombank – STK: 060198323988 (Ngô Gia Tự)</option>
+        <option value="STB|060288161189">Sacombank – STK: 060288161189 (Ngô Gia Tự)</option>
+        <option value="OCB|0071100005393006">OCB – STK: 0071100005393006</option>
+        <option value="ACB|32250337">ACB – STK: 32250337 (PGD Ngô Gia Tự)</option>
+      </select>
+    </div>
     <div class="form-row">
       <div class="form-group">
         <label>Ngân hàng</label>
@@ -1628,6 +1643,16 @@ function scrollToSection(id) {
 }
 
 // ==================== BANK INFO ====================
+function applyPresetBank() {
+  const sel = document.getElementById('presetBankSelect');
+  if (!sel.value) return;
+  const [bank, stk] = sel.value.split('|');
+  document.getElementById('bankName').value = bank;
+  document.getElementById('bankAccount').value = stk;
+  document.getElementById('accountName').value = 'TO CHUC TAI CHINH VI MO CEP - CN KY HOA';
+  sel.value = '';
+}
+
 function saveBankInfo() {
   const sel = document.getElementById('bankName');
   const bank = {
