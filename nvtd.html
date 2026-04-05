@@ -2134,9 +2134,13 @@ function markPaidNVTD(id, payMethod, paidAmount) {
   const actualAmt = (paidAmount != null) ? paidAmount : c.amount;
   const newTotal = (c.paidAmount ?? 0) + actualAmt;
   const newNvtdPaid = (c.nvtdPaid ?? 0) + actualAmt;
+  const _nd = new Date(paidAt);
+  const _ndateStr = _nd.toLocaleDateString('vi-VN') + ' ' + _nd.toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'});
+  const _nnewEntry = 'NVTD: ' + actualAmt.toLocaleString('vi-VN') + ' ₫ - ' + _ndateStr;
+  const _nnote = (c.note ? c.note + ', ' : '') + _nnewEntry;
   const act = { name: c.name, amount: actualAmt, ctv: c.ctv, at: paidAt, type: 'paid', payMethod };
   if (_db) {
-    _db.ref('/data/customers/' + id).update({ status: 'paid', paidAt, payMethod, paidAmount: newTotal, note: 'NVTD thu', nvtdPaid: newNvtdPaid });
+    _db.ref('/data/customers/' + id).update({ status: 'paid', paidAt, payMethod, paidAmount: newTotal, note: _nnote, nvtdPaid: newNvtdPaid });
     _db.ref('/data/activities/' + actKey).set(act);
   } else {
     c.status = 'paid';
@@ -2144,7 +2148,7 @@ function markPaidNVTD(id, payMethod, paidAmount) {
     c.payMethod = payMethod;
     c.paidAmount = newTotal;
     c.nvtdPaid = newNvtdPaid;
-    c.note = 'NVTD thu';
+    c.note = _nnote;
     data.activities = data.activities || [];
     data.activities.unshift(act);
     if (data.activities.length > 50) data.activities = data.activities.slice(0, 50);
