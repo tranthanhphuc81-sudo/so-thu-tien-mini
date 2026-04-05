@@ -1646,11 +1646,17 @@ function renderTaiVayTab() {
   const w = getCtvWarnDays();
   const done = allCust.filter(c => countProgressCTV(c) >= checklist.length).length;
   const urgent = allCust.filter(c => getDaysUntilCtv(c.tatToanDate) <= w.red).length;
+  const totalLoan = allCust.reduce((s, c) => s + (c.loanAmount || 0), 0);
+  const hasLoan = allCust.some(c => c.loanAmount > 0);
+  const fmtVnd = v => (v || 0).toLocaleString('vi-VN') + ' ₫';
 
   let html = `<div style="display:flex;gap:10px;flex-wrap:wrap;padding:12px 16px 4px">
     ${urgent ? `<span style="background:#fce8e6;color:#c62828;padding:4px 12px;border-radius:20px;font-size:13px;font-weight:700">🔴 Khẩn cấp: ${urgent}</span>` : ''}
-    <span style="background:#fff3e0;color:#e65100;padding:4px 12px;border-radius:20px;font-size:13px;font-weight:700">📋 Tổng: ${allCust.length}</span>
-    <span style="background:#e6f4ea;color:#1a7f37;padding:4px 12px;border-radius:20px;font-size:13px;font-weight:700">✅ Hoàn thành: ${done}</span>
+    <span style="background:#fff3e0;color:#e65100;padding:4px 12px;border-radius:20px;font-size:13px;font-weight:700">📋 Tổng: ${allCust.length} KH</span>
+    <span style="background:#e6f4ea;color:#1a7f37;padding:4px 12px;border-radius:20px;font-size:13px;font-weight:700">✅ Xong HS: ${done}</span>
+    ${hasLoan
+      ? `<span style="background:#e8f5e9;color:#1b5e20;padding:4px 12px;border-radius:20px;font-size:13px;font-weight:700">🏦 Tổng tái vay: ${fmtVnd(totalLoan)}</span>`
+      : `<span style="background:#fff8e1;color:#bf360c;padding:4px 12px;border-radius:20px;font-size:12px">⚠️ Chưa có dữ liệu số tiền vay</span>`}
   </div>`;
 
   html += allCust.map(c => {
@@ -1662,12 +1668,19 @@ function renderTaiVayTab() {
     let cardBorder = '#fbbc04';
     if (d <= w.red)    cardBorder = '#ea4335';
     else if (d <= w.orange) cardBorder = '#fa7b17';
+    const loanRow = c.loanAmount > 0
+      ? `<div style="margin-top:5px;display:flex;align-items:baseline;gap:6px">
+           <span style="font-size:11px;color:var(--muted)">💰 Tái vay dự kiến:</span>
+           <span style="font-size:15px;font-weight:800;color:#1b5e20">${fmtVnd(c.loanAmount)}</span>
+         </div>`
+      : `<div style="margin-top:4px;font-size:11px;color:#bf360c">⚠️ Chưa có số tiền vay</div>`;
     return `<div class="customer-card" style="border-left:4px solid ${cardBorder};margin:10px 16px;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.08)">
       <div class="top">
         <div class="avatar">${getInitial(c.name)}</div>
         <div style="flex:1">
           <div class="name">${escHtml(c.name)}</div>
           <div class="meta">📅 Tất toán: <strong>${dateStr}</strong> — còn <strong>${d}</strong> ngày</div>
+          ${loanRow}
           <div style="margin-top:8px">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
               <div style="flex:1;background:#e8f5e9;border-radius:4px;height:8px;overflow:hidden">
@@ -1703,8 +1716,11 @@ function openChecklist(custId) {
   const pct = total ? Math.round(done / total * 100) : 0;
 
   document.getElementById('clModalTitle').textContent = '📋 Hồ sơ tái vay: ' + c.name;
+  const loanInfoHtml = c.loanAmount > 0
+    ? `— 🏦 Tái vay dự kiến: <strong style="color:#1b5e20">${c.loanAmount.toLocaleString('vi-VN')} ₫</strong>`
+    : `— 💳 Thu kỳ này: <strong>${(c.amount||0).toLocaleString('vi-VN')} ₫</strong>`;
   document.getElementById('clModalInfo').innerHTML =
-    `<strong>${escHtml(c.name)}</strong> — Mã: ${escHtml(c.code)} — Dư nợ: <strong>${(c.amount||0).toLocaleString('vi-VN')} ₫</strong>`;
+    `<strong>${escHtml(c.name)}</strong> — Mã: ${escHtml(c.code)} ${loanInfoHtml}`;
   document.getElementById('clModalTatToan').innerHTML =
     c.tatToanDate ? `<strong>${dateStr}</strong>${d !== null && d >= 0 ? ` (còn ${d} ngày)` : ' <span style="color:#c62828">(đã đến hạn)</span>'}` : 'Chưa có';
 
