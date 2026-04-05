@@ -620,9 +620,51 @@
     <button class="btn btn-primary" onclick="saveBankInfo()">💾 Lưu thông tin</button>
   </div>
 
+  <div class="card" id="sec-checklist">
+    <div class="card-title">📋 Checklist hồ sơ tái vay</div>
+    <div class="section-note" style="margin-bottom:14px">
+      💡 NVTD định nghĩa danh sách giấy tờ cần chuẩn bị khi tái vay. CTV sẽ thấy checklist này và tích từng mục khi hoàn thành để NVTD theo dõi tiến độ hồ sơ từng khách hàng.
+    </div>
+
+    <!-- Cài đặt ngày cảnh báo -->
+    <div style="background:#f8f9fa;border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:16px">
+      <div style="font-weight:700;font-size:14px;margin-bottom:10px">⏰ Ngày cảnh báo tái vay</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px">
+        <div>
+          <label style="font-size:12px;font-weight:600;color:#b71c1c;display:block;margin-bottom:4px">🔴 Khẩn cấp (ngày)</label>
+          <input type="number" id="warnDayRed" min="1" max="365" value="15"
+            style="width:100%;padding:7px 10px;border:1.5px solid #ea4335;border-radius:8px;font-size:14px;font-weight:700;color:#b71c1c"
+            onchange="saveWarnDays()" oninput="saveWarnDays()" />
+          <div style="font-size:11px;color:var(--muted);margin-top:3px">Còn ≤ X ngày → 🔴</div>
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:#e65100;display:block;margin-bottom:4px">🟠 Cần chuẩn bị (ngày)</label>
+          <input type="number" id="warnDayOrange" min="1" max="365" value="30"
+            style="width:100%;padding:7px 10px;border:1.5px solid #fbbc04;border-radius:8px;font-size:14px;font-weight:700;color:#e65100"
+            onchange="saveWarnDays()" oninput="saveWarnDays()" />
+          <div style="font-size:11px;color:var(--muted);margin-top:3px">Còn ≤ X ngày → 🟠</div>
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:#c67c00;display:block;margin-bottom:4px">🟡 Lưu ý (ngày)</label>
+          <input type="number" id="warnDayYellow" min="1" max="365" value="60"
+            style="width:100%;padding:7px 10px;border:1.5px solid #ffd54f;border-radius:8px;font-size:14px;font-weight:700;color:#c67c00"
+            onchange="saveWarnDays()" oninput="saveWarnDays()" />
+          <div style="font-size:11px;color:var(--muted);margin-top:3px">Còn ≤ X ngày → 🟡</div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-top:10px;font-style:italic">Công cụ sẽ hiển thị màu cảnh báo tương ứng trên dashboard và trong app CTV.</div>
+    </div>
+
+    <div id="checklistItemsList" style="margin-bottom:14px"></div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      <input type="text" id="checklistNewItem" placeholder="Tên mục cần thêm... (VD: CMND/CCCD mặt trước sau)" style="flex:1;min-width:200px" onkeydown="if(event.key==='Enter')addChecklistItem()" />
+      <button class="btn btn-primary" onclick="addChecklistItem()">➕ Thêm mục</button>
+    </div>
+    <button class="btn btn-outline btn-sm" onclick="resetChecklistToDefault()">🔄 Reset về mặc định</button>
+  </div>
+
   <div class="card" id="sec-import">
-    <div class="card-title">📥 Nhập danh sách khách hàng</div>
-    <div class="section-note">
+    <div class="card-title">📥 Nhập danh sách khách hàng</div>    <div class="section-note">
       💡 Nhập theo định dạng mỗi dòng: <strong>Tên Khách Hàng | Số tiền | Mã đối soát (tuỳ chọn)</strong><br>
       Ví dụ: <code>Nguyễn Văn An | 500000 | KH001</code>
     </div>
@@ -784,6 +826,22 @@
     <div id="amount-warnings-list"></div>
   </div>
 
+  <div class="card" id="sec-tatToan" style="display:none">
+    <div class="card-title">📅 Cảnh báo tất toán sắp đến – Chuẩn bị hồ sơ tái vay</div>
+    <div id="tatToanSummary" style="margin-bottom:12px;font-size:14px;display:flex;gap:16px;flex-wrap:wrap"></div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+      <label style="font-size:13px;font-weight:600;color:var(--muted);margin:0">Hiển thị KH tất toán trong:</label>
+      <select id="tatToanDaysFilter" onchange="renderTatToanWarnings()" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff">
+        <option value="15">≤ 15 ngày 🔴 Khẩn cấp</option>
+        <option value="30">≤ 30 ngày 🟠 Cần chuẩn bị</option>
+        <option value="60">≤ 60 ngày 🟡</option>
+        <option value="90" selected>≤ 90 ngày</option>
+        <option value="999">Tất cả có ngày tất toán</option>
+      </select>
+    </div>
+    <div id="tatToanList"></div>
+  </div>
+
   <div class="card" id="sec-activity">
     <div class="card-title">📋 Hoạt động gần đây</div>
     <div id="recent-activity">
@@ -844,6 +902,7 @@
             <th onclick="setSort('status')" style="cursor:pointer;user-select:none;white-space:nowrap">Trạng thái<span id="sort-status" style="opacity:0.3"> ↕</span></th>
             <th class="col-hide-md" onclick="setSort('payMethod')" style="cursor:pointer;user-select:none;white-space:nowrap">Hình thức<span id="sort-payMethod" style="opacity:0.3"> ↕</span></th>
             <th class="col-hide-md" onclick="setSort('paidAt')" style="cursor:pointer;user-select:none;white-space:nowrap">Thời gian thu<span id="sort-paidAt" style="opacity:0.3"> ↕</span></th>
+            <th class="col-hide-md" onclick="setSort('tatToanDate')" style="cursor:pointer;user-select:none;white-space:nowrap">Tất toán<span id="sort-tatToanDate" style="opacity:0.3"> ↕</span></th>
             <th>Thao tác</th>
           </tr>
         </thead>
@@ -1012,7 +1071,7 @@
 <script>
 // ==================== FIREBASE DATA LAYER ====================
 const FB_CFG_KEY = 'sothu_fb_cfg';
-let _cache = { customers: [], bank: {}, activities: [] };
+let _cache = { customers: [], bank: {}, activities: [], taiVayChecklist: [], taiVayWarnDays: { red: 15, orange: 30, yellow: 60 } };
 let _db = null;
 let _fbInitialized = false;
 let _nvtdAuthed = false;
@@ -1284,6 +1343,8 @@ function cacheFromVal(val) {
     activities: val && val.activities
       ? Object.values(val.activities).sort((a, b) => (b.at || 0) - (a.at || 0))
       : [],
+    taiVayChecklist: val && val.taiVayChecklist ? val.taiVayChecklist : [],
+    taiVayWarnDays: val && val.taiVayWarnDays ? Object.assign({ red: 15, orange: 30, yellow: 60 }, val.taiVayWarnDays) : { red: 15, orange: 30, yellow: 60 },
   };
 }
 
@@ -1573,6 +1634,8 @@ function renderAll() {
   renderRecentActivity();
   renderCtvProgress();
   renderBillGallery();
+  renderTatToanWarnings();
+  renderChecklistTemplate();
 }
 
 // ==================== TABS ====================
@@ -1591,6 +1654,7 @@ const SIDE_NAV_CONFIG = {
     { id: 'fbSetupCard',  label: '🔥 Kết nối Firebase' },
     { id: 'secRulesCard', label: '🛡️ Bảo mật' },
     { id: 'sec-bank',     label: '🏦 Ngân hàng' },
+    { id: 'sec-checklist',label: '📋 Checklist tái vay' },
     { id: 'sec-import',   label: '📥 Nhập danh sách' },
     { id: 'sec-excel',    label: '📊 Excel' },
     { id: 'sec-website',  label: '🌐 Địa chỉ website' },
@@ -1601,6 +1665,7 @@ const SIDE_NAV_CONFIG = {
   'tab-dashboard': [
     { id: 'sec-progress', label: '📈 Tiến độ' },
     { id: 'sec-amount',   label: '💰 Tổng tiền' },
+    { id: 'sec-tatToan',  label: '📅 Cảnh báo tất toán' },
     { id: 'sec-activity', label: '📋 Hoạt động' },
   ],
   'tab-list': [],
@@ -2033,12 +2098,13 @@ function renderCustomerTable() {
         case 'code':      return dir * (a.code||'').localeCompare(b.code||'', 'vi');
         case 'payMethod': return dir * (a.payMethod||'zzz').localeCompare(b.payMethod||'zzz');
         case 'paidAt':    return dir * ((a.paidAt||0) - (b.paidAt||0));
+        case 'tatToanDate': return dir * ((a.tatToanDate||Infinity) - (b.tatToanDate||Infinity));
         default: return 0;
       }
     });
   }
 
-  ['name','amount','code','ctv','status','payMethod','paidAt'].forEach(col => {
+  ['name','amount','code','ctv','status','payMethod','paidAt','tatToanDate'].forEach(col => {
     const el = document.getElementById('sort-' + col);
     if (!el) return;
     if (currentSort.col !== col) { el.textContent = ' ↕'; el.style.opacity = '0.3'; }
@@ -2071,6 +2137,7 @@ function renderCustomerTable() {
       <td><span class="badge ${c.status === 'paid' ? 'badge-paid' : 'badge-pending'}">${c.status === 'paid' ? '✅ Đã thu' : '⏳ Chưa'}</span>${isAbnormal ? ' <span title="Số tiền bất thường">🚨</span>' : isUnderpaid ? ' <span title="Thiếu tiền">⚠️</span>' : isOverpaid ? ' <span title="Thừa tiền">💰</span>' : ''}</td>
       <td class="col-hide-md" style="font-size:12px">${c.payMethod === 'cash' ? '💵 TM' : c.payMethod === 'transfer' ? '🏦 CK' : '<span style="color:var(--muted)">—</span>'}</td>
       <td class="col-hide-md" style="font-size:12px;color:var(--muted)">${c.paidAt ? new Date(c.paidAt).toLocaleString('vi-VN') : '—'}</td>
+      <td class="col-hide-md" style="font-size:12px">${c.tatToanDate ? tatToanBadge(c.tatToanDate) : '<span style="color:var(--muted)">—</span>'}</td>
       <td>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
           <button class="btn btn-outline btn-sm" style="min-width:36px;justify-content:center" onclick="showQR('${c.id}')">🔲<span class="btn-action-label"> QR</span></button>
@@ -2674,6 +2741,7 @@ function readExcelFile(file) {
       const colCtvName = findColumn(headers, ['họ tên ctv', 'ho ten ctv', 'tên ctv', 'ten ctv', 'họ và tên ctv']);
       const colCash     = findColumn(headers, ['tiền mặt', 'tm', 'tiền tm', 'tiền mặt đã thu', 'đã thu tm', 'doanh thu tm', 'dtm']);
       const colTransfer = findColumn(headers, ['chuyển khoản', 'ck', 'tiền ck', 'đã thu ck', 'doanh thu ck', 'dtck', 'transfer']);
+      const colTatToan  = findColumn(headers, ['ngày tất toán', 'ngay tat toan', 'tất toán', 'tat toan', 'đáo hạn', 'dao han', 'ngày đáo hạn', 'ngày kết thúc', 'ket thuc hd', 'ngày ks đến hạn']);
 
       // Extract unique CTV list from detected column
       const ctvList = [];
@@ -2689,7 +2757,7 @@ function readExcelFile(file) {
         });
       }
 
-      _excelParsed = { headers, dataRows, colName, colCode, colAmount, colCtvCode, colCtvName, colCash, colTransfer, ctvList, fileName: file.name };
+      _excelParsed = { headers, dataRows, colName, colCode, colAmount, colCtvCode, colCtvName, colCash, colTransfer, colTatToan, ctvList, fileName: file.name };
 
       const info = document.getElementById('excelFileInfo');
       info.style.display = '';
@@ -2711,6 +2779,33 @@ function findColumn(headers, keywords) {
     if (idx >= 0) return idx;
   }
   return -1;
+}
+
+function parseExcelDate(raw) {
+  if (raw == null || raw === '') return null;
+  if (typeof raw === 'number' && raw > 1000) {
+    // Excel serial: days since Jan 0 1900 (with Excel's 1900 leap year bug offset)
+    const ms = Math.round((raw - 25569) * 86400000);
+    if (!isNaN(ms) && ms > 0) return ms;
+  }
+  if (typeof raw === 'string') {
+    const s = raw.trim();
+    // dd/mm/yyyy or dd-mm-yyyy
+    const m1 = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
+    if (m1) {
+      const d = new Date(parseInt(m1[3]), parseInt(m1[2]) - 1, parseInt(m1[1]));
+      if (!isNaN(d.getTime())) return d.getTime();
+    }
+    // yyyy-mm-dd
+    const m2 = s.match(/^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})$/);
+    if (m2) {
+      const d = new Date(parseInt(m2[1]), parseInt(m2[2]) - 1, parseInt(m2[3]));
+      if (!isNaN(d.getTime())) return d.getTime();
+    }
+    const d = new Date(s);
+    if (!isNaN(d.getTime())) return d.getTime();
+  }
+  return null;
 }
 
 function showExcelPreview() {
@@ -2755,6 +2850,8 @@ function updateExcelPreview() {
   const colCtvName = parseInt(document.getElementById('exColCtvName')?.value ?? -1);
   const colCash     = parseInt(document.getElementById('exColCash')?.value ?? -1);
   const colTransfer = parseInt(document.getElementById('exColTransfer')?.value ?? -1);
+  const colTatToan  = parseInt(document.getElementById('exColTatToan')?.value ?? -1);
+  _excelParsed.colTatToan = colTatToan;
   const hasPayCols  = colCash >= 0 || colTransfer >= 0;
 
   // Rebuild CTV list when column selector changes
@@ -2912,9 +3009,10 @@ function populateCtvDropdown() {
 function confirmExcelImport() {
   if (!_excelParsed) return;
 
-  const colName   = parseInt(document.getElementById('exColName').value);
-  const colAmount = parseInt(document.getElementById('exColAmount').value);
-  const colCode   = parseInt(document.getElementById('exColCode').value);
+  const colName    = parseInt(document.getElementById('exColName').value);
+  const colAmount  = parseInt(document.getElementById('exColAmount').value);
+  const colCode    = parseInt(document.getElementById('exColCode').value);
+  const colTatToan = parseInt(document.getElementById('exColTatToan')?.value ?? -1);
 
   // Xác định chế độ nhập
   const modeEl = document.querySelector('input[name="excelImportMode"]:checked');
@@ -2968,6 +3066,8 @@ function confirmExcelImport() {
       // Upsert: cập nhật số tiền và mã, giữ nguyên trạng thái thanh toán
       existing.amount = amt;
       if (code) existing.code = code;
+      const tatToanTs = colTatToan >= 0 ? parseExcelDate(row[colTatToan]) : null;
+      if (tatToanTs) existing.tatToanDate = tatToanTs;
       if (isPrepaid && existing.status !== 'paid') {
         existing.status = 'paid';
         existing.paidAt = existing.paidAt || Date.now();
@@ -2977,6 +3077,7 @@ function confirmExcelImport() {
       updCount++;
     } else {
       const finalCode = code || 'MS' + Date.now() + Math.floor(Math.random() * 1000);
+      const tatToanTs = colTatToan >= 0 ? parseExcelDate(row[colTatToan]) : null;
       const newCust = {
         id: 'kh_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
         name, amount: amt, code: finalCode, ctv: rowCtv,
@@ -2984,6 +3085,7 @@ function confirmExcelImport() {
         paidAt: isPrepaid ? Date.now() : null,
         billImg: null, note: isPrepaid ? '💰 Trả trước kỳ này' : '',
       };
+      if (tatToanTs) newCust.tatToanDate = tatToanTs;
       if (isPrepaid) newCust.paidAmount = prepaidAmt;
       data.customers.push(newCust);
       addCount++;
@@ -3024,6 +3126,201 @@ function confirmExcelImport() {
   const listBtn = document.querySelector('.tab-btn[onclick*="tab-list"]');
   if (listBtn) listBtn.click();
 }
+// ==================== TẤT TOÁN & CHECKLIST ====================
+function getDaysUntil(ts) {
+  if (!ts) return null;
+  const now = new Date();
+  const nowDay = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const tgtDay = Date.UTC(new Date(ts).getFullYear(), new Date(ts).getMonth(), new Date(ts).getDate());
+  return Math.ceil((tgtDay - nowDay) / 86400000);
+}
+
+function tatToanBadge(ts) {
+  const days = getDaysUntil(ts);
+  if (days === null) return '';
+  const d = new Date(ts).toLocaleDateString('vi-VN');
+  const w = getWarnDays();
+  if (days < 0)  return `<span style="background:#ede7f6;color:#6a1b9a;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap">📅 Đã tất toán ${Math.abs(days)}N</span>`;
+  if (days === 0) return `<span style="background:#fce8e6;color:#b71c1c;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap">🔴 HÔM NAY!</span>`;
+  if (days <= w.red)    return `<span style="background:#fce8e6;color:#b71c1c;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap">🔴 ${days}N (${d})</span>`;
+  if (days <= w.orange) return `<span style="background:#fff3e0;color:#e65100;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap">🟠 ${days}N (${d})</span>`;
+  if (days <= w.yellow) return `<span style="background:#fff8e1;color:#c67c00;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap">🟡 ${days}N (${d})</span>`;
+  return `<span style="background:#f0f4f8;color:var(--muted);font-size:11px;padding:2px 8px;border-radius:10px;white-space:nowrap">📅 ${d}</span>`;
+}
+
+function renderTatToanWarnings() {
+  const card = document.getElementById('sec-tatToan');
+  if (!card) return;
+  const { customers } = getData();
+  const w = getWarnDays();
+  const threshold = parseInt(document.getElementById('tatToanDaysFilter')?.value || '90');
+  const withDate = customers.filter(c => c.tatToanDate);
+  if (!withDate.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+
+  const allUpcoming = withDate.filter(c => {
+    const d = getDaysUntil(c.tatToanDate);
+    return d !== null && d <= 999;
+  }).sort((a, b) => (a.tatToanDate || 0) - (b.tatToanDate || 0));
+
+  const critical = allUpcoming.filter(c => { const d = getDaysUntil(c.tatToanDate); return d !== null && d <= w.red; }).length;
+  const urgent   = allUpcoming.filter(c => { const d = getDaysUntil(c.tatToanDate); return d !== null && d > w.red && d <= w.orange; }).length;
+  const notice   = allUpcoming.filter(c => { const d = getDaysUntil(c.tatToanDate); return d !== null && d > w.orange && d <= w.yellow; }).length;
+
+  document.getElementById('tatToanSummary').innerHTML =
+    `<span style="background:#fce8e6;color:#b71c1c;font-size:13px;font-weight:700;padding:4px 12px;border-radius:12px">🔴 ${critical} KH ≤${w.red} ngày</span>
+     <span style="background:#fff3e0;color:#e65100;font-size:13px;font-weight:700;padding:4px 12px;border-radius:12px">🟠 ${urgent} KH ${w.red+1}–${w.orange} ngày</span>
+     <span style="background:#fff8e1;color:#c67c00;font-size:13px;font-weight:700;padding:4px 12px;border-radius:12px">🟡 ${notice} KH ${w.orange+1}–${w.yellow} ngày</span>`;
+
+  const filtered = allUpcoming.filter(c => {
+    const d = getDaysUntil(c.tatToanDate);
+    return d !== null && d <= threshold;
+  });
+
+  if (!filtered.length) {
+    document.getElementById('tatToanList').innerHTML = `<div style="color:var(--muted);font-size:13px;padding:8px;text-align:center">✅ Không có khách hàng nào tất toán trong ${threshold} ngày tới.</div>`;
+    return;
+  }
+
+  const clTotal = getChecklist().length;
+  document.getElementById('tatToanList').innerHTML = filtered.map(c => {
+    const days = getDaysUntil(c.tatToanDate);
+    const isRed = days <= 15, isOrange = days <= 30;
+    const bg = isRed ? '#fce8e6' : isOrange ? '#fff3e0' : '#fff8e1';
+    const border = isRed ? '#ea4335' : isOrange ? '#fbbc04' : '#ffd54f';
+    const clDone = countChecklistProgress(c);
+    const clPct  = clTotal ? Math.round(clDone / clTotal * 100) : 0;
+    return `
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:${bg};border-left:4px solid ${border};border-radius:0 8px 8px 0;margin-bottom:8px;flex-wrap:wrap">
+        <div style="flex:1;min-width:140px">
+          <div style="font-weight:700;font-size:14px">${escHtml(c.name)}</div>
+          <div style="font-size:12px;color:var(--muted)">CTV: ${escHtml(c.ctv || '—')} · ${c.amount.toLocaleString('vi-VN')} ₫ · Mã: ${escHtml(c.code)}</div>
+        </div>
+        <div>${tatToanBadge(c.tatToanDate)}</div>
+        <div style="text-align:center;font-size:12px;min-width:80px">
+          <div style="font-weight:700;color:${clDone === clTotal && clTotal > 0 ? '#2e7d32' : '#e65100'}">📋 ${clDone}/${clTotal} mục</div>
+          <div style="background:#e0e0e0;border-radius:4px;height:6px;margin-top:3px;overflow:hidden"><div style="height:100%;background:${clDone===clTotal&&clTotal>0?'#34a853':'#fbbc04'};border-radius:4px;width:${clPct}%"></div></div>
+          <div style="color:var(--muted);margin-top:2px">${c.status === 'paid' ? '✅ Đã thu' : '⏳ Chưa thu'}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function countChecklistProgress(c) {
+  if (!c.checklistProgress) return 0;
+  const total = getChecklist().length;
+  let done = 0;
+  for (let i = 0; i < total; i++) { if (c.checklistProgress[String(i)] || c.checklistProgress[i]) done++; }
+  return done;
+}
+
+// ==================== WARN DAYS ====================
+function getWarnDays() {
+  const w = _cache.taiVayWarnDays || {};
+  return {
+    red:    Math.max(1, parseInt(w.red)    || 15),
+    orange: Math.max(1, parseInt(w.orange) || 30),
+    yellow: Math.max(1, parseInt(w.yellow) || 60),
+  };
+}
+
+let _warnDaysSaveTimer = null;
+function saveWarnDays() {
+  const red    = Math.max(1, parseInt(document.getElementById('warnDayRed')?.value)    || 15);
+  const orange = Math.max(1, parseInt(document.getElementById('warnDayOrange')?.value) || 30);
+  const yellow = Math.max(1, parseInt(document.getElementById('warnDayYellow')?.value) || 60);
+  _cache.taiVayWarnDays = { red, orange, yellow };
+  clearTimeout(_warnDaysSaveTimer);
+  _warnDaysSaveTimer = setTimeout(() => {
+    if (_db) {
+      _db.ref('/data/taiVayWarnDays').set({ red, orange, yellow })
+        .then(() => showToast('✅ Đã lưu ngày cảnh báo!'))
+        .catch(e => showToast('⚠️ Lỗi: ' + e.message));
+    } else {
+      try { localStorage.setItem('sothu_local', JSON.stringify(_cache)); } catch {}
+      showToast('✅ Đã lưu ngày cảnh báo!');
+    }
+    renderTatToanWarnings();
+    renderCustomerTable();
+  }, 800);
+}
+
+function renderWarnDaysSettings() {
+  const w = getWarnDays();
+  const r = document.getElementById('warnDayRed');
+  const o = document.getElementById('warnDayOrange');
+  const y = document.getElementById('warnDayYellow');
+  if (r && r !== document.activeElement) r.value = w.red;
+  if (o && o !== document.activeElement) o.value = w.orange;
+  if (y && y !== document.activeElement) y.value = w.yellow;
+}
+
+// ==================== CHECKLIST TEMPLATE ====================
+const DEFAULT_CHECKLIST = [
+  'CMND/CCCD (sao chụp mặt trước và sau)',
+  'Sổ hộ khẩu / KT3 (giấy tạm trú)',
+  'Giấy tờ chứng minh thu nhập',
+  'Ảnh chân dung khách hàng (3×4)',
+  'Phiếu đề nghị vay vốn',
+  'Phiếu thu thập thông tin (điều tra)',
+  'Giấy tờ tài sản đảm bảo (nếu có)',
+];
+
+function getChecklist() {
+  const cl = _cache.taiVayChecklist;
+  return (cl && cl.length > 0) ? cl : [...DEFAULT_CHECKLIST];
+}
+
+function renderChecklistTemplate() {
+  renderWarnDaysSettings();
+  const el = document.getElementById('checklistItemsList');
+  if (!el) return;
+  const items = getChecklist();
+  if (!items.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px">Chưa có mục nào. Thêm bên dưới.</div>';
+    return;
+  }
+  el.innerHTML = items.map((item, i) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#f8f9fa;border-radius:8px;margin-bottom:6px;border:1px solid var(--border)">
+      <span style="font-size:12px;color:var(--muted);font-weight:700;width:22px;flex-shrink:0;text-align:center">${i + 1}</span>
+      <span style="flex:1;font-size:14px">${escHtml(item)}</span>
+      <button onclick="deleteChecklistItem(${i})" style="background:none;border:none;cursor:pointer;font-size:15px;color:var(--danger);padding:2px 6px;flex-shrink:0" title="Xóa mục này">🗑️</button>
+    </div>`).join('');
+}
+
+function addChecklistItem() {
+  const inp = document.getElementById('checklistNewItem');
+  const val = inp.value.trim();
+  if (!val) { showToast('⚠️ Vui lòng nhập nội dung mục!'); return; }
+  const items = [...getChecklist(), val];
+  saveChecklistTemplate(items);
+  inp.value = '';
+  inp.focus();
+}
+
+function deleteChecklistItem(index) {
+  const items = [...getChecklist()];
+  if (!confirm(`Xóa mục: "${items[index]}"?`)) return;
+  items.splice(index, 1);
+  saveChecklistTemplate(items);
+}
+
+function resetChecklistToDefault() {
+  if (!confirm('Đặt lại checklist về danh sách mặc định?')) return;
+  saveChecklistTemplate([...DEFAULT_CHECKLIST]);
+}
+
+function saveChecklistTemplate(items) {
+  _cache.taiVayChecklist = items;
+  if (_db) {
+    _db.ref('/data/taiVayChecklist').set(items)
+      .then(() => showToast('✅ Đã lưu checklist tái vay!'))
+      .catch(e => showToast('⚠️ Lỗi: ' + e.message));
+  } else {
+    try { localStorage.setItem('sothu_local', JSON.stringify(_cache)); } catch {}
+    showToast('✅ Đã lưu checklist tái vay!');
+  }
+  renderChecklistTemplate();
+  renderTatToanWarnings();
+}
 </script>
-</body>
-</html>
