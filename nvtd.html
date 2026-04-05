@@ -2741,7 +2741,8 @@ function readExcelFile(file) {
       const colCtvName = findColumn(headers, ['họ tên ctv', 'ho ten ctv', 'tên ctv', 'ten ctv', 'họ và tên ctv']);
       const colCash     = findColumn(headers, ['tiền mặt', 'tm', 'tiền tm', 'tiền mặt đã thu', 'đã thu tm', 'doanh thu tm', 'dtm']);
       const colTransfer = findColumn(headers, ['chuyển khoản', 'ck', 'tiền ck', 'đã thu ck', 'doanh thu ck', 'dtck', 'transfer']);
-      const colTatToan  = findColumn(headers, ['ngày tất toán', 'ngay tat toan', 'tất toán', 'tat toan', 'đáo hạn', 'dao han', 'ngày đáo hạn', 'ngày kết thúc', 'ket thuc hd', 'ngày ks đến hạn']);
+      const colTatToan    = findColumn(headers, ['ngày tất toán', 'ngay tat toan', 'tất toán', 'tat toan', 'đáo hạn', 'dao han', 'ngày đáo hạn', 'ngày kết thúc', 'ket thuc hd', 'ngày ks đến hạn']);
+      const colLoanAmount = findColumn(headers, ['số tiền vay', 'so tien vay', 'dư nợ gốc', 'du no goc', 'dư nợ', 'du no', 'hạn mức', 'han muc', 'tiền vay', 'tien vay', 'nguyên gốc', 'nguyen goc', 'số tiền cho vay']);
 
       // Extract unique CTV list from detected column
       const ctvList = [];
@@ -2757,7 +2758,7 @@ function readExcelFile(file) {
         });
       }
 
-      _excelParsed = { headers, dataRows, colName, colCode, colAmount, colCtvCode, colCtvName, colCash, colTransfer, colTatToan, ctvList, fileName: file.name };
+      _excelParsed = { headers, dataRows, colName, colCode, colAmount, colCtvCode, colCtvName, colCash, colTransfer, colTatToan, colLoanAmount, ctvList, fileName: file.name };
 
       const info = document.getElementById('excelFileInfo');
       info.style.display = '';
@@ -2835,7 +2836,8 @@ function showExcelPreview() {
     buildSelect('👥 Tên CTV phụ trách', 'exColCtvName', colCtvName != null ? colCtvName : -1) +
     buildSelect('💵 Tiền mặt đã thu (để kiểm tra)', 'exColCash', _excelParsed.colCash) +
     buildSelect('🏦 Chuyển khoản đã thu (để kiểm tra)', 'exColTransfer', _excelParsed.colTransfer) +
-    buildSelect('📅 Ngày tất toán (cảnh báo tái vay)', 'exColTatToan', _excelParsed.colTatToan >= 0 ? _excelParsed.colTatToan : -1);
+    buildSelect('📅 Ngày tất toán (cảnh báo tái vay)', 'exColTatToan', _excelParsed.colTatToan >= 0 ? _excelParsed.colTatToan : -1) +
+    buildSelect('🏦 Số tiền vay gốc (tổng hợp tái vay)', 'exColLoanAmount', _excelParsed.colLoanAmount >= 0 ? _excelParsed.colLoanAmount : -1);
 
   updateExcelPreview();
   openModal('excelModal');
@@ -3013,7 +3015,8 @@ function confirmExcelImport() {
   const colName    = parseInt(document.getElementById('exColName').value);
   const colAmount  = parseInt(document.getElementById('exColAmount').value);
   const colCode    = parseInt(document.getElementById('exColCode').value);
-  const colTatToan = parseInt(document.getElementById('exColTatToan')?.value ?? -1);
+  const colTatToan    = parseInt(document.getElementById('exColTatToan')?.value ?? -1);
+  const colLoanAmount = parseInt(document.getElementById('exColLoanAmount')?.value ?? -1);
 
   // Xác định chế độ nhập
   const modeEl = document.querySelector('input[name="excelImportMode"]:checked');
@@ -3069,6 +3072,10 @@ function confirmExcelImport() {
       if (code) existing.code = code;
       const tatToanTs = colTatToan >= 0 ? parseExcelDate(row[colTatToan]) : null;
       if (tatToanTs) existing.tatToanDate = tatToanTs;
+      if (colLoanAmount >= 0) {
+        const la = parseFloat(String(row[colLoanAmount] || '').replace(/[^0-9.\-]/g, '')) || 0;
+        if (la > 0) existing.loanAmount = la;
+      }
       if (isPrepaid && existing.status !== 'paid') {
         existing.status = 'paid';
         existing.paidAt = existing.paidAt || Date.now();
@@ -3087,6 +3094,10 @@ function confirmExcelImport() {
         billImg: null, note: isPrepaid ? '💰 Trả trước kỳ này' : '',
       };
       if (tatToanTs) newCust.tatToanDate = tatToanTs;
+      if (colLoanAmount >= 0) {
+        const la = parseFloat(String(row[colLoanAmount] || '').replace(/[^0-9.\-]/g, '')) || 0;
+        if (la > 0) newCust.loanAmount = la;
+      }
       if (isPrepaid) newCust.paidAmount = prepaidAmt;
       data.customers.push(newCust);
       addCount++;
@@ -3167,11 +3178,13 @@ function renderTatToanWarnings() {
   const critical = allUpcoming.filter(c => { const d = getDaysUntil(c.tatToanDate); return d !== null && d <= w.red; }).length;
   const urgent   = allUpcoming.filter(c => { const d = getDaysUntil(c.tatToanDate); return d !== null && d > w.red && d <= w.orange; }).length;
   const notice   = allUpcoming.filter(c => { const d = getDaysUntil(c.tatToanDate); return d !== null && d > w.orange && d <= w.yellow; }).length;
+  const totalLoan = allUpcoming.reduce((s, c) => s + (c.loanAmount || 0), 0);
 
   document.getElementById('tatToanSummary').innerHTML =
     `<span style="background:#fce8e6;color:#b71c1c;font-size:13px;font-weight:700;padding:4px 12px;border-radius:12px">🔴 ${critical} KH ≤${w.red} ngày</span>
      <span style="background:#fff3e0;color:#e65100;font-size:13px;font-weight:700;padding:4px 12px;border-radius:12px">🟠 ${urgent} KH ${w.red+1}–${w.orange} ngày</span>
-     <span style="background:#fff8e1;color:#c67c00;font-size:13px;font-weight:700;padding:4px 12px;border-radius:12px">🟡 ${notice} KH ${w.orange+1}–${w.yellow} ngày</span>`;
+     <span style="background:#fff8e1;color:#c67c00;font-size:13px;font-weight:700;padding:4px 12px;border-radius:12px">🟡 ${notice} KH ${w.orange+1}–${w.yellow} ngày</span>
+     ${totalLoan > 0 ? `<span style="background:#e8f5e9;color:#1b5e20;font-size:13px;font-weight:700;padding:4px 12px;border-radius:12px">🏦 Tổng tiền vay: ${totalLoan.toLocaleString('vi-VN')} ₫</span>` : ''}`;
 
   const filtered = allUpcoming.filter(c => {
     const d = getDaysUntil(c.tatToanDate);
@@ -3183,28 +3196,68 @@ function renderTatToanWarnings() {
     return;
   }
 
+  // Group by CTV
+  const ctvMap = {};
+  filtered.forEach(c => {
+    const key = c.ctv || '— Chưa phân công';
+    if (!ctvMap[key]) ctvMap[key] = [];
+    ctvMap[key].push(c);
+  });
+
   const clTotal = getChecklist().length;
-  document.getElementById('tatToanList').innerHTML = filtered.map(c => {
-    const days = getDaysUntil(c.tatToanDate);
-    const isRed = days <= 15, isOrange = days <= 30;
-    const bg = isRed ? '#fce8e6' : isOrange ? '#fff3e0' : '#fff8e1';
-    const border = isRed ? '#ea4335' : isOrange ? '#fbbc04' : '#ffd54f';
-    const clDone = countChecklistProgress(c);
-    const clPct  = clTotal ? Math.round(clDone / clTotal * 100) : 0;
-    return `
-      <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:${bg};border-left:4px solid ${border};border-radius:0 8px 8px 0;margin-bottom:8px;flex-wrap:wrap">
-        <div style="flex:1;min-width:140px">
-          <div style="font-weight:700;font-size:14px">${escHtml(c.name)}</div>
-          <div style="font-size:12px;color:var(--muted)">CTV: ${escHtml(c.ctv || '—')} · ${c.amount.toLocaleString('vi-VN')} ₫ · Mã: ${escHtml(c.code)}</div>
+  const fmtVnd = v => (v || 0).toLocaleString('vi-VN') + ' ₫';
+
+  let html = '';
+  Object.keys(ctvMap).sort().forEach(ctvName => {
+    const group = ctvMap[ctvName];
+    const groupLoan = group.reduce((s, c) => s + (c.loanAmount || 0), 0);
+    const groupAmt  = group.reduce((s, c) => s + (c.amount  || 0), 0);
+    const groupRed  = group.filter(c => { const d = getDaysUntil(c.tatToanDate); return d !== null && d <= w.red; }).length;
+    const groupClDone = group.filter(c => countChecklistProgress(c) >= clTotal && clTotal > 0).length;
+
+    html += `
+      <div style="margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:#f0f4f8;border-radius:10px 10px 0 0;border:1px solid var(--border);border-bottom:none">
+          <div style="font-weight:800;font-size:15px;flex:1">👤 ${escHtml(ctvName)}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <span style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:3px 10px;font-size:12px;font-weight:700">${group.length} KH</span>
+            ${groupRed > 0 ? `<span style="background:#fce8e6;color:#b71c1c;border-radius:8px;padding:3px 10px;font-size:12px;font-weight:700">🔴 ${groupRed} khẩn</span>` : ''}
+            ${groupLoan > 0 ? `<span style="background:#e8f5e9;color:#1b5e20;border-radius:8px;padding:3px 10px;font-size:12px;font-weight:700">🏦 ${fmtVnd(groupLoan)}</span>` : `<span style="background:#f3e5f5;color:#6a1b9a;border-radius:8px;padding:3px 10px;font-size:12px;font-weight:700">💰 thu: ${fmtVnd(groupAmt)}</span>`}
+            ${clTotal > 0 ? `<span style="background:#e3f2fd;color:#1565c0;border-radius:8px;padding:3px 10px;font-size:12px;font-weight:700">📋 ${groupClDone}/${group.length} xong</span>` : ''}
+          </div>
         </div>
-        <div>${tatToanBadge(c.tatToanDate)}</div>
-        <div style="text-align:center;font-size:12px;min-width:80px">
-          <div style="font-weight:700;color:${clDone === clTotal && clTotal > 0 ? '#2e7d32' : '#e65100'}">📋 ${clDone}/${clTotal} mục</div>
-          <div style="background:#e0e0e0;border-radius:4px;height:6px;margin-top:3px;overflow:hidden"><div style="height:100%;background:${clDone===clTotal&&clTotal>0?'#34a853':'#fbbc04'};border-radius:4px;width:${clPct}%"></div></div>
-          <div style="color:var(--muted);margin-top:2px">${c.status === 'paid' ? '✅ Đã thu' : '⏳ Chưa thu'}</div>
+        <div style="border:1px solid var(--border);border-radius:0 0 10px 10px;overflow:hidden">
+          ${group.map((c, idx) => {
+            const days = getDaysUntil(c.tatToanDate);
+            const isRed = days <= w.red, isOrange = days <= w.orange;
+            const bg = isRed ? '#fce8e6' : isOrange ? '#fff3e0' : '#fff8e1';
+            const border = isRed ? '#ea4335' : isOrange ? '#fbbc04' : '#ffd54f';
+            const clDone = countChecklistProgress(c);
+            const clPct  = clTotal ? Math.round(clDone / clTotal * 100) : 0;
+            const sep = idx < group.length - 1 ? 'border-bottom:1px solid rgba(0,0,0,.06)' : '';
+            return `
+              <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:${bg};border-left:4px solid ${border};flex-wrap:wrap;${sep}">
+                <div style="flex:1;min-width:140px">
+                  <div style="font-weight:700;font-size:14px">${escHtml(c.name)}</div>
+                  <div style="font-size:12px;color:var(--muted);margin-top:2px">
+                    Mã: ${escHtml(c.code)}
+                    ${c.loanAmount ? ` · 🏦 <strong>${fmtVnd(c.loanAmount)}</strong>` : ` · 💰 thu: ${fmtVnd(c.amount)}`}
+                  </div>
+                </div>
+                <div>${tatToanBadge(c.tatToanDate)}</div>
+                ${clTotal > 0 ? `
+                <div style="text-align:center;font-size:12px;min-width:72px">
+                  <div style="font-weight:700;color:${clDone === clTotal ? '#2e7d32' : '#e65100'}">📋 ${clDone}/${clTotal}</div>
+                  <div style="background:#e0e0e0;border-radius:4px;height:5px;margin-top:3px;overflow:hidden"><div style="height:100%;background:${clDone===clTotal?'#34a853':'#fbbc04'};width:${clPct}%"></div></div>
+                  <div style="color:var(--muted);margin-top:2px">${c.status === 'paid' ? '✅ Đã thu' : '⏳ Chưa thu'}</div>
+                </div>` : `<div style="font-size:12px;color:var(--muted)">${c.status === 'paid' ? '✅ Đã thu' : '⏳ Chưa thu'}</div>`}
+              </div>`;
+          }).join('')}
         </div>
       </div>`;
-  }).join('');
+  });
+
+  document.getElementById('tatToanList').innerHTML = html;
 }
 
 function countChecklistProgress(c) {
