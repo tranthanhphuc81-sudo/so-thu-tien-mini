@@ -1016,7 +1016,6 @@ function renderPaid(list) {
           <div class="name">${escHtml(c.name)}</div>
           <div class="amount" style="color:var(--success)">${(c.paidAmount ?? c.amount).toLocaleString('vi-VN')} ₫</div>
           ${c.paidAmount != null && c.paidAmount !== c.amount ? `<div class="meta" style="font-size:12px"><span style="color:${c.paidAmount < c.amount ? '#e65100' : '#2e7d32'};font-weight:700">${c.paidAmount < c.amount ? '⚠️ Còn thiếu' : '💰 Trả trước'}: ${Math.abs(c.paidAmount - c.amount).toLocaleString('vi-VN')} ₫</span> <span style="color:var(--muted)">(cần thu: ${c.amount.toLocaleString('vi-VN')} ₫)</span></div>` : ''}
-          <div class="meta">Đã thu lúc: ${c.paidAt ? new Date(c.paidAt).toLocaleString('vi-VN') : '—'}${c.payMethod ? ' · <strong>' + (c.payMethod === 'cash' ? '💵 Tiền mặt' : '🏦 Chuyển khoản') + '</strong>' : ''}</div>
           ${c.note ? `<div class="meta">📝 ${escHtml(c.note)}</div>` : ''}
         </div>
       </div>
