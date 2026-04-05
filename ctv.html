@@ -1348,12 +1348,12 @@ function submitConfirm() {
   }
 
   const paidAt = Date.now();
+  const payMethod = selectedPayMethod;
   const _userNote = document.getElementById('confirmNote').value.trim();
   const _d = new Date(paidAt);
   const _dateStr = _d.toLocaleDateString('vi-VN') + ' ' + _d.toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'});
   const _newEntry = 'CTV: ' + paidAmount.toLocaleString('vi-VN') + ' ₫ (' + (payMethod === 'cash' ? 'TM' : 'CK') + ') - ' + _dateStr + (_userNote ? ' [' + _userNote + ']' : '');
   const note = (c.note ? c.note + ', ' : '') + _newEntry;
-  const payMethod = selectedPayMethod;
   const newTotal = (c.paidAmount ?? 0) + paidAmount;
   const newCtvPaid = (c.ctvPaid ?? 0) + paidAmount;
   const updates = { status: 'paid', paidAt, note, payMethod, paidAmount: newTotal, ctvPaid: newCtvPaid };
