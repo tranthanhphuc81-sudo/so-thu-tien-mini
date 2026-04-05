@@ -1017,6 +1017,7 @@ function renderPaid(list) {
           <div class="amount" style="color:var(--success)">${(c.paidAmount ?? c.amount).toLocaleString('vi-VN')} ₫</div>
           ${c.paidAmount != null && c.paidAmount !== c.amount ? `<div class="meta" style="font-size:12px"><span style="color:${c.paidAmount < c.amount ? '#e65100' : '#2e7d32'};font-weight:700">${c.paidAmount < c.amount ? '⚠️ Còn thiếu' : '💰 Trả trước'}: ${Math.abs(c.paidAmount - c.amount).toLocaleString('vi-VN')} ₫</span> <span style="color:var(--muted)">(cần thu: ${c.amount.toLocaleString('vi-VN')} ₫)</span></div>` : ''}
           <div class="meta">Đã thu lúc: ${c.paidAt ? new Date(c.paidAt).toLocaleString('vi-VN') : '—'}${c.payMethod ? ' · <strong>' + (c.payMethod === 'cash' ? '💵 Tiền mặt' : '🏦 Chuyển khoản') + '</strong>' : ''}</div>
+          ${(c.nvtdPaid || c.ctvPaid) ? `<div class="meta" style="font-size:12px">` + (c.nvtdPaid ? `🏠 NVTD thu: <strong>${c.nvtdPaid.toLocaleString('vi-VN')} ₫</strong>` : '') + (c.nvtdPaid && c.ctvPaid ? ' &nbsp;·&nbsp; ' : '') + (c.ctvPaid ? `👤 CTV thu: <strong>${c.ctvPaid.toLocaleString('vi-VN')} ₫</strong>` : '') + `</div>` : ''}
           ${c.note ? `<div class="meta">📝 ${escHtml(c.note)}</div>` : ''}
         </div>
       </div>
@@ -1352,7 +1353,8 @@ function submitConfirm() {
   const note = _userNote ? 'CTV thu. ' + _userNote : 'CTV thu';
   const payMethod = selectedPayMethod;
   const newTotal = (c.paidAmount ?? 0) + paidAmount;
-  const updates = { status: 'paid', paidAt, note, payMethod, paidAmount: newTotal };
+  const newCtvPaid = (c.ctvPaid ?? 0) + paidAmount;
+  const updates = { status: 'paid', paidAt, note, payMethod, paidAmount: newTotal, ctvPaid: newCtvPaid };
   if (billBase64) updates.billImg = billBase64;
 
   const actKey = 'act_' + paidAt;
@@ -1367,6 +1369,7 @@ function submitConfirm() {
     c.paidAt = paidAt;
     c.note = note;
     c.paidAmount = newTotal;
+    c.ctvPaid = newCtvPaid;
     if (billBase64) c.billImg = billBase64;
     data.activities = data.activities || [];
     data.activities.unshift(act);
