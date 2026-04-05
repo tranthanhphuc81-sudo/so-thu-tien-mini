@@ -2038,7 +2038,7 @@ function renderCustomerTable() {
     return `
     <tr class="${c.status === 'paid' ? 'paid' : ''}" style="${rowStyle}">
       <td class="col-hide-sm">${i + 1}</td>
-      <td><strong>${escHtml(c.name)}</strong></td>
+      <td><strong>${escHtml(c.name)}</strong>${c.note ? `<br><span style="font-size:11px;color:var(--muted)">📝 ${escHtml(c.note)}</span>` : ''}</td>
       <td><strong style="color:#e65100">${c.amount.toLocaleString('vi-VN')} ₫</strong>${amtCell}</td>
       <td class="col-hide-md"><code style="font-size:12px">${escHtml(c.code)}</code></td>
       <td class="col-hide-md">${escHtml(c.ctv)}</td>
