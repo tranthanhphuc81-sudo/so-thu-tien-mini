@@ -1614,12 +1614,13 @@ function countProgressCTV(c) {
 
 function renderTaiVayTab() {
   const checklist = getChecklistCTV();
+  const w = getCtvWarnDays();
   const allCust = _cache.customers.filter(c => {
     if (!c.tatToanDate) return false;
     const d = getDaysUntilCtv(c.tatToanDate);
     if (d === null) return false;
-    if (d < 0) return false; // already past
-    if (d > getCtvWarnDays().yellow) return false;
+    if (d < -30) return false; // quá lâu, bỏ qua (> 30 ngày trước)
+    if (d > w.yellow) return false;
     // Only show customers assigned to this CTV
     const normalizedCtv = (c.ctv || '').trim().toLowerCase();
     const normalizedMe = (ctvName || '').trim().toLowerCase();
@@ -1637,20 +1638,21 @@ function renderTaiVayTab() {
 
   if (!allCust.length) {
     document.getElementById('listTaiVay').innerHTML =
-      '<div style="text-align:center;padding:40px 20px;color:var(--muted)">✅ Không có khách hàng nào sắp tất toán trong 90 ngày tới.</div>';
+      '<div style="text-align:center;padding:40px 20px;color:var(--muted)">✅ Không có khách hàng nào tất toán gần đây hoặc sắp tất toán.</div>';
     return;
   }
 
   allCust.sort((a, b) => (a.tatToanDate || 0) - (b.tatToanDate || 0));
 
-  const w = getCtvWarnDays();
   const done = allCust.filter(c => countProgressCTV(c) >= checklist.length).length;
-  const urgent = allCust.filter(c => getDaysUntilCtv(c.tatToanDate) <= w.red).length;
+  const urgent = allCust.filter(c => { const d = getDaysUntilCtv(c.tatToanDate); return d !== null && d >= 0 && d <= w.red; }).length;
+  const pastDue = allCust.filter(c => getDaysUntilCtv(c.tatToanDate) < 0).length;
   const totalLoan = allCust.reduce((s, c) => s + (c.loanAmount || 0), 0);
   const hasLoan = allCust.some(c => c.loanAmount > 0);
   const fmtVnd = v => (v || 0).toLocaleString('vi-VN') + ' ₫';
 
   let html = `<div style="display:flex;gap:10px;flex-wrap:wrap;padding:12px 16px 4px">
+    ${pastDue > 0 ? `<span style="background:#ede7f6;color:#6a1b9a;padding:4px 12px;border-radius:20px;font-size:13px;font-weight:700">🟣 Đã tất toán: ${pastDue}</span>` : ''}
     ${urgent ? `<span style="background:#fce8e6;color:#c62828;padding:4px 12px;border-radius:20px;font-size:13px;font-weight:700">🔴 Khẩn cấp: ${urgent}</span>` : ''}
     <span style="background:#fff3e0;color:#e65100;padding:4px 12px;border-radius:20px;font-size:13px;font-weight:700">📋 Tổng: ${allCust.length} KH</span>
     <span style="background:#e6f4ea;color:#1a7f37;padding:4px 12px;border-radius:20px;font-size:13px;font-weight:700">✅ Xong HS: ${done}</span>
@@ -1666,7 +1668,8 @@ function renderTaiVayTab() {
     const pct = total ? Math.round(progress / total * 100) : 0;
     const dateStr = new Date(c.tatToanDate).toLocaleDateString('vi-VN');
     let cardBorder = '#fbbc04';
-    if (d <= w.red)    cardBorder = '#ea4335';
+    if (d < 0)              cardBorder = '#9c27b0';
+    else if (d <= w.red)    cardBorder = '#ea4335';
     else if (d <= w.orange) cardBorder = '#fa7b17';
     const loanRow = c.loanAmount > 0
       ? `<div style="margin-top:5px;display:flex;align-items:baseline;gap:6px">
