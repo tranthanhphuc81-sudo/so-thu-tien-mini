@@ -2141,7 +2141,7 @@ function markPaidNVTD(id, payMethod, paidAmount) {
   const _nnote = (c.note ? c.note + ', ' : '') + _nnewEntry;
   const act = { name: c.name, amount: actualAmt, ctv: c.ctv, at: paidAt, type: 'paid', payMethod };
   if (_db) {
-    _db.ref('/data/customers/' + id).update({ status: 'paid', paidAt, payMethod, paidAmount: newTotal, note: _nnote, nvtdPaid: newNvtdPaid });
+    _db.ref('/data/customers/' + id).update({ status: 'paid', paidAt, payMethod, paidAmount: newTotal, note: _nnote, nvtdPaid: newNvtdPaid, lastPaidAmount: actualAmt, lastPaidBy: 'nvtd' });
     _db.ref('/data/activities/' + actKey).set(act);
   } else {
     c.status = 'paid';
@@ -2150,6 +2150,8 @@ function markPaidNVTD(id, payMethod, paidAmount) {
     c.paidAmount = newTotal;
     c.nvtdPaid = newNvtdPaid;
     c.note = _nnote;
+    c.lastPaidAmount = actualAmt;
+    c.lastPaidBy = 'nvtd';
     data.activities = data.activities || [];
     data.activities.unshift(act);
     if (data.activities.length > 50) data.activities = data.activities.slice(0, 50);
@@ -2160,19 +2162,35 @@ function markPaidNVTD(id, payMethod, paidAmount) {
 }
 
 function unmarkPaid(id) {
+  if (!confirm('↩️ Hoàn tác xác nhận thu gần nhất của khách hàng này?')) return;
+  const _applyUnmark = (c) => {
+    const last = c.lastPaidAmount || 0;
+    const newPaid = Math.max(0, (c.paidAmount ?? 0) - last);
+    const newStatus = newPaid > 0 ? 'paid' : 'pending';
+    const noteArr = (c.note || '').split(', ');
+    if (noteArr.length > 1) noteArr.pop(); else noteArr[0] = '';
+    const newNote = noteArr.join(', ').replace(/^,\s*/, '');
+    const updates = { status: newStatus, paidAmount: newPaid || null, paidAt: newPaid > 0 ? c.paidAt : null, note: newNote || null, lastPaidAmount: null, lastPaidBy: null };
+    if (c.lastPaidBy === 'nvtd') updates.nvtdPaid = Math.max(0, (c.nvtdPaid ?? 0) - last) || null;
+    if (c.lastPaidBy === 'ctv') updates.ctvPaid = Math.max(0, (c.ctvPaid ?? 0) - last) || null;
+    return updates;
+  };
   if (_db) {
-    _db.ref('/data/customers/' + id).update({ status: 'pending', paidAt: null })
-      .catch(e => showToast('⚠️ Lỗi: ' + e.message));
+    _db.ref('/data/customers/' + id).once('value', snap => {
+      const c = snap.val(); if (!c) return;
+      _db.ref('/data/customers/' + id).update(_applyUnmark(c))
+        .catch(e => showToast('⚠️ Lỗi: ' + e.message));
+    });
   } else {
     const data = getData();
     const c = data.customers.find(x => x.id === id);
     if (!c) return;
-    c.status = 'pending';
-    c.paidAt = null;
+    const upd = _applyUnmark(c);
+    Object.assign(c, upd);
     saveData(data);
     renderAll();
   }
-  showToast('↩️ Đã hoàn tác');
+  showToast('↩️ Đã hoàn tác xác nhận thu gần nhất');
 }
 
 // ==================== QR ====================

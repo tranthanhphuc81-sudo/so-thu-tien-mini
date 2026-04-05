@@ -1355,7 +1355,7 @@ function submitConfirm() {
   const note = (c.note ? c.note + ', ' : '') + _newEntry;
   const newTotal = (c.paidAmount ?? 0) + paidAmount;
   const newCtvPaid = (c.ctvPaid ?? 0) + paidAmount;
-  const updates = { status: 'paid', paidAt, note, payMethod, paidAmount: newTotal, ctvPaid: newCtvPaid };
+  const updates = { status: 'paid', paidAt, note, payMethod, paidAmount: newTotal, ctvPaid: newCtvPaid, lastPaidAmount: paidAmount, lastPaidBy: 'ctv' };
   if (billBase64) updates.billImg = billBase64;
 
   const actKey = 'act_' + paidAt;
@@ -1371,6 +1371,8 @@ function submitConfirm() {
     c.note = note;
     c.paidAmount = newTotal;
     c.ctvPaid = newCtvPaid;
+    c.lastPaidAmount = paidAmount;
+    c.lastPaidBy = 'ctv';
     if (billBase64) c.billImg = billBase64;
     data.activities = data.activities || [];
     data.activities.unshift(act);
