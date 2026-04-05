@@ -2038,7 +2038,7 @@ function renderCustomerTable() {
     return `
     <tr class="${c.status === 'paid' ? 'paid' : ''}" style="${rowStyle}">
       <td class="col-hide-sm">${i + 1}</td>
-      <td><strong>${escHtml(c.name)}</strong>${(c.nvtdPaid || c.ctvPaid) ? `<br><span style="font-size:11px;color:var(--muted)">` + (c.nvtdPaid ? `🏠 NVTD: ${c.nvtdPaid.toLocaleString('vi-VN')} ₫` : '') + (c.nvtdPaid && c.ctvPaid ? ' · ' : '') + (c.ctvPaid ? `👤 CTV: ${c.ctvPaid.toLocaleString('vi-VN')} ₫` : '') + `</span>` : (c.note ? `<br><span style="font-size:11px;color:var(--muted)">📝 ${escHtml(c.note)}</span>` : '')}</td>
+      <td><strong>${escHtml(c.name)}</strong>${c.note ? `<br><span style="font-size:11px;color:var(--muted)">📝 ${escHtml(c.note)}</span>` : ''}</td>
       <td><strong style="color:#e65100">${c.amount.toLocaleString('vi-VN')} ₫</strong>${amtCell}</td>
       <td class="col-hide-md"><code style="font-size:12px">${escHtml(c.code)}</code></td>
       <td class="col-hide-md">${escHtml(c.ctv)}</td>
@@ -2136,7 +2136,7 @@ function markPaidNVTD(id, payMethod, paidAmount) {
   const newNvtdPaid = (c.nvtdPaid ?? 0) + actualAmt;
   const _nd = new Date(paidAt);
   const _ndateStr = _nd.toLocaleDateString('vi-VN') + ' ' + _nd.toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'});
-  const _nnewEntry = 'NVTD: ' + actualAmt.toLocaleString('vi-VN') + ' ₫ - ' + _ndateStr;
+  const _nnewEntry = 'NVTD: ' + actualAmt.toLocaleString('vi-VN') + ' ₫ (' + (payMethod === 'cash' ? 'TM' : 'CK') + ') - ' + _ndateStr;
   const _nnote = (c.note ? c.note + ', ' : '') + _nnewEntry;
   const act = { name: c.name, amount: actualAmt, ctv: c.ctv, at: paidAt, type: 'paid', payMethod };
   if (_db) {

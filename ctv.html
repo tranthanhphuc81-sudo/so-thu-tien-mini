@@ -1017,7 +1017,6 @@ function renderPaid(list) {
           <div class="amount" style="color:var(--success)">${(c.paidAmount ?? c.amount).toLocaleString('vi-VN')} ₫</div>
           ${c.paidAmount != null && c.paidAmount !== c.amount ? `<div class="meta" style="font-size:12px"><span style="color:${c.paidAmount < c.amount ? '#e65100' : '#2e7d32'};font-weight:700">${c.paidAmount < c.amount ? '⚠️ Còn thiếu' : '💰 Trả trước'}: ${Math.abs(c.paidAmount - c.amount).toLocaleString('vi-VN')} ₫</span> <span style="color:var(--muted)">(cần thu: ${c.amount.toLocaleString('vi-VN')} ₫)</span></div>` : ''}
           <div class="meta">Đã thu lúc: ${c.paidAt ? new Date(c.paidAt).toLocaleString('vi-VN') : '—'}${c.payMethod ? ' · <strong>' + (c.payMethod === 'cash' ? '💵 Tiền mặt' : '🏦 Chuyển khoản') + '</strong>' : ''}</div>
-          ${(c.nvtdPaid || c.ctvPaid) ? `<div class="meta" style="font-size:12px">` + (c.nvtdPaid ? `🏠 NVTD thu: <strong>${c.nvtdPaid.toLocaleString('vi-VN')} ₫</strong>` : '') + (c.nvtdPaid && c.ctvPaid ? ' &nbsp;·&nbsp; ' : '') + (c.ctvPaid ? `👤 CTV thu: <strong>${c.ctvPaid.toLocaleString('vi-VN')} ₫</strong>` : '') + `</div>` : ''}
           ${c.note ? `<div class="meta">📝 ${escHtml(c.note)}</div>` : ''}
         </div>
       </div>
@@ -1352,7 +1351,7 @@ function submitConfirm() {
   const _userNote = document.getElementById('confirmNote').value.trim();
   const _d = new Date(paidAt);
   const _dateStr = _d.toLocaleDateString('vi-VN') + ' ' + _d.toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'});
-  const _newEntry = 'CTV: ' + paidAmount.toLocaleString('vi-VN') + ' ₫ - ' + _dateStr + (_userNote ? ' (' + _userNote + ')' : '');
+  const _newEntry = 'CTV: ' + paidAmount.toLocaleString('vi-VN') + ' ₫ (' + (payMethod === 'cash' ? 'TM' : 'CK') + ') - ' + _dateStr + (_userNote ? ' [' + _userNote + ']' : '');
   const note = (c.note ? c.note + ', ' : '') + _newEntry;
   const payMethod = selectedPayMethod;
   const newTotal = (c.paidAmount ?? 0) + paidAmount;
