@@ -2810,7 +2810,7 @@ function parseExcelDate(raw) {
 
 function showExcelPreview() {
   if (!_excelParsed) return;
-  const { headers, colName, colCode, colAmount, colCtvName, fileName } = _excelParsed;
+  const { headers, colName, colCode, colAmount, colCtvName, colTatToan, fileName } = _excelParsed;
 
   document.getElementById('excelFileName').textContent = fileName;
 
@@ -2834,7 +2834,8 @@ function showExcelPreview() {
     buildSelect('🔑 Mã đối soát (tuỳ chọn)', 'exColCode', colCode) +
     buildSelect('👥 Tên CTV phụ trách', 'exColCtvName', colCtvName != null ? colCtvName : -1) +
     buildSelect('💵 Tiền mặt đã thu (để kiểm tra)', 'exColCash', _excelParsed.colCash) +
-    buildSelect('🏦 Chuyển khoản đã thu (để kiểm tra)', 'exColTransfer', _excelParsed.colTransfer);
+    buildSelect('🏦 Chuyển khoản đã thu (để kiểm tra)', 'exColTransfer', _excelParsed.colTransfer) +
+    buildSelect('📅 Ngày tất toán (cảnh báo tái vay)', 'exColTatToan', _excelParsed.colTatToan >= 0 ? _excelParsed.colTatToan : -1);
 
   updateExcelPreview();
   openModal('excelModal');
