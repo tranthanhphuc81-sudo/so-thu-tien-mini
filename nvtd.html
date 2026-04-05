@@ -246,6 +246,17 @@
   }
   .modal-close:hover { background: #e0e0e0; }
 
+  /* CHECKLIST ITEMS (dùng trong modal cập nhật hồ sơ tái vay) */
+  .cl-item { display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.15s; }
+  .cl-item:last-child { border-bottom:none; }
+  .cl-item:hover { background:#f8f9fa; }
+  .cl-item.done { opacity:0.75; }
+  .cl-item.done .cl-label { text-decoration:line-through;color:var(--muted); }
+  .cl-num { font-size:11px;font-weight:700;color:var(--muted);width:18px;text-align:center;flex-shrink:0; }
+  .cl-checkbox { width:22px;height:22px;border:2px solid var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex-shrink:0;transition:all 0.15s; }
+  .cl-item.done .cl-checkbox { background:#34a853;border-color:#34a853;color:#fff; }
+  .cl-label { font-size:14px;flex:1; }
+
   @media (max-width: 390px) {
     .modal-overlay { padding: 10px; }
     .modal { padding: 16px; }
@@ -1059,6 +1070,22 @@
       <button class="btn btn-primary" style="flex:1" id="excelConfirmBtn" onclick="confirmExcelImport()">✅ Nhập <span id="excelImportCount">0</span> khách hàng</button>
       <button class="btn btn-outline" onclick="closeModal('excelModal')">Hủy</button>
     </div>
+  </div>
+</div>
+
+<!-- MODAL CHECKLIST TÁI VAY (NVTD cập nhật giúp CTV) -->
+<div class="modal-overlay" id="nvtdChecklistModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeNvtdChecklistModal()">✕</button>
+    <div class="modal-title" id="nvtdClModalTitle" style="margin-bottom:6px">📋 Hồ sơ tái vay</div>
+    <div id="nvtdClModalInfo" style="background:#f0fdf4;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:13px"></div>
+    <div style="background:#fff3e0;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#7b4f00">
+      <strong>📅 Tất toán:</strong> <span id="nvtdClModalTatToan"></span><br>
+      <span style="font-size:12px">Tích vào mục đã thu thập/hoàn thành — CTV sẽ thấy ngay.</span>
+    </div>
+    <div id="nvtdClModalProgress" style="margin-bottom:12px"></div>
+    <div id="nvtdClModalItems" style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:16px"></div>
+    <button class="btn btn-primary" style="width:100%" onclick="closeNvtdChecklistModal()">✅ Lưu & Đóng</button>
   </div>
 </div>
 
@@ -3258,7 +3285,10 @@ function renderTatToanWarnings() {
                 <div style="text-align:center;font-size:12px;min-width:60px">
                   <div style="font-weight:700;color:${clDone === clTotal ? '#2e7d32' : '#e65100'}">📋 ${clDone}/${clTotal}</div>
                   <div style="background:#e0e0e0;border-radius:4px;height:5px;margin-top:3px;overflow:hidden"><div style="height:100%;background:${clDone===clTotal?'#34a853':'#fbbc04'};width:${clPct}%"></div></div>
-                </div>` : ''}
+                </div>
+                <button onclick="openNvtdChecklist('${c.id}')" style="padding:5px 10px;border:1.5px solid #1a73e8;border-radius:8px;background:#e8f0fe;color:#1a73e8;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">
+                  ✏️ Cập nhật HS
+                </button>` : ''}
               </div>`;
           }).join('')}
         </div>
@@ -3274,6 +3304,86 @@ function countChecklistProgress(c) {
   let done = 0;
   for (let i = 0; i < total; i++) { if (c.checklistProgress[String(i)] || c.checklistProgress[i]) done++; }
   return done;
+}
+
+// ==================== NVTD CHECKLIST MODAL ====================
+function openNvtdChecklist(custId) {
+  const c = _cache.customers.find(x => x.id === custId);
+  if (!c) return;
+  const checklist = getChecklist();
+  const progress = c.checklistProgress || {};
+  const d = getDaysUntil(c.tatToanDate);
+  const dateStr = c.tatToanDate ? new Date(c.tatToanDate).toLocaleDateString('vi-VN') : '?';
+  const done = checklist.filter((_, i) => progress[String(i)] === true).length;
+  const total = checklist.length;
+  const pct = total ? Math.round(done / total * 100) : 0;
+  const fmtVnd = v => (v || 0).toLocaleString('vi-VN') + ' ₫';
+
+  document.getElementById('nvtdClModalTitle').textContent = '📋 Hồ sơ tái vay: ' + c.name;
+  document.getElementById('nvtdClModalInfo').innerHTML =
+    `<strong>${escHtml(c.name)}</strong> — Mã: ${escHtml(c.code)}
+     ${c.loanAmount > 0
+       ? ` — 🏦 Tái vay dự kiến: <strong style="color:#1b5e20">${fmtVnd(c.loanAmount)}</strong>`
+       : ` — 💳 Thu kỳ này: <strong>${fmtVnd(c.amount)}</strong>`}
+     ${c.ctv ? ` — 👤 CTV: <strong>${escHtml(c.ctv)}</strong>` : ''}`;
+
+  document.getElementById('nvtdClModalTatToan').innerHTML =
+    c.tatToanDate
+      ? `<strong>${dateStr}</strong>${d !== null && d >= 0 ? ` (còn ${d} ngày)` : ' <span style="color:#c62828">(đã đến hạn)</span>'}`
+      : 'Chưa có';
+
+  _nvtdClModalRefreshProgress(done, total, pct);
+
+  document.getElementById('nvtdClModalItems').innerHTML = checklist.map((item, i) => {
+    const checked = progress[String(i)] === true;
+    return `<div class="cl-item ${checked ? 'done' : ''}" onclick="toggleNvtdChecklistItem('${custId}', ${i}, this)">
+      <span class="cl-num">${i + 1}</span>
+      <div class="cl-checkbox">${checked ? '✓' : ''}</div>
+      <span class="cl-label">${escHtml(item)}</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('nvtdChecklistModal').classList.add('open');
+}
+
+function _nvtdClModalRefreshProgress(done, total, pct) {
+  document.getElementById('nvtdClModalProgress').innerHTML =
+    `<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+       <div style="flex:1;background:#e8f5e9;border-radius:6px;height:12px;overflow:hidden">
+         <div style="width:${pct}%;height:100%;background:#34a853;border-radius:6px;transition:width 0.3s"></div>
+       </div>
+       <span style="font-size:14px;font-weight:800;color:#1a7f37">${done}/${total}</span>
+     </div>
+     <div style="font-size:12px;color:var(--muted)">${done >= total && total > 0 ? '✅ Đã hoàn thành tất cả mục!' : `Còn ${total - done} mục chưa hoàn thành`}</div>`;
+}
+
+function toggleNvtdChecklistItem(custId, index, elRow) {
+  const c = _cache.customers.find(x => x.id === custId);
+  if (!c) return;
+  if (!c.checklistProgress) c.checklistProgress = {};
+  const newVal = !(c.checklistProgress[String(index)] === true);
+  c.checklistProgress[String(index)] = newVal;
+
+  if (_db) {
+    _db.ref('/data/customers/' + custId + '/checklistProgress/' + String(index)).set(newVal);
+  }
+
+  const chk = elRow.querySelector('.cl-checkbox');
+  if (newVal) { elRow.classList.add('done'); if (chk) chk.textContent = '✓'; }
+  else        { elRow.classList.remove('done'); if (chk) chk.textContent = ''; }
+
+  const checklist = getChecklist();
+  const done = checklist.filter((_, i) => c.checklistProgress[String(i)] === true).length;
+  const total = checklist.length;
+  const pct = total ? Math.round(done / total * 100) : 0;
+  _nvtdClModalRefreshProgress(done, total, pct);
+
+  showToast(newVal ? '✅ Đã đánh dấu hoàn thành' : '↩️ Đã bỏ đánh dấu');
+}
+
+function closeNvtdChecklistModal() {
+  document.getElementById('nvtdChecklistModal').classList.remove('open');
+  renderTatToanWarnings();
 }
 
 // ==================== WARN DAYS ====================
