@@ -1348,7 +1348,8 @@ function submitConfirm() {
   }
 
   const paidAt = Date.now();
-  const note = document.getElementById('confirmNote').value.trim();
+  const _userNote = document.getElementById('confirmNote').value.trim();
+  const note = _userNote ? 'CTV thu. ' + _userNote : 'CTV thu';
   const payMethod = selectedPayMethod;
   const newTotal = (c.paidAmount ?? 0) + paidAmount;
   const updates = { status: 'paid', paidAt, note, payMethod, paidAmount: newTotal };

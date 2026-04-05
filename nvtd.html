@@ -2135,13 +2135,14 @@ function markPaidNVTD(id, payMethod, paidAmount) {
   const newTotal = (c.paidAmount ?? 0) + actualAmt;
   const act = { name: c.name, amount: actualAmt, ctv: c.ctv, at: paidAt, type: 'paid', payMethod };
   if (_db) {
-    _db.ref('/data/customers/' + id).update({ status: 'paid', paidAt, payMethod, paidAmount: newTotal });
+    _db.ref('/data/customers/' + id).update({ status: 'paid', paidAt, payMethod, paidAmount: newTotal, note: 'NVTD thu' });
     _db.ref('/data/activities/' + actKey).set(act);
   } else {
     c.status = 'paid';
     c.paidAt = paidAt;
     c.payMethod = payMethod;
     c.paidAmount = newTotal;
+    c.note = 'NVTD thu';
     data.activities = data.activities || [];
     data.activities.unshift(act);
     if (data.activities.length > 50) data.activities = data.activities.slice(0, 50);
