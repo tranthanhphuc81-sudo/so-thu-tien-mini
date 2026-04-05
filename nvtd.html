@@ -267,8 +267,9 @@
     #tab-list .filter-row { flex-direction: column; align-items: stretch; gap: 8px !important; }
     #tab-list .filter-chips { flex-wrap: wrap; }
     #tab-list .filter-selects { display: flex; gap: 8px; }
-    #tab-list .filter-selects select { flex: 1; min-width: 100px; }
-    #tab-list .filter-selects .filter-label { display: none; }
+    #tab-list .filter-selects > div { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+    #tab-list .filter-selects select { width: 100%; }
+    #tab-list .filter-selects .filter-label { display: block; font-size: 11px; }
   }
   @media (max-width: 480px) {
     .col-hide-sm { display: none !important; }
@@ -796,16 +797,16 @@
       <div class="chip" onclick="setFilter('pending', this)">⏳ Chưa thu</div>
       <div class="chip" onclick="setFilter('paid', this)">✅ Đã thu</div>
     </div>
-    <div class="filter-selects" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-      <div style="display:flex;align-items:center;gap:5px">
-        <span class="filter-label" style="font-size:13px;color:var(--muted);white-space:nowrap">👤 CTV:</span>
-        <select id="ctvFilterSelect" onchange="setCtvFilter()" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff;color:var(--text);cursor:pointer">
+    <div class="filter-selects" style="display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap">
+      <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:110px">
+        <span class="filter-label" style="font-size:11px;color:var(--muted);white-space:nowrap">👤 CTV</span>
+        <select id="ctvFilterSelect" onchange="setCtvFilter()" style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff;color:var(--text);cursor:pointer">
           <option value="all">Tất cả</option>
         </select>
       </div>
-      <div style="display:flex;align-items:center;gap:5px">
-        <span class="filter-label" style="font-size:13px;color:var(--muted);white-space:nowrap">💳 Hình thức:</span>
-        <select id="payMethodFilterSelect" onchange="setPayMethodFilter()" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff;color:var(--text);cursor:pointer">
+      <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:110px">
+        <span class="filter-label" style="font-size:11px;color:var(--muted);white-space:nowrap">💳 Hình thức</span>
+        <select id="payMethodFilterSelect" onchange="setPayMethodFilter()" style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff;color:var(--text);cursor:pointer">
           <option value="all">Tất cả</option>
           <option value="cash">💵 Tiền mặt</option>
           <option value="transfer">🏦 Chuyển khoản</option>
