@@ -3179,12 +3179,15 @@ function renderTatToanWarnings() {
   const urgent   = allUpcoming.filter(c => { const d = getDaysUntil(c.tatToanDate); return d !== null && d > w.red && d <= w.orange; }).length;
   const notice   = allUpcoming.filter(c => { const d = getDaysUntil(c.tatToanDate); return d !== null && d > w.orange && d <= w.yellow; }).length;
   const totalLoan = allUpcoming.reduce((s, c) => s + (c.loanAmount || 0), 0);
+  const hasLoanData = allUpcoming.some(c => c.loanAmount > 0);
 
   document.getElementById('tatToanSummary').innerHTML =
     `<span style="background:#fce8e6;color:#b71c1c;font-size:13px;font-weight:700;padding:4px 12px;border-radius:12px">🔴 ${critical} KH ≤${w.red} ngày</span>
      <span style="background:#fff3e0;color:#e65100;font-size:13px;font-weight:700;padding:4px 12px;border-radius:12px">🟠 ${urgent} KH ${w.red+1}–${w.orange} ngày</span>
      <span style="background:#fff8e1;color:#c67c00;font-size:13px;font-weight:700;padding:4px 12px;border-radius:12px">🟡 ${notice} KH ${w.orange+1}–${w.yellow} ngày</span>
-     ${totalLoan > 0 ? `<span style="background:#e8f5e9;color:#1b5e20;font-size:13px;font-weight:700;padding:4px 12px;border-radius:12px">🏦 Tổng tiền vay: ${totalLoan.toLocaleString('vi-VN')} ₫</span>` : ''}`;
+     ${hasLoanData
+       ? `<span style="background:#e8f5e9;color:#1b5e20;font-size:13px;font-weight:700;padding:4px 12px;border-radius:12px">🏦 Tổng tái vay dự kiến: ${totalLoan.toLocaleString('vi-VN')} ₫</span>`
+       : `<span style="background:#fff3e0;color:#bf360c;font-size:12px;padding:4px 12px;border-radius:12px">⚠️ Chưa có dữ liệu Số tiền vay — hãy upload lại Excel và chọn cột "Số tiền vay gốc"</span>`}`;
 
   const filtered = allUpcoming.filter(c => {
     const d = getDaysUntil(c.tatToanDate);
@@ -3208,22 +3211,24 @@ function renderTatToanWarnings() {
   const fmtVnd = v => (v || 0).toLocaleString('vi-VN') + ' ₫';
 
   let html = '';
-  Object.keys(ctvMap).sort().forEach(ctvName => {
-    const group = ctvMap[ctvName];
-    const groupLoan = group.reduce((s, c) => s + (c.loanAmount || 0), 0);
-    const groupAmt  = group.reduce((s, c) => s + (c.amount  || 0), 0);
-    const groupRed  = group.filter(c => { const d = getDaysUntil(c.tatToanDate); return d !== null && d <= w.red; }).length;
-    const groupClDone = group.filter(c => countChecklistProgress(c) >= clTotal && clTotal > 0).length;
+  Object.keys(ctvMap).sort().forEach(ctvKey => {
+    const group = ctvMap[ctvKey];
+    const groupLoan    = group.reduce((s, c) => s + (c.loanAmount || 0), 0);
+    const groupHasLoan = group.some(c => c.loanAmount > 0);
+    const groupRed     = group.filter(c => { const d = getDaysUntil(c.tatToanDate); return d !== null && d <= w.red; }).length;
+    const groupClDone  = group.filter(c => countChecklistProgress(c) >= clTotal && clTotal > 0).length;
 
     html += `
       <div style="margin-bottom:16px">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:#f0f4f8;border-radius:10px 10px 0 0;border:1px solid var(--border);border-bottom:none">
-          <div style="font-weight:800;font-size:15px;flex:1">👤 ${escHtml(ctvName)}</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <div style="font-weight:800;font-size:15px;flex:1">👤 ${escHtml(ctvKey)}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
             <span style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:3px 10px;font-size:12px;font-weight:700">${group.length} KH</span>
-            ${groupRed > 0 ? `<span style="background:#fce8e6;color:#b71c1c;border-radius:8px;padding:3px 10px;font-size:12px;font-weight:700">🔴 ${groupRed} khẩn</span>` : ''}
-            ${groupLoan > 0 ? `<span style="background:#e8f5e9;color:#1b5e20;border-radius:8px;padding:3px 10px;font-size:12px;font-weight:700">🏦 ${fmtVnd(groupLoan)}</span>` : `<span style="background:#f3e5f5;color:#6a1b9a;border-radius:8px;padding:3px 10px;font-size:12px;font-weight:700">💰 thu: ${fmtVnd(groupAmt)}</span>`}
-            ${clTotal > 0 ? `<span style="background:#e3f2fd;color:#1565c0;border-radius:8px;padding:3px 10px;font-size:12px;font-weight:700">📋 ${groupClDone}/${group.length} xong</span>` : ''}
+            ${groupRed > 0 ? `<span style="background:#fce8e6;color:#b71c1c;border-radius:8px;padding:3px 10px;font-size:12px;font-weight:700">🔴 ${groupRed} khẩn cấp</span>` : ''}
+            ${groupHasLoan
+              ? `<span style="background:#e8f5e9;color:#1b5e20;border-radius:8px;padding:3px 10px;font-size:13px;font-weight:800">🏦 Tái vay: ${fmtVnd(groupLoan)}</span>`
+              : `<span style="background:#fff8e1;color:#bf360c;border-radius:8px;padding:3px 10px;font-size:12px">⚠️ Chưa có số tiền vay</span>`}
+            ${clTotal > 0 ? `<span style="background:#e3f2fd;color:#1565c0;border-radius:8px;padding:3px 10px;font-size:12px;font-weight:700">📋 ${groupClDone}/${group.length} xong HS</span>` : ''}
           </div>
         </div>
         <div style="border:1px solid var(--border);border-radius:0 0 10px 10px;overflow:hidden">
@@ -3231,26 +3236,29 @@ function renderTatToanWarnings() {
             const days = getDaysUntil(c.tatToanDate);
             const isRed = days <= w.red, isOrange = days <= w.orange;
             const bg = isRed ? '#fce8e6' : isOrange ? '#fff3e0' : '#fff8e1';
-            const border = isRed ? '#ea4335' : isOrange ? '#fbbc04' : '#ffd54f';
+            const rowBorder = isRed ? '#ea4335' : isOrange ? '#fbbc04' : '#ffd54f';
             const clDone = countChecklistProgress(c);
             const clPct  = clTotal ? Math.round(clDone / clTotal * 100) : 0;
             const sep = idx < group.length - 1 ? 'border-bottom:1px solid rgba(0,0,0,.06)' : '';
+            const loanCell = c.loanAmount > 0
+              ? `<div style="text-align:right;min-width:120px">
+                   <div style="font-size:11px;color:var(--muted);margin-bottom:2px">💰 Tái vay dự kiến</div>
+                   <div style="font-size:15px;font-weight:800;color:#1b5e20">${fmtVnd(c.loanAmount)}</div>
+                 </div>`
+              : `<div style="text-align:right;min-width:80px;font-size:11px;color:#bf360c">⚠️ Chưa có<br>số tiền vay</div>`;
             return `
-              <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:${bg};border-left:4px solid ${border};flex-wrap:wrap;${sep}">
+              <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:${bg};border-left:4px solid ${rowBorder};flex-wrap:wrap;${sep}">
                 <div style="flex:1;min-width:140px">
                   <div style="font-weight:700;font-size:14px">${escHtml(c.name)}</div>
-                  <div style="font-size:12px;color:var(--muted);margin-top:2px">
-                    Mã: ${escHtml(c.code)}
-                    ${c.loanAmount ? ` · 🏦 <strong>${fmtVnd(c.loanAmount)}</strong>` : ` · 💰 thu: ${fmtVnd(c.amount)}`}
-                  </div>
+                  <div style="font-size:12px;color:var(--muted);margin-top:2px">Mã: ${escHtml(c.code)} · Thu kỳ này: ${fmtVnd(c.amount)}</div>
                 </div>
+                ${loanCell}
                 <div>${tatToanBadge(c.tatToanDate)}</div>
                 ${clTotal > 0 ? `
-                <div style="text-align:center;font-size:12px;min-width:72px">
+                <div style="text-align:center;font-size:12px;min-width:60px">
                   <div style="font-weight:700;color:${clDone === clTotal ? '#2e7d32' : '#e65100'}">📋 ${clDone}/${clTotal}</div>
                   <div style="background:#e0e0e0;border-radius:4px;height:5px;margin-top:3px;overflow:hidden"><div style="height:100%;background:${clDone===clTotal?'#34a853':'#fbbc04'};width:${clPct}%"></div></div>
-                  <div style="color:var(--muted);margin-top:2px">${c.status === 'paid' ? '✅ Đã thu' : '⏳ Chưa thu'}</div>
-                </div>` : `<div style="font-size:12px;color:var(--muted)">${c.status === 'paid' ? '✅ Đã thu' : '⏳ Chưa thu'}</div>`}
+                </div>` : ''}
               </div>`;
           }).join('')}
         </div>
