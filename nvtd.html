@@ -697,7 +697,8 @@
   <div class="card" id="sec-excel">
     <div class="card-title">📊 Upload file Excel công nợ</div>
     <div class="section-note">
-      💡 Upload file Excel (.xlsx, .xls) báo cáo tình hình công nợ. Hệ thống tự nhận dạng cột <strong>Tên khách hàng</strong>, <strong>Mã KH</strong> và <strong>Số tiền cần thu</strong>. Bạn có thể chỉnh lại trước khi nhập.
+      💡 Upload file Excel (.xlsx, .xls) báo cáo tình hình công nợ. Hệ thống tự nhận dạng cột <strong>Tên khách hàng</strong>, <strong>Mã KH</strong> và <strong>Số tiền cần thu</strong>. Bạn có thể chỉnh lại trước khi nhập.<br>
+      📥 Chưa có file đúng định dạng? <button class="btn btn-outline btn-sm" onclick="downloadExcelTemplate()" style="margin-left:4px;vertical-align:middle">⬇️ Tải file mẫu Excel</button>
     </div>
     <div class="form-group" style="margin-bottom:12px">
       <label>CTV phụ trách danh sách này</label>
@@ -2717,6 +2718,66 @@ function escHtml(str) {
 // ==================== EXCEL IMPORT ====================
 let _excelParsed = null;
 
+function downloadExcelTemplate() {
+  if (typeof XLSX === 'undefined') {
+    showToast('❌ Thư viện Excel chưa tải xong, thử lại sau giây lát!');
+    return;
+  }
+  const headers = [
+    'Tên khách hàng',
+    'Nợ cần phải thu',
+    'Mã khách hàng',
+    'Họ tên CTV',
+    'Ngày tất toán',
+    'Số tiền vay gốc',
+  ];
+  const samples = [
+    ['Nguyễn Văn An',   500000,  'KH001', 'Hoa',  '31/12/2025', 5000000],
+    ['Trần Thị Bình',   800000,  'KH002', 'Hoa',  '15/01/2026', 8000000],
+    ['Lê Văn Cường',    1200000, 'KH003', 'Lan',  '20/02/2026', 12000000],
+    ['Phạm Thị Dung',   650000,  'KH004', 'Lan',  '',           0],
+    ['Hoàng Văn Em',    300000,  'KH005', 'Trang','',           0],
+  ];
+
+  const wsData = [headers, ...samples];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+  // Định nghĩa độ rộng cột
+  ws['!cols'] = [
+    { wch: 24 }, // Tên khách hàng
+    { wch: 20 }, // Nợ cần phải thu
+    { wch: 14 }, // Mã khách hàng
+    { wch: 18 }, // Họ tên CTV
+    { wch: 16 }, // Ngày tất toán
+    { wch: 18 }, // Số tiền vay gốc
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Danh sách KH');
+
+  // Sheet hướng dẫn
+  const guideData = [
+    ['Hướng dẫn sử dụng file mẫu'],
+    [],
+    ['Cột', 'Bắt buộc', 'Mô tả'],
+    ['Tên khách hàng', 'Có', 'Họ tên đầy đủ của khách hàng'],
+    ['Nợ cần phải thu', 'Có', 'Số tiền cần thu trong kỳ (số âm = đã trả trước, sẽ đánh dấu Đã thu)'],
+    ['Mã khách hàng', 'Không', 'Mã đối soát / mã hợp đồng (nếu trống hệ thống tự sinh)'],
+    ['Họ tên CTV', 'Không', 'Tên CTV phụ trách khách hàng này'],
+    ['Ngày tất toán', 'Không', 'Định dạng dd/mm/yyyy – dùng để cảnh báo tái vay'],
+    ['Số tiền vay gốc', 'Không', 'Tổng dư nợ gốc – dùng để tổng hợp kế hoạch tái vay'],
+    [],
+    ['Lưu ý:', '', 'Hệ thống tự nhận cột theo tên cột nên KHÔNG cần giữ nguyên thứ tự.'],
+    ['', '', 'Bạn có thể đổi tên cột sau khi upload hoặc dùng chức năng ánh xạ cột thủ công.'],
+  ];
+  const wsGuide = XLSX.utils.aoa_to_sheet(guideData);
+  wsGuide['!cols'] = [{ wch: 22 }, { wch: 12 }, { wch: 70 }];
+  XLSX.utils.book_append_sheet(wb, wsGuide, 'Hướng dẫn');
+
+  XLSX.writeFile(wb, 'mau-danh-sach-khach-hang.xlsx');
+  showToast('⬇️ Đã tải file mẫu Excel!');
+}
+
 function handleExcelFile(input) {
   const file = input.files[0];
   if (!file) return;
@@ -2903,9 +2964,7 @@ function updateExcelPreview() {
 
   const validRows = dataRows.filter(row => {
     const name = colName >= 0 ? String(row[colName] || '').trim() : '';
-    const raw  = colAmount >= 0 ? String(row[colAmount]).replace(/[^0-9.\-]/g, '') : '0';
-    const amt  = parseFloat(raw) || 0;
-    return name && amt !== 0;
+    return !!name;
   });
 
   document.getElementById('excelImportCount').textContent = validRows.length;
@@ -2943,7 +3002,7 @@ function updateExcelPreview() {
   }
   noteEl.style.background = '#e8f5e9'; noteEl.style.color = '#2e7d32';
   noteEl.innerHTML = `✅ ${validRows.length} dòng hợp lệ sẽ được nhập` +
-    (skipped > 0 ? ` · ⚠️ Bỏ qua ${skipped} dòng thiếu tên hoặc số tiền = 0` : '') +
+    (skipped > 0 ? ` · ⚠️ Bỏ qua ${skipped} dòng thiếu tên` : '') +
     (prepaidCount > 0 ? `<br><span style="color:#2e7d32;font-weight:700">💰 ${prepaidCount} khách hàng có số tiền âm = đã trả trước, sẽ được đánh dấu “Đã thu”</span>` : '') +
     (warnCount > 0 ? `<br><span style="color:#e65100;font-weight:700">⚠️ ${warnCount} khách hàng có số tiền đã thu THẤP HƠN số tiền cần thu (xem hàng màu cam bên dưới)</span>` : '');
 
@@ -3081,12 +3140,11 @@ function confirmExcelImport() {
     const name   = String(row[colName] || '').trim();
     const raw    = String(row[colAmount] || '').replace(/[^0-9.\-]/g, '');
     const rawAmt = parseFloat(raw) || 0;
-    if (!name || rawAmt === 0) return;
+    if (!name) return;
     const isPrepaid  = rawAmt < 0;
     const amt        = isPrepaid ? 0 : rawAmt;
     const prepaidAmt = isPrepaid ? Math.abs(rawAmt) : 0;
     const code   = colCode >= 0 ? String(row[colCode] || '').trim() : '';
-    if (!isPrepaid && amt <= 0) return;
 
     const rowCtv = perRowCtv
       ? (String(row[_excelParsed.colCtvName] || '').trim() || 'Chưa phân công')
