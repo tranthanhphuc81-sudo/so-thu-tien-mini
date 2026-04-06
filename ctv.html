@@ -437,6 +437,36 @@
   .pw-wrap input { padding-right: 44px !important; width: 100%; box-sizing: border-box; }
   .pw-eye { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 18px; color: #999; padding: 4px; line-height: 1; user-select: none; }
   .pw-eye:hover { color: #333; }
+
+  /* ===== BULK SELECT (xác nhận hàng loạt) ===== */
+  .select-bar {
+    padding: 8px 16px;
+    display: flex; align-items: center; gap: 10px;
+    background: #e8f0fe; border-bottom: 1px solid #c5d8ff;
+    font-size: 13px; font-weight: 700; color: #1565c0;
+  }
+  .select-bar label { display:flex; align-items:center; gap:6px; cursor:pointer; user-select:none; }
+  .cust-chk { width:18px; height:18px; cursor:pointer; accent-color:#1565c0; flex-shrink:0; }
+  .customer-card .card-chk-wrap {
+    display: flex; align-items: center; justify-content: center;
+    padding-right: 4px; flex-shrink: 0;
+  }
+  .bulk-action-bar {
+    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%) translateY(100%);
+    max-width: 500px; width: 100%;
+    background: linear-gradient(135deg, #0d47a1, #1565c0);
+    color: #fff; padding: 14px 16px 20px;
+    display: flex; align-items: center; gap: 10px;
+    z-index: 300; border-radius: 20px 20px 0 0;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.25);
+    transition: transform 0.3s ease;
+    pointer-events: none;
+  }
+  .bulk-action-bar.show {
+    transform: translateX(-50%) translateY(0);
+    pointer-events: auto;
+  }
+  .bulk-action-bar .bulk-count { flex:1; font-size:14px; font-weight:800; }
 </style>
 </head>
 <body>
@@ -573,6 +603,12 @@
     <div id="listTaiVay"></div>
   </div>
 
+  <!-- BULK ACTION BAR (hiện khi chọn ≥1 khách) -->
+  <div class="bulk-action-bar" id="bulkActionBar">
+    <div class="bulk-count" id="bulkCount">0 đã chọn</div>
+    <button class="btn" style="background:rgba(255,255,255,0.18);color:#fff;border:1.5px solid rgba(255,255,255,0.4);padding:8px 14px" onclick="clearBulkSelection()">✕ Bỏ chọn</button>
+    <button class="btn" style="background:#34a853;color:#fff;padding:8px 14px;font-weight:800" onclick="openBulkConfirm()">✅ Xác nhận hàng loạt</button>
+  </div>
 </div>
 
 <!-- NO DATA -->
@@ -644,6 +680,36 @@
     <div id="clModalProgress" style="margin-bottom:12px"></div>
     <div id="clModalItems" style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:16px"></div>
     <button class="btn btn-success" style="width:100%" onclick="closeChecklistModal()">✅ Đóng</button>
+  </div>
+</div>
+
+<!-- MODAL XÁC NHẬN THU TIỀN HÀNG LOẠT (CTV) -->
+<div class="modal-overlay" id="bulkConfirmModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">✅ Xác nhận thu tiền hàng loạt</div>
+    <div id="bulkSummary" style="background:#e8f5e9;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:14px"></div>
+
+    <div class="form-group">
+      <label>💳 Hình thức thanh toán (áp dụng cho tất cả)</label>
+      <div class="pay-method-group">
+        <div class="pay-method-btn selected" id="bulk-pm-cash" onclick="selectBulkPayMethod('cash')">💵 Tiền mặt</div>
+        <div class="pay-method-btn" id="bulk-pm-transfer" onclick="selectBulkPayMethod('transfer')">🏦 Chuyển khoản</div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>📝 Ghi chú chung (tuỳ chọn)</label>
+      <textarea id="bulkNote" placeholder="VD: Thu tiền buổi sáng 06/04..." rows="2"></textarea>
+    </div>
+
+    <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px">Danh sách khách được chọn:</div>
+    <div id="bulkCustomerList" style="max-height:190px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;margin-bottom:14px"></div>
+
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-success" style="flex:2" onclick="submitBulkConfirm()">✅ Xác nhận <span id="bulkConfirmCount">0</span> khách</button>
+      <button class="btn btn-gray" style="flex:1;background:#f5f5f5;color:#666" onclick="closeBulkConfirmModal()">Hủy</button>
+    </div>
   </div>
 </div>
 
@@ -1072,9 +1138,26 @@ function renderPending(list, bank) {
     el.innerHTML = `<div class="empty"><div class="icon">🎉</div><p>Tất cả khách hàng đã nộp tiền!</p></div>`;
     return;
   }
-  el.innerHTML = list.map(c => `
+  const allChecked = list.length > 0 && list.every(c => _selectedCtvIds.has(c.id));
+  const someChecked = list.some(c => _selectedCtvIds.has(c.id));
+  const selectBar = `
+    <div class="select-bar">
+      <label>
+        <input type="checkbox" class="cust-chk" id="selectAllCtvCb"
+          ${allChecked ? 'checked' : ''}
+          onchange="toggleSelectAllCTV(this.checked)"
+          style="${someChecked && !allChecked ? 'opacity:0.6' : ''}">
+        Chọn tất cả (${list.length})
+      </label>
+    </div>`;
+  el.innerHTML = selectBar + list.map(c => `
     <div class="customer-card" id="card_${c.id}">
       <div class="top">
+        <div class="card-chk-wrap">
+          <input type="checkbox" class="cust-chk" data-id="${c.id}"
+            ${_selectedCtvIds.has(c.id) ? 'checked' : ''}
+            onclick="event.stopPropagation(); toggleSelectCustomer('${c.id}', this.checked)">
+        </div>
         <div class="avatar">${getInitial(c.name)}</div>
         <div style="flex:1">
           <div class="name">${escHtml(c.name)}</div>
@@ -1513,6 +1596,7 @@ document.querySelectorAll('.modal-overlay').forEach(m => {
   m.addEventListener('click', e => {
     if (e.target === m) {
       if (m.id === 'checklistModal') closeChecklistModal();
+      else if (m.id === 'bulkConfirmModal') closeBulkConfirmModal();
       else closeConfirmModal();
     }
   });
@@ -1791,6 +1875,147 @@ function closeChecklistModal() {
   document.getElementById('checklistModal').classList.remove('open');
   renderTaiVayTab(); // refresh after changes
 }
+
+// ==================== BULK CONFIRM (CTV) ====================
+let _selectedCtvIds = new Set();
+let _bulkPayMethod = 'cash';
+
+function toggleSelectCustomer(id, checked) {
+  if (checked) {
+    _selectedCtvIds.add(id);
+  } else {
+    _selectedCtvIds.delete(id);
+  }
+  updateBulkBar();
+}
+
+function toggleSelectAllCTV(checked) {
+  const data = getData();
+  const mine = data.customers.filter(c => c.ctv === ctvName && c.status === 'pending');
+  mine.forEach(c => {
+    if (checked) _selectedCtvIds.add(c.id);
+    else _selectedCtvIds.delete(c.id);
+  });
+  document.querySelectorAll('.cust-chk[data-id]').forEach(cb => { cb.checked = checked; });
+  updateBulkBar();
+}
+
+function updateBulkBar() {
+  const bar = document.getElementById('bulkActionBar');
+  const cnt = document.getElementById('bulkCount');
+  if (_selectedCtvIds.size > 0) {
+    bar.classList.add('show');
+    cnt.textContent = `Đã chọn ${_selectedCtvIds.size} khách`;
+  } else {
+    bar.classList.remove('show');
+  }
+  // Sync select-all checkbox state
+  const data = getData();
+  const mine = data.customers.filter(c => c.ctv === ctvName && c.status === 'pending');
+  const allCb = document.getElementById('selectAllCtvCb');
+  if (allCb) {
+    const allChecked = mine.length > 0 && mine.every(c => _selectedCtvIds.has(c.id));
+    allCb.checked = allChecked;
+    allCb.indeterminate = _selectedCtvIds.size > 0 && !allChecked;
+  }
+}
+
+function clearBulkSelection() {
+  _selectedCtvIds.clear();
+  document.querySelectorAll('.cust-chk[data-id]').forEach(cb => { cb.checked = false; });
+  const allCb = document.getElementById('selectAllCtvCb');
+  if (allCb) { allCb.checked = false; allCb.indeterminate = false; }
+  updateBulkBar();
+}
+
+function selectBulkPayMethod(method) {
+  _bulkPayMethod = method;
+  document.getElementById('bulk-pm-cash').classList.toggle('selected', method === 'cash');
+  document.getElementById('bulk-pm-transfer').classList.toggle('selected', method === 'transfer');
+}
+
+function openBulkConfirm() {
+  if (!_selectedCtvIds.size) return;
+  const data = getData();
+  const selected = [..._selectedCtvIds]
+    .map(id => data.customers.find(c => c.id === id))
+    .filter(c => c && c.ctv === ctvName && c.status === 'pending');
+  if (!selected.length) { showToast('⚠️ Không có khách hàng hợp lệ được chọn'); return; }
+
+  const totalAmt = selected.reduce((s, c) => s + c.amount, 0);
+  document.getElementById('bulkSummary').innerHTML =
+    `<strong>${selected.length} khách hàng</strong> được chọn · Tổng tiền: <strong style="color:#2e7d32">${totalAmt.toLocaleString('vi-VN')} ₫</strong>`;
+  document.getElementById('bulkConfirmCount').textContent = selected.length;
+  document.getElementById('bulkNote').value = '';
+  selectBulkPayMethod('cash');
+
+  document.getElementById('bulkCustomerList').innerHTML = selected.map(c => `
+    <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f0f0">
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:13px">${escHtml(c.name)}</div>
+        <div style="font-size:11px;color:var(--muted)">Mã: ${escHtml(c.code)}</div>
+      </div>
+      <div style="font-weight:700;color:var(--danger);font-size:13px">${c.amount.toLocaleString('vi-VN')} ₫</div>
+    </div>
+  `).join('');
+
+  document.getElementById('bulkConfirmModal').classList.add('open');
+}
+
+function closeBulkConfirmModal() {
+  document.getElementById('bulkConfirmModal').classList.remove('open');
+}
+
+function submitBulkConfirm() {
+  if (!_selectedCtvIds.size) return;
+  const data = getData();
+  const selected = [..._selectedCtvIds]
+    .map(id => data.customers.find(c => c.id === id))
+    .filter(c => c && c.ctv === ctvName && c.status === 'pending');
+  if (!selected.length) { closeBulkConfirmModal(); return; }
+
+  const payMethod = _bulkPayMethod;
+  const userNote = document.getElementById('bulkNote').value.trim();
+  const paidAt = Date.now();
+  const _d = new Date(paidAt);
+  const _dateStr = _d.toLocaleDateString('vi-VN') + ' ' + _d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+
+  selected.forEach((c, idx) => {
+    const paidAmount = c.amount;
+    const newTotal = (c.paidAmount ?? 0) + paidAmount;
+    const newCtvPaid = (c.ctvPaid ?? 0) + paidAmount;
+    const _newEntry = 'CTV: ' + paidAmount.toLocaleString('vi-VN') + ' ₫ (' + (payMethod === 'cash' ? 'TM' : 'CK') + ') - ' + _dateStr + (userNote ? ' [' + userNote + ']' : '');
+    const newNote = (c.note ? c.note + ', ' : '') + _newEntry;
+    const updates = { status: 'paid', paidAt: paidAt + idx, note: newNote, payMethod, paidAmount: newTotal, ctvPaid: newCtvPaid, lastPaidAmount: paidAmount, lastPaidBy: 'ctv' };
+    const act = { name: c.name, amount: paidAmount, ctv: c.ctv, at: paidAt + idx, type: 'paid', payMethod };
+    const actKey = 'act_' + (paidAt + idx);
+    if (_db) {
+      _db.ref('/data/customers/' + c.id).update(updates).catch(e => console.error('Bulk update error:', e));
+      _db.ref('/data/activities/' + actKey).set(act);
+    } else {
+      c.status = 'paid';
+      c.paidAt = paidAt + idx;
+      c.note = newNote;
+      c.paidAmount = newTotal;
+      c.ctvPaid = newCtvPaid;
+      c.lastPaidAmount = paidAmount;
+      c.lastPaidBy = 'ctv';
+      data.activities = data.activities || [];
+      data.activities.unshift(act);
+    }
+  });
+
+  if (!_db) saveData(data);
+
+  const count = selected.length;
+  const totalAmt = selected.reduce((s, c) => s + c.amount, 0);
+  closeBulkConfirmModal();
+  clearBulkSelection();
+  renderStats();
+  renderLists();
+  showToast(`✅ Đã xác nhận thu ${count} khách · ${totalAmt.toLocaleString('vi-VN')} ₫`, 3500);
+}
+
 </script>
 </body>
 </html>

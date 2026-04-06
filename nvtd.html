@@ -397,6 +397,16 @@
 
   .col-map-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
 
+  /* ===== BULK SELECT NVTD ===== */
+  .row-chk { width: 16px; height: 16px; cursor: pointer; accent-color: var(--primary); }
+  .bulk-nvtd-bar {
+    display: none; align-items: center; gap: 10px;
+    padding: 10px 14px; background: #e8f0fe; border: 1.5px solid #c5d8ff;
+    border-radius: 10px; margin-bottom: 12px; flex-wrap: wrap;
+  }
+  .bulk-nvtd-bar.show { display: flex; }
+  .bulk-nvtd-bar .bulk-info { flex:1; font-size:13px; font-weight:700; color:#1565c0; }
+
   @media (max-width: 600px) {
     html { scroll-padding-top: 88px; }
     header { padding: 8px 12px; gap: 8px; }
@@ -876,6 +886,15 @@
     </div>
   </div>
 
+  <!-- BULK ACTION BAR (NVTD) -->
+  <div class="bulk-nvtd-bar" id="bulkNvtdBar">
+    <div class="bulk-info" id="bulkNvtdInfo">0 hàng đã chọn</div>
+    <button class="btn btn-outline btn-sm" onclick="bulkNvtdSelectPayMethod('cash')" id="btnBulkCash">💵 Tiền mặt</button>
+    <button class="btn btn-outline btn-sm" onclick="bulkNvtdSelectPayMethod('transfer')" id="btnBulkTransfer">🏦 Chuyển khoản</button>
+    <button class="btn btn-success btn-sm" onclick="openBulkNvtdConfirm()">✅ Xác nhận hàng loạt</button>
+    <button class="btn btn-outline btn-sm" onclick="clearNvtdSelection()" style="color:#666">✕ Bỏ chọn</button>
+  </div>
+
   <div class="filter-row" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:4px">
     <div class="filter-chips" style="margin-bottom:0;flex:1">
       <div class="chip active" onclick="setFilter('all', this)">Tất cả</div>
@@ -906,6 +925,7 @@
       <table>
         <thead>
           <tr>
+            <th style="width:36px;padding:12px 6px;text-align:center"><input type="checkbox" class="row-chk" id="selectAllRowsCb" title="Chọn tất cả" onchange="toggleSelectAllRows(this.checked)"></th>
             <th class="col-hide-sm">#</th>
             <th onclick="setSort('name')" style="cursor:pointer;user-select:none;white-space:nowrap">Tên KH<span id="sort-name" style="opacity:0.3"> ↕</span></th>
             <th onclick="setSort('amount')" style="cursor:pointer;user-select:none;white-space:nowrap">Số tiền<span id="sort-amount" style="opacity:0.3"> ↕</span></th>
@@ -1087,6 +1107,37 @@
     <div id="nvtdClModalProgress" style="margin-bottom:12px"></div>
     <div id="nvtdClModalItems" style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:16px"></div>
     <button class="btn btn-primary" style="width:100%" onclick="closeNvtdChecklistModal()">✅ Lưu & Đóng</button>
+  </div>
+</div>
+
+<!-- MODAL XÁC NHẬN THU TIỀN HÀNG LOẠT (NVTD) -->
+<div class="modal-overlay" id="bulkNvtdModal">
+  <div class="modal" style="max-width:500px">
+    <button class="modal-close" onclick="closeModal('bulkNvtdModal')">✕</button>
+    <h3 style="margin-bottom:4px;font-size:17px">✅ Xác nhận thu tiền hàng loạt</h3>
+    <div id="bulkNvtdSummary" style="font-size:13px;color:var(--muted);margin-bottom:14px"></div>
+
+    <div style="margin-bottom:14px">
+      <label style="font-size:12px;font-weight:700;color:var(--muted);display:block;margin-bottom:6px">💳 Hình thức thanh toán (áp dụng cho tất cả)</label>
+      <div style="display:flex;gap:10px">
+        <div id="bulkNvtd-pm-cash" onclick="bulkNvtdSelectPayMethod('cash')"
+          style="flex:1;padding:10px 8px;border:2px solid var(--primary);border-radius:10px;background:#e8f0fe;cursor:pointer;font-size:14px;font-weight:700;text-align:center;color:#0d47a1">
+          💵 Tiền mặt
+        </div>
+        <div id="bulkNvtd-pm-transfer" onclick="bulkNvtdSelectPayMethod('transfer')"
+          style="flex:1;padding:10px 8px;border:2px solid var(--border);border-radius:10px;background:#fafafa;cursor:pointer;font-size:14px;font-weight:700;text-align:center">
+          🏦 Chuyển khoản
+        </div>
+      </div>
+    </div>
+
+    <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px">Danh sách khách được chọn:</div>
+    <div id="bulkNvtdCustomerList" style="max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;margin-bottom:14px"></div>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-success" style="flex:1" onclick="submitBulkNvtdConfirm()">✅ Xác nhận <span id="bulkNvtdCount">0</span> khách</button>
+      <button class="btn btn-outline" onclick="closeModal('bulkNvtdModal')">Hủy</button>
+    </div>
   </div>
 </div>
 
@@ -2157,6 +2208,7 @@ function renderCustomerTable() {
       : '';
     return `
     <tr class="${c.status === 'paid' ? 'paid' : ''}" style="${rowStyle}">
+      <td style="text-align:center;padding:8px 6px"><input type="checkbox" class="row-chk" data-id="${c.id}" onchange="toggleNvtdRow('${c.id}',this.checked)" ${_selectedNvtdIds.has(c.id) ? 'checked' : ''}></td>
       <td class="col-hide-sm">${i + 1}</td>
       <td><strong>${escHtml(c.name)}</strong>${c.note ? `<br><span style="font-size:11px;color:var(--muted)">📝 ${escHtml(c.note)}</span>` : ''}</td>
       <td><strong style="color:#e65100">${c.amount.toLocaleString('vi-VN')} ₫</strong>${amtCell}</td>
@@ -2181,6 +2233,9 @@ function renderCustomerTable() {
       </td>
     </tr>`;
   }).join('');
+
+  // Sync select-all checkbox state after render
+  syncNvtdSelectAll();
 }
 
 function deleteCustomer(id) {
@@ -3552,5 +3607,153 @@ function saveChecklistTemplate(items) {
   }
   renderChecklistTemplate();
   renderTatToanWarnings();
+}
+
+// ==================== BULK CONFIRM (NVTD) ====================
+let _selectedNvtdIds = new Set();
+let _bulkNvtdPayMethod = 'cash';
+
+function toggleNvtdRow(id, checked) {
+  if (checked) _selectedNvtdIds.add(id);
+  else _selectedNvtdIds.delete(id);
+  syncNvtdBulkBar();
+  syncNvtdSelectAll();
+}
+
+function toggleSelectAllRows(checked) {
+  // Select all currently visible (filtered) rows
+  document.querySelectorAll('.row-chk[data-id]').forEach(cb => {
+    cb.checked = checked;
+    if (checked) _selectedNvtdIds.add(cb.dataset.id);
+    else _selectedNvtdIds.delete(cb.dataset.id);
+  });
+  syncNvtdBulkBar();
+  syncNvtdSelectAll();
+}
+
+function syncNvtdSelectAll() {
+  const allCb = document.getElementById('selectAllRowsCb');
+  if (!allCb) return;
+  const rowCbs = [...document.querySelectorAll('.row-chk[data-id]')];
+  if (!rowCbs.length) { allCb.checked = false; allCb.indeterminate = false; return; }
+  const selected = rowCbs.filter(cb => cb.checked).length;
+  allCb.checked = selected === rowCbs.length;
+  allCb.indeterminate = selected > 0 && selected < rowCbs.length;
+}
+
+function syncNvtdBulkBar() {
+  const bar = document.getElementById('bulkNvtdBar');
+  const info = document.getElementById('bulkNvtdInfo');
+  if (_selectedNvtdIds.size > 0) {
+    bar.classList.add('show');
+    info.textContent = `Đã chọn ${_selectedNvtdIds.size} hàng`;
+  } else {
+    bar.classList.remove('show');
+  }
+}
+
+function clearNvtdSelection() {
+  _selectedNvtdIds.clear();
+  document.querySelectorAll('.row-chk[data-id]').forEach(cb => { cb.checked = false; });
+  const allCb = document.getElementById('selectAllRowsCb');
+  if (allCb) { allCb.checked = false; allCb.indeterminate = false; }
+  syncNvtdBulkBar();
+}
+
+function bulkNvtdSelectPayMethod(method) {
+  _bulkNvtdPayMethod = method;
+  // Update bar buttons
+  const btnCash = document.getElementById('btnBulkCash');
+  const btnTx = document.getElementById('btnBulkTransfer');
+  if (btnCash) { btnCash.style.background = method === 'cash' ? 'var(--success)' : ''; btnCash.style.color = method === 'cash' ? '#fff' : ''; }
+  if (btnTx) { btnTx.style.background = method === 'transfer' ? 'var(--primary)' : ''; btnTx.style.color = method === 'transfer' ? '#fff' : ''; }
+  // Update modal buttons
+  const mCash = document.getElementById('bulkNvtd-pm-cash');
+  const mTx = document.getElementById('bulkNvtd-pm-transfer');
+  if (mCash) { mCash.style.borderColor = method === 'cash' ? 'var(--primary)' : 'var(--border)'; mCash.style.background = method === 'cash' ? '#e8f0fe' : '#fafafa'; mCash.style.color = method === 'cash' ? '#0d47a1' : ''; }
+  if (mTx)  { mTx.style.borderColor = method === 'transfer' ? 'var(--primary)' : 'var(--border)'; mTx.style.background = method === 'transfer' ? '#e8f0fe' : '#fafafa'; mTx.style.color = method === 'transfer' ? '#0d47a1' : ''; }
+}
+
+function openBulkNvtdConfirm() {
+  if (!_selectedNvtdIds.size) { showToast('⚠️ Chưa chọn khách hàng nào!'); return; }
+  const { customers } = getData();
+  const selected = [..._selectedNvtdIds].map(id => customers.find(c => c.id === id)).filter(Boolean);
+  if (!selected.length) return;
+
+  const pending = selected.filter(c => c.status === 'pending');
+  const paid = selected.filter(c => c.status === 'paid');
+  const totalAmt = pending.reduce((s, c) => s + c.amount, 0);
+  const totalAmtPaid = paid.reduce((s, c) => s + c.amount, 0);
+
+  document.getElementById('bulkNvtdSummary').innerHTML =
+    `<strong>${selected.length} khách hàng</strong> được chọn`
+    + (pending.length ? ` · ⏳ Chưa thu: <strong>${pending.length}</strong> (${totalAmt.toLocaleString('vi-VN')} ₫)` : '')
+    + (paid.length ? ` · ✅ Đã thu: <strong>${paid.length}</strong> (${totalAmtPaid.toLocaleString('vi-VN')} ₫)` : '');
+
+  document.getElementById('bulkNvtdCount').textContent = selected.length;
+  bulkNvtdSelectPayMethod(_bulkNvtdPayMethod || 'cash');
+
+  document.getElementById('bulkNvtdCustomerList').innerHTML = selected.map(c => `
+    <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0f0f0">
+      <span class="badge ${c.status === 'paid' ? 'badge-paid' : 'badge-pending'}" style="flex-shrink:0">${c.status === 'paid' ? '✅' : '⏳'}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.name)}</div>
+        <div style="font-size:11px;color:var(--muted)">CTV: ${escHtml(c.ctv || '—')} · Mã: ${escHtml(c.code)}</div>
+      </div>
+      <div style="font-weight:700;color:#e65100;font-size:13px;flex-shrink:0">${c.amount.toLocaleString('vi-VN')} ₫</div>
+    </div>
+  `).join('');
+
+  openModal('bulkNvtdModal');
+}
+
+function submitBulkNvtdConfirm() {
+  if (!_selectedNvtdIds.size) return;
+  const data = getData();
+  const selected = [..._selectedNvtdIds].map(id => data.customers.find(c => c.id === id)).filter(Boolean);
+  if (!selected.length) { closeModal('bulkNvtdModal'); return; }
+
+  const payMethod = _bulkNvtdPayMethod || 'cash';
+  const paidAt = Date.now();
+  const _nd = new Date(paidAt);
+  const _ndateStr = _nd.toLocaleDateString('vi-VN') + ' ' + _nd.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+
+  selected.forEach((c, idx) => {
+    const actualAmt = c.amount;
+    const newTotal = (c.paidAmount ?? 0) + actualAmt;
+    const newNvtdPaid = (c.nvtdPaid ?? 0) + actualAmt;
+    const _nnewEntry = 'NVTD: ' + actualAmt.toLocaleString('vi-VN') + ' ₫ (' + (payMethod === 'cash' ? 'TM' : 'CK') + ') - ' + _ndateStr;
+    const _nnote = (c.note ? c.note + ', ' : '') + _nnewEntry;
+    const updates = { status: 'paid', paidAt: paidAt + idx, payMethod, paidAmount: newTotal, note: _nnote, nvtdPaid: newNvtdPaid, lastPaidAmount: actualAmt, lastPaidBy: 'nvtd' };
+    const act = { name: c.name, amount: actualAmt, ctv: c.ctv, at: paidAt + idx, type: 'paid', payMethod };
+    const actKey = 'act_' + (paidAt + idx);
+    if (_db) {
+      _db.ref('/data/customers/' + c.id).update(updates).catch(e => console.error('Bulk NVTD error:', e));
+      _db.ref('/data/activities/' + actKey).set(act);
+    } else {
+      c.status = 'paid';
+      c.paidAt = paidAt + idx;
+      c.payMethod = payMethod;
+      c.paidAmount = newTotal;
+      c.nvtdPaid = newNvtdPaid;
+      c.note = _nnote;
+      c.lastPaidAmount = actualAmt;
+      c.lastPaidBy = 'nvtd';
+      data.activities = data.activities || [];
+      data.activities.unshift(act);
+    }
+  });
+
+  if (!_db) {
+    if (data.activities.length > 200) data.activities = data.activities.slice(0, 200);
+    saveData(data);
+    renderAll();
+  }
+
+  const count = selected.length;
+  const totalAmt = selected.reduce((s, c) => s + c.amount, 0);
+  closeModal('bulkNvtdModal');
+  clearNvtdSelection();
+  showToast(`✅ NVTD đã xác nhận thu ${count} khách · ${totalAmt.toLocaleString('vi-VN')} ₫`, 3500);
 }
 </script>

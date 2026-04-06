@@ -1,0 +1,1396 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hướng dẫn tích hợp API – Sổ Thu Tiền Mini</title>
+<style>
+  :root {
+    --primary: #1a73e8;
+    --success: #34a853;
+    --warning: #fbbc04;
+    --danger: #ea4335;
+    --bg: #f0f4f8;
+    --card: #ffffff;
+    --border: #e0e0e0;
+    --text: #202124;
+    --muted: #5f6368;
+    --purple: #7c3aed;
+    --orange: #ea6c00;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.75; }
+
+  /* HEADER */
+  header {
+    background: linear-gradient(135deg, #0d47a1 0%, #1a73e8 60%, #1b5e20 100%);
+    color: #fff; padding: 36px 32px; text-align: center;
+  }
+  header .logo { font-size: 56px; margin-bottom: 10px; }
+  header h1 { font-size: 26px; font-weight: 800; margin-bottom: 8px; }
+  header p { font-size: 15px; opacity: 0.85; max-width: 620px; margin: 0 auto; }
+
+  /* LAYOUT */
+  .layout { display: flex; max-width: 1140px; margin: 0 auto; padding: 28px 20px; gap: 28px; align-items: flex-start; }
+  .sidebar { width: 240px; flex-shrink: 0; position: sticky; top: 20px; }
+  .sidebar nav { background: var(--card); border-radius: 14px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+  .sidebar nav h4 { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  .sidebar nav a { display: block; font-size: 13px; color: var(--muted); text-decoration: none; padding: 6px 8px; border-radius: 8px; margin-bottom: 2px; transition: all .15s; }
+  .sidebar nav a:hover { background: #e8f0fe; color: var(--primary); }
+  .sidebar nav a.section-title { font-weight: 700; color: var(--text); font-size: 12px; margin-top: 8px; padding-left: 4px; background: none; cursor: default; }
+  .content { flex: 1; min-width: 0; }
+  @media (max-width: 760px) { .layout { flex-direction: column; } .sidebar { width: 100%; position: static; } }
+
+  /* SECTION */
+  .section { background: var(--card); border-radius: 14px; padding: 28px 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); margin-bottom: 28px; }
+  .section-header { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 2px solid var(--bg); }
+  .section-icon { font-size: 36px; }
+  .section-header h2 { font-size: 20px; font-weight: 800; color: var(--text); }
+  .section-header p { font-size: 13px; color: var(--muted); margin-top: 3px; }
+  h3 { font-size: 16px; font-weight: 700; margin: 22px 0 10px; color: var(--text); }
+  h4 { font-size: 14px; font-weight: 700; margin: 16px 0 8px; }
+  p { font-size: 14px; margin-bottom: 12px; }
+  ul, ol { padding-left: 22px; font-size: 14px; margin-bottom: 12px; }
+  li { margin-bottom: 6px; }
+
+  /* BADGE */
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+  .badge-blue   { background: #e8f0fe; color: #1a55c0; }
+  .badge-green  { background: #e8f5e9; color: #2e7d32; }
+  .badge-red    { background: #fce8e6; color: #c62828; }
+  .badge-orange { background: #fff3e0; color: #c67c00; }
+  .badge-purple { background: #ede9fe; color: #5b21b6; }
+  .badge-gray   { background: #f1f3f4; color: #5f6368; }
+
+  /* NOTE BOX */
+  .note { border-radius: 10px; padding: 14px 18px; font-size: 13px; margin-bottom: 16px; line-height: 1.7; }
+  .note-blue   { background: #e8f0fe; border-left: 4px solid var(--primary); }
+  .note-green  { background: #e8f5e9; border-left: 4px solid var(--success); }
+  .note-orange { background: #fff3e0; border-left: 4px solid var(--warning); }
+  .note-red    { background: #fce8e6; border-left: 4px solid var(--danger); }
+  .note-purple { background: #ede9fe; border-left: 4px solid var(--purple); }
+  .note strong { font-weight: 700; }
+
+  /* CODE BLOCK */
+  pre {
+    background: #1e1e2e;
+    color: #cdd6f4;
+    border-radius: 10px;
+    padding: 18px 20px;
+    font-size: 13px;
+    font-family: 'Consolas', 'Fira Code', monospace;
+    overflow-x: auto;
+    line-height: 1.65;
+    margin-bottom: 14px;
+  }
+  .kw  { color: #89b4fa; }
+  .str { color: #a6e3a1; }
+  .cmt { color: #6c7086; font-style: italic; }
+  .fn  { color: #fab387; }
+  .num { color: #f9e2af; }
+  code { background: #f1f3f4; padding: 2px 7px; border-radius: 5px; font-size: 13px; font-family: 'Consolas', monospace; color: #c0392b; }
+
+  /* FLOW DIAGRAM */
+  .flow { display: flex; align-items: center; gap: 0; flex-wrap: wrap; margin: 16px 0; }
+  .flow-box {
+    background: var(--card);
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+    min-width: 110px;
+  }
+  .flow-box.blue   { border-color: var(--primary); background: #e8f0fe; color: #1a55c0; }
+  .flow-box.green  { border-color: var(--success); background: #e8f5e9; color: #2e7d32; }
+  .flow-box.orange { border-color: var(--warning); background: #fff3e0; color: #c67c00; }
+  .flow-box.red    { border-color: var(--danger);  background: #fce8e6; color: #c62828; }
+  .flow-box.purple { border-color: var(--purple);  background: #ede9fe; color: #5b21b6; }
+  .flow-box.gray   { border-color: var(--border);  background: #f8f9fa; color: var(--muted); }
+  .flow-arrow { font-size: 20px; color: var(--muted); padding: 0 6px; }
+
+  /* TABLE */
+  .tbl-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #f8f9fa; padding: 10px 14px; text-align: left; font-weight: 700; font-size: 12px; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); }
+  td { padding: 11px 14px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fafafa; }
+
+  /* CASE CARD */
+  .case-card { border: 1.5px solid var(--border); border-radius: 12px; margin-bottom: 20px; overflow: hidden; }
+  .case-header { display: flex; align-items: center; gap: 12px; padding: 14px 18px; font-weight: 700; font-size: 15px; }
+  .case-body { padding: 16px 18px; border-top: 1px solid var(--border); background: #fafafa; }
+  .case-card.danger  .case-header { background: #fce8e6; border-bottom: 2px solid var(--danger); }
+  .case-card.warning .case-header { background: #fff8e1; border-bottom: 2px solid var(--warning); }
+  .case-card.success .case-header { background: #e8f5e9; border-bottom: 2px solid var(--success); }
+  .case-card.blue    .case-header { background: #e8f0fe; border-bottom: 2px solid var(--primary); }
+  .case-card.purple  .case-header { background: #ede9fe; border-bottom: 2px solid var(--purple); }
+
+  /* STEP LIST */
+  .steps { counter-reset: step; }
+  .step { display: flex; gap: 14px; margin-bottom: 14px; align-items: flex-start; }
+  .step-num { counter-increment: step; content: counter(step); width: 28px; height: 28px; min-width: 28px; border-radius: 50%; background: var(--primary); color: #fff; font-weight: 800; font-size: 13px; display: flex; align-items: center; justify-content: center; }
+  .step-num::before { content: counter(step); }
+  .step-body { flex: 1; font-size: 14px; padding-top: 3px; }
+
+  footer { text-align: center; color: var(--muted); font-size: 12px; padding: 32px 20px; border-top: 1px solid var(--border); margin-top: 12px; }
+
+  /* SCROLL indicator */
+  .toc-sub { font-size: 12px; color: var(--muted); padding-left: 16px; }
+
+  @media (max-width: 600px) {
+    .section { padding: 18px 16px; }
+    .flow { gap: 4px; }
+    .flow-arrow { padding: 0 2px; font-size: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🔌</div>
+  <h1>Hướng dẫn tích hợp API</h1>
+  <p>Các trường hợp có thể xảy ra khi lấy và gửi dữ liệu từ ứng dụng khác — dành cho Sổ Thu Tiền Mini</p>
+</header>
+
+<div class="layout">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <nav>
+    <h4>Nội dung</h4>
+    <a href="#overview">🗺️ Tổng quan</a>
+    <a class="section-title">📥 Lấy dữ liệu (Pull)</a>
+    <a class="toc-sub" href="#pull-success">✅ Thành công</a>
+    <a class="toc-sub" href="#pull-errors">❌ Các lỗi thường gặp</a>
+    <a class="toc-sub" href="#pull-cors">🚧 Lỗi CORS</a>
+    <a class="toc-sub" href="#pull-auth">🔐 Lỗi xác thực</a>
+    <a class="toc-sub" href="#pull-timeout">⏱️ Timeout / chậm</a>
+    <a class="toc-sub" href="#pull-schema">📐 Dữ liệu sai cấu trúc</a>
+    <a class="section-title">📤 Gửi dữ liệu (Push)</a>
+    <a class="toc-sub" href="#push-success">✅ Thành công</a>
+    <a class="toc-sub" href="#push-errors">❌ Các lỗi thường gặp</a>
+    <a class="toc-sub" href="#push-duplicate">♻️ Trùng dữ liệu</a>
+    <a class="toc-sub" href="#push-partial">⚠️ Ghi một phần</a>
+    <a class="section-title">🔒 Bảo mật</a>
+    <a class="toc-sub" href="#sec-apikey">🗝️ Rò rỉ API key</a>
+    <a class="toc-sub" href="#sec-mitm">👁️ Nghe lén MITM</a>
+    <a class="toc-sub" href="#sec-injection">💉 Injection</a>
+    <a class="section-title">🏦 Ngân hàng cụ thể</a>
+    <a class="toc-sub" href="#bank-earlyclose">💰 Tất toán trước hạn</a>
+    <a class="toc-sub" href="#bank-report">📋 Báo cáo công nợ</a>
+    <a class="toc-sub" href="#firebase-realtime">🔥 Firebase Fn: Real-time</a>
+    <a class="toc-sub" href="#firebase-debt-strategies">📊 3 Chiến lược công nợ</a>
+    <a class="section-title">🖥️ Chọn Backend Server</a>
+    <a class="toc-sub" href="#backend-compare">📊 So sánh công nghệ</a>
+    <a class="toc-sub" href="#backend-firebase-fn">🔥 Firebase Functions</a>
+    <a class="toc-sub" href="#backend-cost">💰 Chi phí thực tế</a>
+    <a class="toc-sub" href="#backend-conditions">✅ Điều kiện hoạt động</a>
+    <a class="section-title">👥 API Nhiều nhân viên</a>
+    <a class="toc-sub" href="#multi-user-auth">🔑 Xác thực per-user</a>
+    <a class="toc-sub" href="#multi-user-ratelimit">⏱️ Rate limit chung</a>
+    <a class="toc-sub" href="#multi-user-roles">🛡️ Phân quyền vai trò</a>
+    <a class="toc-sub" href="#multi-user-audit">📝 Audit log</a>
+    <a class="toc-sub" href="#multi-user-conflict">⚔️ Xung đột dữ liệu</a>
+    <a href="#checklist">✅ Checklist</a>
+  </nav>
+</aside>
+
+<!-- CONTENT -->
+<main class="content">
+
+<!-- OVERVIEW -->
+<div class="section" id="overview">
+  <div class="section-header">
+    <div class="section-icon">🗺️</div>
+    <div>
+      <h2>Tổng quan hai luồng tích hợp</h2>
+      <p>Mọi tích hợp API đều thuộc một trong hai chiều: <strong>Pull</strong> (app chủ động lấy) hoặc <strong>Push</strong> (ứng dụng kia chủ động gửi)</p>
+    </div>
+  </div>
+
+  <h3>Luồng Pull — App lấy dữ liệu từ ứng dụng khác</h3>
+  <div class="flow">
+    <div class="flow-box blue">CTV / NVTD<br><small>bấm nút</small></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box orange">Backend Server<br><small>của bạn</small></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box purple">API<br><small>ngân hàng</small></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box orange">Backend<br><small>nhận kết quả</small></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box green">Hiển thị<br><small>trên app</small></div>
+  </div>
+  <div class="note note-blue">
+    <strong>Ví dụ:</strong> CTV bấm "Tính tất toán trước hạn" → app gọi API ngân hàng → trả về số tiền thực tế → hiển thị cho CTV.
+  </div>
+
+  <h3>Luồng Push — Ứng dụng kia gửi dữ liệu vào app</h3>
+  <div class="flow">
+    <div class="flow-box purple">Core Banking<br><small>trigger event</small></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box orange">Webhook /<br>Scheduled Job</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box blue">Firebase<br><small>REST API</small></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box green">App cập nhật<br><small>real-time</small></div>
+  </div>
+  <div class="note note-blue">
+    <strong>Ví dụ:</strong> Mỗi đêm core banking export danh sách công nợ mới → gọi vào Firebase → app tự động cập nhật danh sách KH sáng hôm sau.
+  </div>
+
+  <h3>Tại sao cần Backend Server ở giữa?</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th></th><th>Gọi thẳng từ trình duyệt</th><th>Qua Backend Server</th></tr></thead>
+      <tbody>
+        <tr><td>API key</td><td><span class="badge badge-red">❌ Bị lộ trong DevTools</span></td><td><span class="badge badge-green">✅ Ẩn hoàn toàn</span></td></tr>
+        <tr><td>CORS</td><td><span class="badge badge-red">❌ Bị chặn bởi trình duyệt</span></td><td><span class="badge badge-green">✅ Server-to-server</span></td></tr>
+        <tr><td>Xác thực</td><td><span class="badge badge-red">❌ Không kiểm soát được</span></td><td><span class="badge badge-green">✅ Kiểm tra token user</span></td></tr>
+        <tr><td>Log / audit</td><td><span class="badge badge-red">❌ Không có</span></td><td><span class="badge badge-green">✅ Ghi log đầy đủ</span></td></tr>
+        <tr><td>Rate limit</td><td><span class="badge badge-red">❌ Mỗi user gọi riêng</span></td><td><span class="badge badge-green">✅ Kiểm soát tập trung</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- PULL SUCCESS -->
+<div class="section" id="pull-success">
+  <div class="section-header">
+    <div class="section-icon">📥</div>
+    <div>
+      <h2>Lấy dữ liệu (Pull) — Trường hợp thành công</h2>
+      <p>HTTP 200 · Dữ liệu đúng cấu trúc · Xử lý bình thường</p>
+    </div>
+  </div>
+
+  <div class="case-card success">
+    <div class="case-header">✅ Trường hợp 1 — API trả về đúng, xử lý bình thường</div>
+    <div class="case-body">
+      <div class="note note-green"><strong>Điều kiện:</strong> Server API hoạt động · Token hợp lệ · Dữ liệu đúng định dạng · Trong giờ bảo trì</div>
+      <p><strong>Luồng xử lý:</strong></p>
+      <pre><span class="cmt">// 1. Gọi backend của bạn</span>
+<span class="kw">const</span> res = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">'/api/debt?customerId=KH001'</span>, {
+  headers: { <span class="str">'Authorization'</span>: <span class="str">'Bearer '</span> + userToken }
+});
+
+<span class="cmt">// 2. Kiểm tra HTTP status trước</span>
+<span class="kw">if</span> (!res.ok) <span class="kw">throw new</span> Error(<span class="str">'HTTP '</span> + res.status);
+
+<span class="cmt">// 3. Parse JSON</span>
+<span class="kw">const</span> data = <span class="kw">await</span> res.<span class="fn">json</span>();
+
+<span class="cmt">// 4. Hiển thị</span>
+<span class="fn">showResult</span>(data.amount, data.dueDate);</pre>
+      <p><strong>Kết quả:</strong> Hiển thị số tiền tất toán / báo cáo công nợ cho người dùng.</p>
+    </div>
+  </div>
+</div>
+
+<!-- PULL ERRORS -->
+<div class="section" id="pull-errors">
+  <div class="section-header">
+    <div class="section-icon">❌</div>
+    <div>
+      <h2>Lấy dữ liệu — Các lỗi thường gặp</h2>
+      <p>Mỗi lỗi có nguyên nhân và cách xử lý khác nhau</p>
+    </div>
+  </div>
+
+  <!-- CORS -->
+  <h3 id="pull-cors">🚧 Lỗi CORS (Cross-Origin Resource Sharing)</h3>
+  <div class="case-card danger">
+    <div class="case-header">❌ Trình duyệt chặn request vì API không cho phép domain của bạn</div>
+    <div class="case-body">
+      <div class="note note-red">
+        <strong>Thông báo lỗi thường thấy:</strong><br>
+        <code>Access to fetch at 'https://api.bank.vn' from origin 'https://yourapp.github.io' has been blocked by CORS policy</code>
+      </div>
+      <p><strong>Nguyên nhân:</strong> API ngân hàng không khai báo header <code>Access-Control-Allow-Origin</code> cho domain của bạn.</p>
+      <p><strong>Cách xử lý:</strong></p>
+      <pre><span class="cmt">// ❌ KHÔNG làm thế này — bị CORS chặn</span>
+<span class="kw">const</span> res = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">'https://api.bank.vn/debt'</span>); <span class="cmt">// BLOCKED</span>
+
+<span class="cmt">// ✅ Gọi qua backend server của bạn</span>
+<span class="kw">const</span> res = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">'https://your-worker.workers.dev/api/debt'</span>);
+<span class="cmt">// Backend server gọi api.bank.vn — không bị CORS</span></pre>
+      <div class="note note-orange"><strong>Giải pháp nhanh:</strong> Cloudflare Worker — deploy trong 10 phút, miễn phí 100.000 request/ngày.</div>
+    </div>
+  </div>
+
+  <!-- AUTH -->
+  <h3 id="pull-auth">🔐 Lỗi xác thực (401 / 403)</h3>
+  <div class="case-card danger">
+    <div class="case-header">❌ HTTP 401 Unauthorized — Token sai hoặc hết hạn</div>
+    <div class="case-body">
+      <p><strong>Nguyên nhân có thể:</strong></p>
+      <ul>
+        <li>Token JWT hết hạn (thường 1 giờ hoặc 24 giờ)</li>
+        <li>API key bị thu hồi</li>
+        <li>Sai format header (<code>Bearer</code> vs <code>Basic</code>)</li>
+      </ul>
+      <pre><span class="cmt">// Xử lý: tự động refresh token khi hết hạn</span>
+<span class="kw">async function</span> <span class="fn">callWithRetry</span>(url) {
+  <span class="kw">let</span> res = <span class="kw">await</span> <span class="fn">fetch</span>(url, { headers: <span class="fn">getAuthHeader</span>() });
+
+  <span class="kw">if</span> (res.status === <span class="num">401</span>) {
+    <span class="cmt">// Token hết hạn → refresh</span>
+    <span class="kw">await</span> <span class="fn">refreshToken</span>();
+    res = <span class="kw">await</span> <span class="fn">fetch</span>(url, { headers: <span class="fn">getAuthHeader</span>() }); <span class="cmt">// thử lại 1 lần</span>
+  }
+
+  <span class="kw">if</span> (!res.ok) <span class="kw">throw new</span> Error(<span class="str">'HTTP '</span> + res.status);
+  <span class="kw">return</span> res.<span class="fn">json</span>();
+}</pre>
+    </div>
+  </div>
+  <div class="case-card warning">
+    <div class="case-header">⚠️ HTTP 403 Forbidden — Không có quyền truy cập resource này</div>
+    <div class="case-body">
+      <p><strong>Nguyên nhân:</strong> Token hợp lệ nhưng role của user không được phép xem dữ liệu này (VD: CTV cố xem KH của CTV khác).</p>
+      <div class="note note-orange"><strong>Xử lý:</strong> Hiển thị thông báo rõ ràng cho người dùng, không retry. Cần liên hệ NVTD để được cấp quyền.</div>
+    </div>
+  </div>
+
+  <!-- TIMEOUT -->
+  <h3 id="pull-timeout">⏱️ Timeout / API phản hồi chậm</h3>
+  <div class="case-card warning">
+    <div class="case-header">⚠️ Request treo quá lâu, không có phản hồi</div>
+    <div class="case-body">
+      <p><strong>Nguyên nhân:</strong> Server API quá tải · Mạng chậm · API đang bảo trì không thông báo.</p>
+      <pre><span class="cmt">// Luôn đặt timeout khi gọi API bên ngoài</span>
+<span class="kw">const</span> controller = <span class="kw">new</span> AbortController();
+<span class="kw">const</span> timer = <span class="fn">setTimeout</span>(() => controller.<span class="fn">abort</span>(), <span class="num">10000</span>); <span class="cmt">// 10 giây</span>
+
+<span class="kw">try</span> {
+  <span class="kw">const</span> res = <span class="kw">await</span> <span class="fn">fetch</span>(url, { signal: controller.signal });
+  <span class="fn">clearTimeout</span>(timer);
+  <span class="kw">return await</span> res.<span class="fn">json</span>();
+} <span class="kw">catch</span> (e) {
+  <span class="kw">if</span> (e.name === <span class="str">'AbortError'</span>) {
+    <span class="fn">showToast</span>(<span class="str">'⏱️ API phản hồi quá chậm, thử lại sau'</span>);
+  }
+}</pre>
+      <div class="note note-blue"><strong>Khuyến nghị UX:</strong> Hiện spinner "Đang tải..." và cho phép người dùng hủy sau 10 giây.</div>
+    </div>
+  </div>
+
+  <!-- SCHEMA -->
+  <h3 id="pull-schema">📐 Dữ liệu trả về sai cấu trúc</h3>
+  <div class="case-card warning">
+    <div class="case-header">⚠️ API trả về HTTP 200 nhưng dữ liệu không đúng như mong đợi</div>
+    <div class="case-body">
+      <p><strong>Nguyên nhân hay gặp nhất:</strong> Phía ngân hàng thay đổi tên field, thêm/xóa cột, đổi kiểu dữ liệu mà không báo trước.</p>
+      <pre><span class="cmt">// ❌ Không làm thế này — crash nếu field thiếu</span>
+<span class="kw">const</span> amount = data.earlyPayoffAmount; <span class="cmt">// undefined nếu đổi tên field</span>
+
+<span class="cmt">// ✅ Luôn có giá trị mặc định và kiểm tra kiểu</span>
+<span class="kw">const</span> amount = Number(data.earlyPayoffAmount ?? data.payoffAmount ?? <span class="num">0</span>);
+<span class="kw">if</span> (!amount || isNaN(amount)) {
+  <span class="fn">showToast</span>(<span class="str">'⚠️ Không đọc được số tiền từ API'</span>);
+  <span class="kw">return</span>;
+}</pre>
+      <div class="note note-orange"><strong>Tốt nhất:</strong> Viết hàm <code>parseApiResponse(raw)</code> tập trung xử lý mapping, dễ sửa khi API thay đổi.</div>
+    </div>
+  </div>
+</div>
+
+<!-- PUSH SUCCESS -->
+<div class="section" id="push-success">
+  <div class="section-header">
+    <div class="section-icon">📤</div>
+    <div>
+      <h2>Gửi dữ liệu (Push) — Trường hợp thành công</h2>
+      <p>Ứng dụng kia gọi vào Firebase hoặc bạn gọi ra ngoài để đồng bộ</p>
+    </div>
+  </div>
+
+  <div class="case-card success">
+    <div class="case-header">✅ Trường hợp 2 — Core banking gửi dữ liệu công nợ vào Firebase</div>
+    <div class="case-body">
+      <div class="note note-green"><strong>Điều kiện:</strong> Firebase API key hợp lệ · Đúng đường dẫn · Rules cho phép</div>
+      <p>Phía ngân hàng gọi Firebase REST API:</p>
+      <pre><span class="cmt"># Curl từ phía ngân hàng / scheduled job</span>
+curl -X PATCH \
+  "https://your-project-rtdb.firebaseio.com/data/customers/kh001.json?auth=SERVER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"amount": 850000, "tatToanDate": 1762819200000}'</pre>
+      <p><strong>App của bạn:</strong> Firebase Realtime Database listener tự nhận, render lại danh sách ngay lập tức — không cần reload trang.</p>
+    </div>
+  </div>
+</div>
+
+<!-- PUSH ERRORS -->
+<div class="section" id="push-errors">
+  <div class="section-header">
+    <div class="section-icon">❌</div>
+    <div>
+      <h2>Gửi dữ liệu — Các lỗi thường gặp</h2>
+    </div>
+  </div>
+
+  <!-- DUPLICATE -->
+  <h3 id="push-duplicate">♻️ Dữ liệu bị ghi trùng</h3>
+  <div class="case-card warning">
+    <div class="case-header">⚠️ Cùng một KH được push nhiều lần → tạo ra nhiều bản ghi</div>
+    <div class="case-body">
+      <p><strong>Nguyên nhân:</strong> Job bị chạy lại do lỗi mạng · Retry không có idempotency.</p>
+      <pre><span class="cmt">// ❌ Dùng push() — tạo key ngẫu nhiên → trùng</span>
+firebase.database().<span class="fn">ref</span>(<span class="str">'/data/customers'</span>).<span class="fn">push</span>(customerData);
+
+<span class="cmt">// ✅ Dùng set() với key cố định (mã KH từ ngân hàng)</span>
+<span class="cmt">// Nếu gọi lại với cùng key → ghi đè, không sinh bản mới</span>
+firebase.database().<span class="fn">ref</span>(<span class="str">'/data/customers/'</span> + customerId).<span class="fn">set</span>(customerData);</pre>
+      <div class="note note-green"><strong>Nguyên tắc:</strong> Luôn dùng mã định danh từ hệ thống nguồn (mã KH ngân hàng) làm key Firebase — không tự sinh ID.</div>
+    </div>
+  </div>
+
+  <!-- PARTIAL WRITE -->
+  <h3 id="push-partial">⚠️ Ghi dữ liệu một phần (Partial Write)</h3>
+  <div class="case-card danger">
+    <div class="case-header">❌ Mạng đứt giữa chừng khi đang push 500 khách hàng → chỉ ghi được một phần</div>
+    <div class="case-body">
+      <p><strong>Hậu quả:</strong> App hiển thị danh sách không đầy đủ, NVTD không biết thiếu bao nhiêu.</p>
+      <pre><span class="cmt">// ✅ Dùng multi-path update — atomic: hoặc thành công toàn bộ, hoặc không ghi gì</span>
+<span class="kw">const</span> updates = {};
+customers.<span class="fn">forEach</span>(c => {
+  updates[<span class="str">'/data/customers/'</span> + c.id] = c;
+});
+
+<span class="cmt">// Ghi tất cả trong 1 request duy nhất</span>
+<span class="kw">await</span> firebase.database().<span class="fn">ref</span>().<span class="fn">update</span>(updates);
+
+<span class="cmt">// Thêm checksum để verify sau khi push</span>
+updates[<span class="str">'/data/meta/lastSync'</span>] = { at: Date.now(), count: customers.length };</pre>
+      <div class="note note-orange"><strong>Kiểm tra:</strong> Sau khi push, đọc lại <code>/data/meta/lastSync.count</code> và so sánh với số dòng gốc để phát hiện mất dữ liệu.</div>
+    </div>
+  </div>
+
+  <!-- RATE LIMIT -->
+  <div class="case-card warning">
+    <div class="case-header">⚠️ HTTP 429 Too Many Requests — Gọi API quá nhiều lần</div>
+    <div class="case-body">
+      <p><strong>Nguyên nhân:</strong> Ngân hàng giới hạn số lần gọi API trong 1 phút / 1 ngày. Nếu loop qua 1000 KH và gọi API từng người → bị block.</p>
+      <pre><span class="cmt">// ❌ Sai — gọi API riêng cho từng KH</span>
+<span class="kw">for</span> (<span class="kw">const</span> kh <span class="kw">of</span> customers) {
+  <span class="kw">await</span> <span class="fn">fetchDebt</span>(kh.id); <span class="cmt">// 1000 request → bị block</span>
+}
+
+<span class="cmt">// ✅ Đúng — gọi 1 request lấy toàn bộ, hoặc batch theo nhóm nhỏ</span>
+<span class="kw">const</span> allDebts = <span class="kw">await</span> <span class="fn">fetchAllDebts</span>({ date: today }); <span class="cmt">// 1 request</span>
+<span class="cmt">// Hoặc</span>
+<span class="kw">const</span> batches = <span class="fn">chunk</span>(customers, <span class="num">50</span>); <span class="cmt">// nhóm 50</span>
+<span class="kw">for</span> (<span class="kw">const</span> batch <span class="kw">of</span> batches) {
+  <span class="kw">await</span> <span class="fn">fetchBatch</span>(batch);
+  <span class="kw">await</span> <span class="fn">sleep</span>(<span class="num">1000</span>); <span class="cmt">// nghỉ 1 giây giữa các batch</span>
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- SECURITY -->
+<div class="section" id="sec-apikey">
+  <div class="section-header">
+    <div class="section-icon">🔒</div>
+    <div>
+      <h2>Bảo mật — Các rủi ro cần lưu ý</h2>
+    </div>
+  </div>
+
+  <h3 id="sec-apikey">🗝️ Rò rỉ API Key</h3>
+  <div class="case-card danger">
+    <div class="case-header">❌ API key ngân hàng bị lộ trong source code frontend</div>
+    <div class="case-body">
+      <div class="note note-red"><strong>Hậu quả:</strong> Bất kỳ ai cũng có thể gọi API ngân hàng với danh nghĩa công ty bạn. Ngân hàng có thể tính phí hoặc khóa tài khoản.</div>
+      <pre><span class="cmt">// ❌ KHÔNG BAOGIỜ để key trong frontend</span>
+<span class="kw">const</span> API_KEY = <span class="str">"sk-live-abc123xyz"</span>; <span class="cmt">// ai cũng thấy trong DevTools</span>
+<span class="fn">fetch</span>(<span class="str">`https://api.bank.vn/debt?key=${API_KEY}`</span>);
+
+<span class="cmt">// ✅ Key chỉ nằm trên Backend Server (biến môi trường)</span>
+<span class="cmt">// .env file trên server — không bao giờ commit lên git</span>
+API_KEY=sk-live-abc123xyz
+
+<span class="cmt">// Cloudflare Worker / Firebase Function đọc từ env</span>
+<span class="kw">const</span> key = env.BANK_API_KEY; <span class="cmt">// không lộ ra ngoài</span></pre>
+    </div>
+  </div>
+
+  <h3 id="sec-mitm">👁️ Tấn công nghe lén (MITM)</h3>
+  <div class="case-card warning">
+    <div class="case-header">⚠️ Kẻ tấn công chặn giữa app và server để đọc hoặc sửa dữ liệu</div>
+    <div class="case-body">
+      <p><strong>Nguyên nhân:</strong> Dùng HTTP thay vì HTTPS · Certificate không hợp lệ.</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Điểm kiểm tra</th><th>Đúng</th><th>Sai</th></tr></thead>
+          <tbody>
+            <tr><td>URL app của bạn</td><td><code>https://...</code></td><td><code>http://...</code></td></tr>
+            <tr><td>URL backend</td><td><code>https://...</code></td><td><code>http://...</code></td></tr>
+            <tr><td>URL API ngân hàng</td><td><code>https://...</code></td><td>Bất kỳ HTTP nào</td></tr>
+            <tr><td>Certificate</td><td>Còn hạn, do CA uy tín cấp</td><td>Self-signed, hết hạn</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="note note-green"><strong>App này:</strong> Đang dùng GitHub Pages (HTTPS) + Firebase (HTTPS) — đã đảm bảo điểm này.</div>
+    </div>
+  </div>
+
+  <h3 id="sec-injection">💉 Injection qua dữ liệu từ API</h3>
+  <div class="case-card warning">
+    <div class="case-header">⚠️ Dữ liệu từ API chứa HTML/JS độc hại → XSS khi render ra giao diện</div>
+    <div class="case-body">
+      <pre><span class="cmt">// Giả sử API trả về tên KH có chứa script</span>
+<span class="cmt">// name = '&lt;script&gt;document.cookie&lt;/script&gt;'</span>
+
+<span class="cmt">// ❌ Render thẳng vào innerHTML — bị XSS</span>
+el.innerHTML = <span class="str">`&lt;td&gt;${data.name}&lt;/td&gt;`</span>;
+
+<span class="cmt">// ✅ Luôn escape HTML trước khi render</span>
+<span class="kw">function</span> <span class="fn">escHtml</span>(str) {
+  <span class="kw">return</span> String(str)
+    .<span class="fn">replace</span>(/&amp;/g, <span class="str">'&amp;amp;'</span>)
+    .<span class="fn">replace</span>(/&lt;/g, <span class="str">'&amp;lt;'</span>)
+    .<span class="fn">replace</span>(/&gt;/g, <span class="str">'&amp;gt;'</span>)
+    .<span class="fn">replace</span>(/"/g, <span class="str">'&amp;quot;'</span>);
+}
+el.innerHTML = <span class="str">`&lt;td&gt;${<span class="fn">escHtml</span>(data.name)}&lt;/td&gt;`</span>; <span class="cmt">// ✅ an toàn</span></pre>
+      <div class="note note-green"><strong>App này:</strong> Hàm <code>escHtml()</code> đã được dùng ở khắp nơi khi render dữ liệu KH — đã xử lý tốt.</div>
+    </div>
+  </div>
+</div>
+
+<!-- BANK SPECIFIC -->
+<div class="section" id="bank-earlyclose">
+  <div class="section-header">
+    <div class="section-icon">🏦</div>
+    <div>
+      <h2>Tích hợp ngân hàng — Trường hợp cụ thể</h2>
+    </div>
+  </div>
+
+  <h3 id="bank-earlyclose">💰 Tính tất toán trước hạn (Real-time)</h3>
+  <div class="case-card blue">
+    <div class="case-header">📌 Luồng đầy đủ + các trường hợp có thể xảy ra</div>
+    <div class="case-body">
+      <div class="steps">
+        <div class="step"><div class="step-num"></div><div class="step-body">CTV/NVTD nhập mã KH + ngày tất toán dự kiến → bấm "Tính"</div></div>
+        <div class="step"><div class="step-num"></div><div class="step-body">App gọi Backend Server của bạn (kèm Firebase token để xác thực)</div></div>
+        <div class="step"><div class="step-num"></div><div class="step-body">Backend xác thực token → gọi API ngân hàng với API key bí mật</div></div>
+        <div class="step"><div class="step-num"></div><div class="step-body">Ngân hàng tính: <code>gốc còn lại + lãi phát sinh đến ngày đó + phí phạt tất toán sớm</code></div></div>
+        <div class="step"><div class="step-num"></div><div class="step-body">Backend trả kết quả về app → hiển thị chi tiết cho CTV</div></div>
+      </div>
+      <br>
+      <p><strong>Các trường hợp lỗi đặc thù:</strong></p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Tình huống</th><th>HTTP Code</th><th>Xử lý</th></tr></thead>
+          <tbody>
+            <tr><td>Mã KH không tồn tại</td><td><span class="badge badge-red">404</span></td><td>Thông báo "Không tìm thấy hợp đồng"</td></tr>
+            <tr><td>Hợp đồng đã tất toán</td><td><span class="badge badge-orange">200</span> + flag</td><td>Báo "KH đã hoàn thành hợp đồng"</td></tr>
+            <tr><td>Ngày tất toán trong quá khứ</td><td><span class="badge badge-red">400</span></td><td>Validate trước khi gọi API</td></tr>
+            <tr><td>Ngày tất toán là ngày nghỉ/lễ</td><td><span class="badge badge-orange">200</span> + cảnh báo</td><td>Hiển thị ngày làm việc tiếp theo</td></tr>
+            <tr><td>Hợp đồng đang tranh chấp pháp lý</td><td><span class="badge badge-red">403</span></td><td>"Liên hệ ngân hàng trực tiếp"</td></tr>
+            <tr><td>API ngân hàng bảo trì</td><td><span class="badge badge-gray">503</span></td><td>Thông báo thời gian bảo trì nếu có</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <h3 id="bank-report">📋 Báo cáo tình hình công nợ KH cụ thể</h3>
+  <div class="case-card blue">
+    <div class="case-header">📌 Các trường hợp đặc biệt khi lấy báo cáo theo KH</div>
+    <div class="case-body">
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Tình huống</th><th>Mô tả</th><th>Cách xử lý</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>KH có nhiều hợp đồng</td>
+              <td>API trả về mảng nhiều khoản vay</td>
+              <td>Hiển thị từng hợp đồng riêng, tổng hợp tổng nợ</td>
+            </tr>
+            <tr>
+              <td>KH đã trả một phần trong ngày</td>
+              <td>Số dư thay đổi trong ngày, khác với export đêm qua</td>
+              <td>Luôn gọi real-time, không cache quá 5 phút</td>
+            </tr>
+            <tr>
+              <td>KH có khoản nợ quá hạn</td>
+              <td>Phát sinh lãi phạt, cần tính lại</td>
+              <td>Highlight cảnh báo đỏ, hiển thị tổng phí phạt</td>
+            </tr>
+            <tr>
+              <td>Dữ liệu quá cũ (stale)</td>
+              <td>Cache cũ, ngân hàng cập nhật nhưng app chưa hay</td>
+              <td>Thêm timestamp "Cập nhật lúc..." + nút làm mới</td>
+            </tr>
+            <tr>
+              <td>KH ở chi nhánh khác</td>
+              <td>Dữ liệu nằm ở server vùng khác</td>
+              <td>API ngân hàng phải hỗ trợ query toàn hệ thống</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <!-- FIREBASE REALTIME Q&A -->
+  <h3 id="firebase-realtime">🔥 Firebase Functions: Tất toán trước hạn có real-time không?</h3>
+  <div class="case-card green">
+    <div class="case-header">📌 Câu trả lời: Có — kiểu "on-demand real-time" (~200–400ms)</div>
+    <div class="case-body">
+      <p>Firebase Functions <strong>không phải streaming real-time</strong> (như WebSocket hay Firebase Realtime DB listener), nhưng đủ nhanh cho hầu hết nghiệp vụ tài chính:</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Loại real-time</th><th>Cơ chế</th><th>Độ trễ</th><th>Phù hợp</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>On-demand</strong> (Firebase Functions)</td>
+              <td>Người dùng bấm → gọi Function → nhận kết quả</td>
+              <td>200–400ms</td>
+              <td>✅ Tính tất toán khi cần</td>
+            </tr>
+            <tr>
+              <td><strong>Streaming</strong> (WebSocket)</td>
+              <td>Server chủ động đẩy liên tục</td>
+              <td>~10ms</td>
+              <td>❌ Quá phức tạp, cần infra riêng</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <br>
+      <p><strong>Kết luận thực tế:</strong> Với nghiệp vụ "NVTD bấm tính tất toán → xem kết quả", độ trễ 200–400ms là hoàn toàn ổn. Không cần WebSocket.</p>
+      <br>
+      <p><strong>Code mẫu Firebase Function — tính tất toán có cache 5 phút:</strong></p>
+      <pre><code>// functions/index.js
+const functions = require('firebase-functions');
+const admin = require('firebase-admin');
+admin.initializeApp();
+
+exports.calcEarlyPayoff = functions.https.onCall(async (data, context) => {
+  // Xác thực Firebase Auth
+  if (!context.auth)
+    throw new functions.https.HttpsError('unauthenticated', 'Cần đăng nhập');
+
+  const { customerId, payoffDate } = data;
+  const cacheKey = `earlyPayoff_${customerId}_${payoffDate.replace(/-/g, '')}`;
+
+  // Kiểm tra cache 5 phút trong Firebase
+  const cacheSnap = await admin.database()
+    .ref(`_cache/${cacheKey}`).once('value');
+
+  if (cacheSnap.exists()) {
+    const cached = cacheSnap.val();
+    if (Date.now() - cached.ts &lt; 5 * 60 * 1000) {
+      return { ...cached.data, fromCache: true };
+    }
+  }
+
+  // Gọi API ngân hàng (API key được giấu trong environment)
+  const result = await callBankAPI('/early-payoff', { customerId, payoffDate });
+
+  // Lưu cache
+  await admin.database()
+    .ref(`_cache/${cacheKey}`)
+    .set({ data: result, ts: Date.now() });
+
+  return { ...result, fromCache: false };
+});
+</code></pre>
+      <br>
+      <p><strong>Gọi từ app (nvtd.html):</strong></p>
+      <pre><code>const calcEarlyPayoff = firebase.functions().httpsCallable('calcEarlyPayoff');
+
+async function tinhTatToan(customerId, payoffDate) {
+  try {
+    const { data } = await calcEarlyPayoff({ customerId, payoffDate });
+    showResult(data);  // fromCache: true/false
+  } catch (err) {
+    alert('Lỗi: ' + err.message);
+  }
+}
+</code></pre>
+    </div>
+  </div>
+
+  <!-- 3 CHIEN LUOC BAO CAO CONG NO -->
+  <h3 id="firebase-debt-strategies">📊 3 Chiến lược báo cáo công nợ KH với Firebase Functions</h3>
+  <div class="case-card blue">
+    <div class="case-header">📌 Tùy quy mô và yêu cầu, chọn chiến lược phù hợp</div>
+    <div class="case-body">
+
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr><th>Chiến lược</th><th>Cơ chế</th><th>Độ trễ</th><th>Chi phí API</th><th>Phù hợp khi</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>1. On-demand</strong></td>
+              <td>Gọi API ngân hàng mỗi lần bấm "Xem công nợ"</td>
+              <td>200–500ms</td>
+              <td>Cao (mỗi request = 1 lần tính phí)</td>
+              <td>Danh sách KH ít (&lt;50 KH), cần số thật 100%</td>
+            </tr>
+            <tr>
+              <td><strong>2. Cache thông minh</strong></td>
+              <td>Lưu kết quả 30 phút trong Firebase, gọi lại khi hết hạn</td>
+              <td>&lt;50ms (cache hit) / 200–500ms (cache miss)</td>
+              <td>Thấp (chỉ gọi API khi cache cũ)</td>
+              <td>Số KH vừa, chấp nhận số liệu chậm 30 phút</td>
+            </tr>
+            <tr>
+              <td><strong>3. Webhook push</strong></td>
+              <td>Ngân hàng chủ động đẩy khi KH thanh toán → cập nhật ngay</td>
+              <td>~0ms (nhận ngay khi có phát sinh)</td>
+              <td>Rất thấp</td>
+              <td>Ngân hàng hỗ trợ webhook, muốn real-time nhất</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <br>
+      <h4>Chiến lược 2 — Code mẫu đầy đủ (Cache 30 phút):</h4>
+      <pre><code>// functions/index.js
+exports.getDebtReport = functions.https.onCall(async (data, context) => {
+  if (!context.auth)
+    throw new functions.https.HttpsError('unauthenticated', 'Cần đăng nhập');
+
+  const { customerId } = data;
+  const cacheRef = admin.database().ref(`_cache/debtReport/${customerId}`);
+  const snap = await cacheRef.once('value');
+
+  if (snap.exists()) {
+    const { data: cached, ts } = snap.val();
+    const ageMs = Date.now() - ts;
+    if (ageMs &lt; 30 * 60 * 1000) {
+      // Trả cache + thông tin tuổi cache
+      return {
+        ...cached,
+        fromCache: true,
+        cacheAgeSeconds: Math.floor(ageMs / 1000)
+      };
+    }
+  }
+
+  // Cache cũ hoặc chưa có → gọi API ngân hàng
+  const report = await callBankAPI('/debt-report', { customerId });
+  await cacheRef.set({ data: report, ts: Date.now() });
+
+  return { ...report, fromCache: false, cacheAgeSeconds: 0 };
+});
+</code></pre>
+      <br>
+      <h4>Chiến lược 3 — Webhook endpoint (ngân hàng gọi vào):</h4>
+      <pre><code>// Ngân hàng gọi POST vào URL này khi KH thanh toán
+exports.bankWebhook = functions.https.onRequest(async (req, res) => {
+  // Xác thực chữ ký từ ngân hàng (HMAC-SHA256)
+  const sig = req.headers['x-bank-signature'];
+  if (!verifyBankSignature(req.rawBody, sig)) {
+    return res.status(401).json({ error: 'Invalid signature' });
+  }
+
+  const { customerId, paidAmount, remainingDebt, paidAt } = req.body;
+
+  // Cập nhật thẳng vào Firebase — app tự lắng nghe qua onValue()
+  await admin.database().ref(`debtStatus/${customerId}`).update({
+    remainingDebt,
+    lastPaid: paidAmount,
+    lastPaidAt: paidAt,
+    updatedAt: Date.now()
+  });
+
+  // Xóa cache cũ để lần sau on-demand lấy số mới
+  await admin.database().ref(`_cache/debtReport/${customerId}`).remove();
+
+  res.json({ ok: true });
+});
+</code></pre>
+      <br>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Lưu ý quan trọng</th><th>Chi tiết</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>Luôn hiển thị timestamp</td>
+              <td>Cho user biết "Cập nhật lúc 14:32 — 18 phút trước" để tránh nhầm số liệu cũ</td>
+            </tr>
+            <tr>
+              <td>Nút "Làm mới"</td>
+              <td>Cho phép force-refresh bỏ qua cache khi cần số thật ngay lập tức</td>
+            </tr>
+            <tr>
+              <td>Webhook cần secret</td>
+              <td>Luôn xác thực chữ ký HMAC-SHA256, không tin body request nếu không có chữ ký</td>
+            </tr>
+            <tr>
+              <td>Chiến lược kết hợp</td>
+              <td>Dùng webhook (3) + cache (2) cùng nhau: webhook cập nhật ngay khi có giao dịch, cache dùng fallback khi webhook fail</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BACKEND SERVER -->
+<div class="section" id="backend-compare">
+  <div class="section-header">
+    <div class="section-icon">🖥️</div>
+    <div>
+      <h2>Chọn Backend Server — Công nghệ nào phù hợp?</h2>
+      <p>So sánh thực tế cho app quy mô công ty tài chính vi mô, nhóm nhỏ đến vừa</p>
+    </div>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th></th>
+          <th>☁️ Cloudflare Worker</th>
+          <th>🔥 Firebase Functions</th>
+          <th>🟢 Node.js VPS</th>
+          <th>🐍 Python/FastAPI VPS</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Máy chủ riêng</strong></td>
+          <td><span class="badge badge-green">❌ Không cần</span></td>
+          <td><span class="badge badge-green">❌ Không cần</span></td>
+          <td><span class="badge badge-orange">✅ Cần thuê VPS</span></td>
+          <td><span class="badge badge-orange">✅ Cần thuê VPS</span></td>
+        </tr>
+        <tr>
+          <td><strong>Chi phí</strong></td>
+          <td>Miễn phí 100k req/ngày</td>
+          <td>Miễn phí 2M req/tháng</td>
+          <td>~$5–10/tháng</td>
+          <td>~$5–10/tháng</td>
+        </tr>
+        <tr>
+          <td><strong>Độ trễ (latency)</strong></td>
+          <td><span class="badge badge-green">~10ms (edge toàn cầu)</span></td>
+          <td><span class="badge badge-orange">~200–500ms (cold start)</span></td>
+          <td>Tùy vị trí server</td>
+          <td>Tùy vị trí server</td>
+        </tr>
+        <tr>
+          <td><strong>Độ khó setup</strong></td>
+          <td>Thấp</td>
+          <td>Thấp</td>
+          <td>Trung bình</td>
+          <td>Trung bình</td>
+        </tr>
+        <tr>
+          <td><strong>Ngôn ngữ</strong></td>
+          <td>JavaScript</td>
+          <td>JS / Python / Go</td>
+          <td>Bất kỳ</td>
+          <td>Python</td>
+        </tr>
+        <tr>
+          <td><strong>Tích hợp Firebase sẵn</strong></td>
+          <td><span class="badge badge-gray">Cần cấu hình thêm</span></td>
+          <td><span class="badge badge-green">✅ Cùng project luôn</span></td>
+          <td><span class="badge badge-gray">Cần cấu hình thêm</span></td>
+          <td><span class="badge badge-gray">Cần cấu hình thêm</span></td>
+        </tr>
+        <tr>
+          <td><strong>Vận hành 24/7</strong></td>
+          <td><span class="badge badge-green">✅ Tự động</span></td>
+          <td><span class="badge badge-green">✅ Tự động</span></td>
+          <td><span class="badge badge-orange">Cần tự cấu hình</span></td>
+          <td><span class="badge badge-orange">Cần tự cấu hình</span></td>
+        </tr>
+        <tr>
+          <td><strong>Phù hợp app này</strong></td>
+          <td><span class="badge badge-blue">✅ Tốt</span></td>
+          <td><span class="badge badge-green">✅ Tốt nhất</span></td>
+          <td><span class="badge badge-gray">Khi logic phức tạp</span></td>
+          <td><span class="badge badge-gray">Nếu team biết Python</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- FIREBASE FUNCTIONS -->
+  <h3 id="backend-firebase-fn">🔥 Khuyến nghị: Firebase Functions — tích hợp sẵn, chi phí $0</h3>
+  <div class="note note-blue">
+    <strong>Lý do chọn Firebase Functions cho app này:</strong><br>
+    App đang dùng Firebase Realtime Database → cùng project, cùng authentication — không cần viết lại hệ thống xác thực. Token Firebase của NVTD/CTV xác thực thẳng vào Function, không cần thêm bước nào.
+  </div>
+
+  <h4>Luồng hoạt động</h4>
+  <div class="flow" style="flex-wrap:wrap;gap:8px;margin-bottom:16px">
+    <div class="flow-box blue">App gọi<br><small>httpsCallable()</small></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box orange">Firebase Function<br><small>xác thực token</small></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box purple">API ngân hàng<br><small>với secret key ẩn</small></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box green">Trả kết quả<br><small>về app</small></div>
+  </div>
+
+  <h4>Code mẫu — Firebase Function (phía server)</h4>
+  <pre><span class="cmt">// functions/index.js — chạy trên Firebase, API key không lộ ra ngoài</span>
+<span class="kw">const</span> functions = <span class="fn">require</span>(<span class="str">'firebase-functions'</span>);
+<span class="kw">const</span> fetch     = <span class="fn">require</span>(<span class="str">'node-fetch'</span>);
+
+exports.earlyPayoff = functions.https.<span class="fn">onCall</span>(<span class="kw">async</span> (data, context) => {
+  <span class="cmt">// 1. Kiểm tra đã đăng nhập Firebase</span>
+  <span class="kw">if</span> (!context.auth)
+    <span class="kw">throw new</span> functions.https.<span class="fn">HttpsError</span>(<span class="str">'unauthenticated'</span>, <span class="str">'Chưa đăng nhập'</span>);
+
+  <span class="cmt">// 2. Lấy API key từ Firebase config — không hardcode, không lộ</span>
+  <span class="kw">const</span> apiKey = functions.<span class="fn">config</span>().bank.apikey;
+
+  <span class="cmt">// 3. Gọi API ngân hàng</span>
+  <span class="kw">const</span> res = <span class="kw">await</span> <span class="fn">fetch</span>(
+    <span class="str">`https://api.bank.vn/loans/${data.customerId}/payoff?date=${data.payoffDate}`</span>,
+    { headers: { <span class="str">'X-API-Key'</span>: apiKey } }
+  );
+
+  <span class="kw">if</span> (!res.ok)
+    <span class="kw">throw new</span> functions.https.<span class="fn">HttpsError</span>(<span class="str">'unavailable'</span>, <span class="str">'API ngân hàng lỗi: '</span> + res.status);
+
+  <span class="kw">return await</span> res.<span class="fn">json</span>(); <span class="cmt">// trả thẳng về app</span>
+});</pre>
+
+  <h4>Code mẫu — Gọi từ app (nvtd.html / ctv.html)</h4>
+  <pre><span class="cmt">// Gọi Firebase Function — an toàn, không lộ API key</span>
+<span class="kw">const</span> earlyPayoff = firebase.<span class="fn">functions</span>().<span class="fn">httpsCallable</span>(<span class="str">'earlyPayoff'</span>);
+
+<span class="kw">try</span> {
+  <span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">earlyPayoff</span>({
+    customerId: <span class="str">'KH001'</span>,
+    payoffDate: <span class="str">'2026-05-01'</span>
+  });
+  <span class="fn">showToast</span>(<span class="str">`💰 Số tiền tất toán: ${result.data.amount.toLocaleString('vi-VN')} ₫`</span>);
+} <span class="kw">catch</span> (e) {
+  <span class="fn">showToast</span>(<span class="str">'❌ '</span> + e.message);
+}</pre>
+
+  <!-- CHI PHÍ -->
+  <h3 id="backend-cost">💰 Chi phí thực tế ước tính</h3>
+  <p>Giả sử <strong>50 CTV × 20 lần tra cứu/ngày = 1.000 request/ngày (~30.000/tháng)</strong>:</p>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Dịch vụ</th><th>Free tier</th><th>Thực tế dùng</th><th>Chi phí thêm</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Firebase Functions</td>
+          <td>2.000.000 req/tháng</td>
+          <td>~30.000 req/tháng</td>
+          <td><span class="badge badge-green">$0</span></td>
+        </tr>
+        <tr>
+          <td>Firebase Realtime DB</td>
+          <td>1GB data · 10GB download</td>
+          <td>Rất nhỏ</td>
+          <td><span class="badge badge-green">$0</span></td>
+        </tr>
+        <tr>
+          <td>Gói Blaze (bắt buộc để gọi API ngoài)</td>
+          <td>Pay-as-you-go · chỉ tính khi vượt free tier</td>
+          <td>Trong free tier</td>
+          <td><span class="badge badge-green">$0 thực tế</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note note-green">
+    <strong>Tổng chi phí dự kiến: $0/tháng</strong> với quy mô hiện tại.<br>
+    Chỉ phát sinh chi phí khi vượt 2 triệu request/tháng — tức là khi app đã rất lớn (~3.000 CTV hoạt động liên tục).
+  </div>
+  <div class="note note-orange">
+    <strong>⚠️ Lưu ý:</strong> Gói Blaze yêu cầu liên kết thẻ tín dụng/Visa với Google. Có thể đặt ngưỡng giới hạn chi tiêu (spending limit) để tránh bị charge ngoài ý muốn.
+  </div>
+
+  <!-- ĐIỀU KIỆN -->
+  <h3 id="backend-conditions">✅ Điều kiện để hoạt động thực tế</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Hạng mục</th><th>Chi tiết</th><th>Ai thực hiện</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>🔥 Nâng gói Firebase lên <strong>Blaze</strong></td>
+          <td>Gói Spark miễn phí KHÔNG cho gọi API bên ngoài. Phải nâng lên Blaze (có thể $0 nếu trong free tier).</td>
+          <td>NVTD / admin Firebase</td>
+        </tr>
+        <tr>
+          <td>🟢 Cài <strong>Node.js + Firebase CLI</strong> trên máy dev</td>
+          <td><code>npm install -g firebase-tools</code> → <code>firebase login</code> → <code>firebase deploy --only functions</code></td>
+          <td>Người dev</td>
+        </tr>
+        <tr>
+          <td>🔐 Lưu API key ngân hàng vào <strong>Firebase config</strong></td>
+          <td><code>firebase functions:config:set bank.apikey="sk-live-abc123"</code><br>Key nằm trên server, không bao giờ xuất hiện trong code.</td>
+          <td>Người dev</td>
+        </tr>
+        <tr>
+          <td>🏦 IT ngân hàng <strong>whitelist IP</strong> của Firebase Functions</td>
+          <td>Firebase cung cấp dải IP cố định khi dùng gói Blaze. Cung cấp danh sách này cho IT ngân hàng để họ cho phép kết nối.</td>
+          <td>IT ngân hàng</td>
+        </tr>
+        <tr>
+          <td>📄 Ký <strong>hợp đồng API</strong> với ngân hàng</td>
+          <td>Ngân hàng cấp: endpoint URL, API key, tài liệu API spec, môi trường sandbox để test.</td>
+          <td>Bộ phận pháp chế / IT</td>
+        </tr>
+        <tr>
+          <td>🧪 Test trên <strong>môi trường sandbox</strong> trước</td>
+          <td>Không test thẳng lên production. Ngân hàng thường có môi trường UAT/sandbox riêng.</td>
+          <td>Người dev + ngân hàng</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="case-card success">
+    <div class="case-header">✅ Tóm tắt: Bạn KHÔNG cần gì thêm so với hiện tại</div>
+    <div class="case-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;font-size:14px">
+        <div>
+          <div style="font-weight:700;margin-bottom:8px;color:#2e7d32">✅ Không cần:</div>
+          <ul style="color:#2e7d32">
+            <li>Máy chủ riêng (VPS, dedicated)</li>
+            <li>Tên miền riêng cho backend</li>
+            <li>Đội vận hành server 24/7</li>
+            <li>Kiến thức Linux / Docker / Nginx</li>
+            <li>Viết lại hệ thống xác thực</li>
+          </ul>
+        </div>
+        <div>
+          <div style="font-weight:700;margin-bottom:8px;color:#e65100">⚠️ Cần thêm:</div>
+          <ul style="color:#e65100">
+            <li>Nâng Firebase lên gói Blaze</li>
+            <li>Cài Node.js + Firebase CLI</li>
+            <li>Hợp đồng API với ngân hàng</li>
+            <li>IT ngân hàng whitelist IP</li>
+            <li>Môi trường sandbox để test</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MULTI USER API -->
+<div class="section" id="multi-user-auth">
+  <div class="section-header">
+    <div class="section-icon">👥</div>
+    <div>
+      <h2>Khi ứng dụng chính cấp API cho nhiều nhân viên</h2>
+      <p>Kiến trúc, rủi ro và giải pháp khi nhiều NVTD/CTV cùng dùng chung một hệ thống API</p>
+    </div>
+  </div>
+
+  <h3>🔑 Xác thực: Dùng API key chung hay riêng từng người?</h3>
+  <div class="case-card red">
+    <div class="case-header">⚠️ Sai lầm phổ biến: Dùng một API key duy nhất cho toàn bộ nhân viên</div>
+    <div class="case-body">
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Cách làm</th><th>Ưu điểm</th><th>Rủi ro</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>1 API key chung</strong><br>(dùng cho tất cả)</td>
+              <td>Đơn giản, dễ cài</td>
+              <td>❌ Một người lộ key → toàn hệ thống bị lộ<br>❌ Không biết ai gọi API nào<br>❌ Không thể thu hồi quyền 1 người</td>
+            </tr>
+            <tr>
+              <td><strong>API key riêng từng người</strong></td>
+              <td>Thu hồi độc lập, audit được</td>
+              <td>⚠️ Quản lý nhiều key phức tạp<br>⚠️ Key vẫn nằm trong app → nguy cơ lộ</td>
+            </tr>
+            <tr>
+              <td><strong>Service Account + Firebase Token</strong> ✅</td>
+              <td>API key nằm trong backend, không lộ ra app. Mỗi request kèm Firebase UID của nhân viên</td>
+              <td>✅ Kiến trúc an toàn nhất cho app web/mobile</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <br>
+      <p><strong>Luồng đề xuất cho nhiều nhân viên:</strong></p>
+      <pre><code>App (NVTD / CTV)
+    ↓  Firebase ID Token (JWT — hết hạn sau 1h)
+Backend (Firebase Functions)
+    ↓  Xác thực token → lấy UID + role (nvtd/ctv)
+    ↓  Gọi API công ty với Service Account key (ẩn trong env)
+API Server công ty chính
+    ↓  Trả dữ liệu được lọc theo quyền vai trò
+Backend → App
+</code></pre>
+    </div>
+  </div>
+
+  <h3 id="multi-user-ratelimit">⏱️ Rate limit chung: Ai "ăn" hết quota của người khác?</h3>
+  <div class="case-card orange">
+    <div class="case-header">📌 Quota API bị chia sẻ — 1 nhân viên spam có thể làm cả nhóm bị chặn</div>
+    <div class="case-body">
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Tình huống</th><th>Hậu quả</th><th>Giải pháp</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>CTV bấm "Làm mới" liên tục do app chậm</td>
+              <td>Hết quota 429 → toàn hệ thống bị block</td>
+              <td>Debounce 3 giây + cooldown UI sau mỗi request</td>
+            </tr>
+            <tr>
+              <td>NVTD export báo cáo 200 KH cùng lúc</td>
+              <td>1 request tốn nhiều quota hơn 50 request nhỏ</td>
+              <td>Phân trang (page size 20), chỉ fetch khi cần</td>
+            </tr>
+            <tr>
+              <td>Buổi sáng 8h tất cả đăng nhập cùng lúc</td>
+              <td>Spike đột ngột, dễ vượt rate limit/giây</td>
+              <td>Jitter: delay ngẫu nhiên 0–2s khi app khởi động</td>
+            </tr>
+            <tr>
+              <td>Một nhân viên bị loop vô hạn do bug</td>
+              <td>Đốt hết quota trong vài phút</td>
+              <td>Circuit breaker: tự tắt sau 5 lỗi liên tiếp/phút</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <br>
+      <p><strong>Code mẫu — Per-user rate limit trong Firebase Functions:</strong></p>
+      <pre><code>// Giới hạn mỗi nhân viên chỉ được gọi 10 lần/phút
+exports.getCustomerDebt = functions.https.onCall(async (data, context) => {
+  if (!context.auth)
+    throw new functions.https.HttpsError('unauthenticated', 'Cần đăng nhập');
+
+  const uid = context.auth.uid;
+  const windowMs = 60 * 1000;
+  const maxCalls = 10;
+
+  const countRef = admin.database().ref(`_rateLimit/${uid}`);
+  const snap = await countRef.once('value');
+  const now = Date.now();
+
+  if (snap.exists()) {
+    const { count, windowStart } = snap.val();
+    if (now - windowStart &lt; windowMs) {
+      if (count >= maxCalls) {
+        const waitSec = Math.ceil((windowStart + windowMs - now) / 1000);
+        throw new functions.https.HttpsError(
+          'resource-exhausted', `Chờ ${waitSec}s rồi thử lại`
+        );
+      }
+      await countRef.update({ count: count + 1 });
+    } else {
+      await countRef.set({ count: 1, windowStart: now });
+    }
+  } else {
+    await countRef.set({ count: 1, windowStart: now });
+  }
+
+  return await callBankAPI('/debt', { customerId: data.customerId });
+});
+</code></pre>
+    </div>
+  </div>
+
+  <h3 id="multi-user-roles">🛡️ Phân quyền vai trò: NVTD và CTV thấy gì khác nhau?</h3>
+  <div class="case-card green">
+    <div class="case-header">📌 Không phải mọi nhân viên đều được phép gọi mọi API endpoint</div>
+    <div class="case-body">
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Chức năng API</th><th>CTV</th><th>NVTD</th><th>Ghi chú</th></tr></thead>
+          <tbody>
+            <tr><td>Xem công nợ KH được phân công</td><td>✅ Chỉ KH của mình</td><td>✅ Tất cả</td><td>Filter theo <code>assignedCTV</code></td></tr>
+            <tr><td>Xem số dư tài khoản KH</td><td>❌</td><td>✅</td><td>Thông tin nhạy cảm</td></tr>
+            <tr><td>Tính tất toán trước hạn</td><td>✅ Chỉ đọc</td><td>✅ Có thể xác nhận</td><td>CTV xem — NVTD duyệt</td></tr>
+            <tr><td>Xuất báo cáo toàn hệ thống</td><td>❌</td><td>✅</td><td>Cần role NVTD</td></tr>
+            <tr><td>Cập nhật thông tin KH</td><td>❌</td><td>✅</td><td>Chỉ NVTD được write</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <br>
+      <p><strong>Implement phân quyền bằng Firebase Custom Claims:</strong></p>
+      <pre><code>// Kiểm tra role từ Firebase Custom Claims (set khi tạo tài khoản)
+exports.getFullReport = functions.https.onCall(async (data, context) => {
+  if (!context.auth)
+    throw new functions.https.HttpsError('unauthenticated', 'Cần đăng nhập');
+
+  const role = context.auth.token.role; // 'nvtd' hoặc 'ctv'
+
+  if (role !== 'nvtd') {
+    throw new functions.https.HttpsError(
+      'permission-denied', 'Chỉ NVTD được xem báo cáo toàn hệ thống'
+    );
+  }
+  return await callBankAPI('/full-report', {});
+});
+
+// Admin: gán role khi tạo tài khoản nhân viên mới
+async function setEmployeeRole(uid, role) { // role: 'nvtd' | 'ctv'
+  await admin.auth().setCustomUserClaims(uid, { role });
+}
+</code></pre>
+    </div>
+  </div>
+
+  <h3 id="multi-user-audit">📝 Audit log: Ai làm gì, lúc nào?</h3>
+  <div class="case-card blue">
+    <div class="case-header">📌 Yêu cầu bắt buộc của hệ thống tài chính — ghi lại mọi thao tác</div>
+    <div class="case-body">
+      <p>Khi nhiều nhân viên dùng chung API, cần biết <em>đúng người nào</em> đã thực hiện thao tác nào để xử lý tranh chấp và tuân thủ quy định kiểm toán.</p>
+      <br>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Thông tin cần log</th><th>Mục đích</th></tr></thead>
+          <tbody>
+            <tr><td><code>uid</code> + tên nhân viên</td><td>Biết ai thực hiện</td></tr>
+            <tr><td><code>action</code> (gọi API nào)</td><td>Biết làm gì</td></tr>
+            <tr><td><code>customerId</code></td><td>Biết với KH nào</td></tr>
+            <tr><td>Timestamp (ISO 8601)</td><td>Biết lúc nào</td></tr>
+            <tr><td>Kết quả (success / error code)</td><td>Debug và audit trail</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <br>
+      <pre><code>// Middleware audit log dùng chung cho mọi Firebase Function
+async function auditLog(context, action, customerId, result) {
+  await admin.database().ref('_auditLog').push({
+    uid:         context.auth.uid,
+    displayName: context.auth.token.name || 'Unknown',
+    role:        context.auth.token.role,
+    action,      // 'calcEarlyPayoff' | 'getDebtReport' | ...
+    customerId,
+    result,      // 'success' | 'error:permission-denied' | ...
+    ts:          Date.now(),
+    tsIso:       new Date().toISOString()
+  });
+}
+
+// Gọi trong mọi function quan trọng
+exports.calcEarlyPayoff = functions.https.onCall(async (data, context) => {
+  // ... logic ...
+  await auditLog(context, 'calcEarlyPayoff', data.customerId, 'success');
+  return result;
+});
+</code></pre>
+    </div>
+  </div>
+
+  <h3 id="multi-user-conflict">⚔️ Xung đột dữ liệu: 2 nhân viên cập nhật cùng 1 KH</h3>
+  <div class="case-card orange">
+    <div class="case-header">📌 Race condition: CTV A và NVTD đồng thời ghi vào cùng 1 bản ghi KH</div>
+    <div class="case-body">
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Tình huống</th><th>Kết quả không mong muốn</th><th>Giải pháp</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>CTV A ghi số tiền thu, NVTD cùng lúc chỉnh thông tin KH</td>
+              <td>Dữ liệu cuối = ai ghi sau thắng (last-write-wins)</td>
+              <td>Multi-path update: mỗi bên chỉ ghi đúng field của mình</td>
+            </tr>
+            <tr>
+              <td>2 CTV cùng thu tiền 1 KH (lỗi phân công)</td>
+              <td>Ghi trùng 2 payment records</td>
+              <td>Idempotency key: mỗi payment có UUID duy nhất, check duplicate trước khi ghi</td>
+            </tr>
+            <tr>
+              <td>CTV xem dữ liệu cũ (stale read)</td>
+              <td>Thu tiền thiếu vì không thấy lần trả trước đó</td>
+              <td>Force-refresh khi mở màn hình KH, hiển thị "Cập nhật lúc X"</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <br>
+      <p><strong>Firebase Transaction — ngăn ghi đè nhau:</strong></p>
+      <pre><code>async function recordPayment(customerId, amount, collectorUid) {
+  // Transaction đọc-ghi nguyên tử, không thể bị ghi đè giữa chừng
+  await admin.database().ref(`customers/${customerId}`)
+    .transaction(current => {
+      if (!current) return current; // abort nếu không có data
+      current.totalPaid = (current.totalPaid || 0) + amount;
+      current.lastPaymentBy = collectorUid;
+      current.lastPaymentAt = Date.now();
+      return current;
+    });
+
+  // Payment ghi riêng với idempotency key — không bao giờ xóa/sửa
+  const idempKey = `${collectorUid}_${customerId}_${Date.now()}`;
+  await admin.database()
+    .ref(`customers/${customerId}/payments/${idempKey}`)
+    .set({ amount, collectorUid, ts: Date.now() });
+}
+</code></pre>
+      <br>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Nguyên tắc vàng</th><th>Chi tiết</th></tr></thead>
+          <tbody>
+            <tr><td>Mỗi người chỉ ghi field của mình</td><td>Dùng <code>update()</code> theo path cụ thể, không dùng <code>set()</code> toàn bộ object</td></tr>
+            <tr><td>Payment là append-only</td><td>Không bao giờ xóa/sửa record — chỉ thêm bản ghi điều chỉnh mới</td></tr>
+            <tr><td>Firebase Rules chặt chẽ</td><td>CTV chỉ ghi được vào KH được phân công cho mình</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CHECKLIST -->
+<div class="section" id="checklist">
+  <div class="section-header">
+    <div class="section-icon">✅</div>
+    <div>
+      <h2>Checklist trước khi tích hợp API</h2>
+      <p>Đảm bảo đủ các điều kiện này trước khi đưa vào production</p>
+    </div>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Hạng mục</th><th>Câu hỏi cần trả lời</th><th>Trạng thái</th></tr></thead>
+      <tbody>
+        <tr><td>📄 Hợp đồng API</td><td>Đã ký hợp đồng sử dụng API với ngân hàng chưa?</td><td><span class="badge badge-orange">⬜ Cần làm</span></td></tr>
+        <tr><td>🔐 Credentials</td><td>Đã có API key / OAuth2 client_id, client_secret?</td><td><span class="badge badge-orange">⬜ Cần làm</span></td></tr>
+        <tr><td>🧪 Sandbox</td><td>Ngân hàng có môi trường test riêng để phát triển không?</td><td><span class="badge badge-orange">⬜ Hỏi ngân hàng</span></td></tr>
+        <tr><td>🖥️ Backend Server</td><td>Đã có Cloudflare Worker / Firebase Function chưa?</td><td><span class="badge badge-orange">⬜ Cần build</span></td></tr>
+        <tr><td>🔒 Secret management</td><td>API key lưu ở environment variable, không trong code?</td><td><span class="badge badge-orange">⬜ Khi build backend</span></td></tr>
+        <tr><td>⏱️ Timeout handling</td><td>Tất cả API call đều có timeout và hiển thị lỗi rõ?</td><td><span class="badge badge-orange">⬜ Cần code</span></td></tr>
+        <tr><td>♻️ Idempotency</td><td>Ghi dữ liệu dùng key cố định, không sinh key ngẫu nhiên?</td><td><span class="badge badge-green">✅ Nếu dùng mã KH làm key</span></td></tr>
+        <tr><td>🛡️ XSS prevention</td><td>Tất cả dữ liệu API được escape trước khi render HTML?</td><td><span class="badge badge-green">✅ escHtml() trong app</span></td></tr>
+        <tr><td>📋 Audit log</td><td>Mỗi lần gọi API có ghi log: ai gọi, khi nào, kết quả?</td><td><span class="badge badge-orange">⬜ Cần thêm</span></td></tr>
+        <tr><td>📱 UX lỗi</td><td>Người dùng thấy thông báo lỗi rõ ràng, không thấy raw JSON?</td><td><span class="badge badge-orange">⬜ Cần thiết kế</span></td></tr>
+        <tr><td>📜 Tuân thủ dữ liệu</td><td>Việc chia sẻ tên/thông tin KH có phù hợp quy định không?</td><td><span class="badge badge-orange">⬜ Hỏi pháp chế</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note note-blue" style="margin-top:8px">
+    <strong>💡 Lộ trình khuyến nghị:</strong><br>
+    <strong>Giai đoạn 1 (Hiện tại):</strong> Upload Excel thủ công — hoạt động tốt, không cần API<br>
+    <strong>Giai đoạn 2:</strong> Push tự động từ ngân hàng vào Firebase mỗi đêm — không cần backend, IT ngân hàng cấu hình<br>
+    <strong>Giai đoạn 3:</strong> Real-time tính tất toán / tra cứu KH — cần backend server + hợp đồng API
+  </div>
+</div>
+
+</main>
+</div>
+
+<footer>
+  Tài liệu nội bộ – Sổ Thu Tiền Mini · Cập nhật tháng 4/2026
+</footer>
+
+</body>
+</html>
