@@ -1224,6 +1224,11 @@
         </label>
       </div>
     </div>
+    <div class="form-group" style="margin-bottom:10px">
+      <button type="button" class="btn btn-outline btn-sm" onclick="browseTemplateFile()">📁 Upload file mẫu biểu</button>
+      <span id="tplFileLabel" style="margin-left:12px;font-size:13px;color:var(--muted)"></span>
+      <input type="file" id="tplFileInput" accept=".txt,.md,.html" style="display:none" onchange="handleTemplateFileInput(this)" />
+    </div>
     <div class="form-group" style="margin-bottom:16px">
       <label>Nội dung <span style="color:var(--danger)">*</span></label>
       <div style="font-size:11px;color:var(--muted);margin-bottom:5px">Dùng <code>{{tên_khách}}</code>, <code>{{số_tiền}}</code>, <code>{{ngày}}</code> — CTV sẽ điền khi dùng mẫu.</div>
@@ -4085,10 +4090,11 @@ function updateChatTabBadge() {
 }
 
 // ==================== MẪU BIỂU NVTD ====================
-let _templates = {};      // { pushId: { title, content, category, shared, ts } }
+let _templates = {};      // { pushId: { title, content, category, shared, ts, filename } }
 let _tplListenerOn = false;
 let _tplEditingId = null; // null = tạo mới, string = sửa
 let _tplShareVal = false;
+let _tplFileName = ''; // tên file mẫu nếu upload từ file
 
 function initTemplatesListener() {
   if (!_db || _tplListenerOn) return;
@@ -4141,12 +4147,14 @@ function renderTemplates() {
 function openTemplateModal(id) {
   _tplEditingId = id || null;
   const t = id ? _templates[id] : null;
+  _tplFileName = t ? (t.filename || '') : '';
   document.getElementById('tplModalTitle').textContent = id ? '✏️ Sửa mẫu biểu' : '📄 Tạo mẫu biểu mới';
   document.getElementById('tplTitle').value = t ? (t.title || '') : '';
   document.getElementById('tplCategory').value = t ? (t.category || 'Thu tiền') : 'Thu tiền';
   document.getElementById('tplContent').value = t ? (t.content || '') : '';
   _tplShareVal = t ? !!t.shared : false;
   _updateTplShareToggle();
+  setTemplateFileName(_tplFileName);
   document.getElementById('templateModal').classList.add('open');
   setTimeout(() => document.getElementById('tplTitle').focus(), 60);
 }
@@ -4158,6 +4166,48 @@ function closeTemplateModal() {
 function toggleTplShare() {
   _tplShareVal = !_tplShareVal;
   _updateTplShareToggle();
+}
+
+function browseTemplateFile() {
+  const input = document.getElementById('tplFileInput');
+  if (input) input.click();
+}
+
+function handleTemplateFileInput(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const allowed = ['text/plain', 'text/markdown', 'text/html'];
+  const extOk = /\.(txt|md|html?)$/i.test(file.name);
+  if (!allowed.includes(file.type) && !extOk) {
+    showToast('⚠️ Vui lòng chọn file .txt, .md hoặc .html');
+    input.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = e => {
+    const text = e.target.result || '';
+    document.getElementById('tplContent').value = text;
+    _tplFileName = file.name;
+    setTemplateFileName(file.name);
+    if (!document.getElementById('tplTitle').value.trim()) {
+      document.getElementById('tplTitle').value = file.name.replace(/\.[^/.]+$/, '');
+    }
+  };
+  reader.onerror = () => {
+    showToast('⚠️ Không đọc được file mẫu biểu');
+  };
+  reader.readAsText(file, 'UTF-8');
+  input.value = '';
+}
+
+function setTemplateFileName(name) {
+  const label = document.getElementById('tplFileLabel');
+  if (!label) return;
+  if (name) {
+    label.textContent = 'File: ' + name;
+  } else {
+    label.textContent = '';
+  }
 }
 
 function _updateTplShareToggle() {
@@ -4183,6 +4233,7 @@ function saveTemplate() {
     category: document.getElementById('tplCategory').value,
     shared: _tplShareVal,
     ts: Date.now(),
+    filename: _tplFileName || undefined,
   };
   const ref = _tplEditingId
     ? _db.ref('/templates/' + _tplEditingId)
