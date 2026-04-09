@@ -3911,19 +3911,29 @@ function openCtvChatNvtd(ctv) {
     snap.forEach(child => msgs.push({ id: child.key, ...child.val() }));
     msgs.sort((a, b) => (a.ts || 0) - (b.ts || 0));
     renderChatMessages(msgs);
-    // Đánh dấu đọc khi nhận tin mới
-    markChatRead(key, 'ctv');
+    // Dùng debounce để đánh dấu đọc — KHÔNG gọi trực tiếp trong listener
+    // tránh vòng lặp: markRead ghi Firebase → trigger listener → markRead → ...
+    scheduleMarkChatRead(key);
   });
 }
 
 let _chatMsgListenerKey = null;
+let _chatMarkReadTimer = null;
+
+function scheduleMarkChatRead(key) {
+  clearTimeout(_chatMarkReadTimer);
+  _chatMarkReadTimer = setTimeout(() => markChatRead(key, 'ctv'), 800);
+}
 
 function markChatRead(ctvKey, fromRole) {
   if (!_db) return;
-  _db.ref('/chat/' + ctvKey).orderByChild('read').equalTo(false).once('value', snap => {
+  // Không dùng orderByChild để tránh cần Firebase index
+  _db.ref('/chat/' + ctvKey).once('value', snap => {
     const updates = {};
     snap.forEach(child => {
-      if (child.val().from === fromRole) updates['/chat/' + ctvKey + '/' + child.key + '/read'] = true;
+      const v = child.val();
+      if (v.from === fromRole && !v.read)
+        updates['/chat/' + ctvKey + '/' + child.key + '/read'] = true;
     });
     if (Object.keys(updates).length) _db.ref().update(updates);
   });

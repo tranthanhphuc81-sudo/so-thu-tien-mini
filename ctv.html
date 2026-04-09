@@ -2120,7 +2120,8 @@ function initCtvChatListener(ctv) {
     const panelOpen = document.getElementById('chatPanel').classList.contains('open');
     if (panelOpen) {
       renderCtvChatMessages(msgs);
-      markCtvChatRead(key);
+      // Debounce — KHÔNG gọi markCtvChatRead trực tiếp trong listener
+      scheduleCtvMarkRead(key);
     }
   });
 
@@ -2149,7 +2150,7 @@ function openCtvChatPanel() {
       snap.forEach(child => msgs.push({ id: child.key, ...child.val() }));
       msgs.sort((a, b) => (a.ts || 0) - (b.ts || 0));
       renderCtvChatMessages(msgs);
-      markCtvChatRead(_ctvChatListenerKey);
+      markCtvChatRead(_ctvChatListenerKey); // gọi trực tiếp khi mở panel, không qua listener
     });
   }
 }
@@ -2178,12 +2179,22 @@ function renderCtvChatMessages(msgs) {
   box.scrollTop = box.scrollHeight;
 }
 
+let _ctvMarkReadTimer = null;
+
+function scheduleCtvMarkRead(key) {
+  clearTimeout(_ctvMarkReadTimer);
+  _ctvMarkReadTimer = setTimeout(() => markCtvChatRead(key), 800);
+}
+
 function markCtvChatRead(ctvKey) {
   if (!_db) return;
-  _db.ref('/chat/' + ctvKey).orderByChild('read').equalTo(false).once('value', snap => {
+  // Không dùng orderByChild để tránh cần Firebase index
+  _db.ref('/chat/' + ctvKey).once('value', snap => {
     const updates = {};
     snap.forEach(child => {
-      if (child.val().from === 'nvtd') updates['/chat/' + ctvKey + '/' + child.key + '/read'] = true;
+      const v = child.val();
+      if (v.from === 'nvtd' && !v.read)
+        updates['/chat/' + ctvKey + '/' + child.key + '/read'] = true;
     });
     if (Object.keys(updates).length) _db.ref().update(updates);
   });
