@@ -4147,12 +4147,12 @@ function openTemplateModal(id) {
   document.getElementById('tplContent').value = t ? (t.content || '') : '';
   _tplShareVal = t ? !!t.shared : false;
   _updateTplShareToggle();
-  document.getElementById('templateModal').classList.add('active');
+  document.getElementById('templateModal').classList.add('open');
   setTimeout(() => document.getElementById('tplTitle').focus(), 60);
 }
 
 function closeTemplateModal() {
-  document.getElementById('templateModal').classList.remove('active');
+  document.getElementById('templateModal').classList.remove('open');
 }
 
 function toggleTplShare() {

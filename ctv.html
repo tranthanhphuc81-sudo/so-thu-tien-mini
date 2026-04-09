@@ -2335,7 +2335,7 @@ function openCtvTpl(id) {
   }
 
   document.getElementById('ctvTplModalContent').textContent = t.content || '';
-  document.getElementById('ctvTplModal').classList.add('active');
+  document.getElementById('ctvTplModal').classList.add('open');
 }
 
 function _ctvTplUpdatePreview() {
@@ -2352,7 +2352,7 @@ function _ctvTplUpdatePreview() {
 }
 
 function closeCtvTplModal() {
-  document.getElementById('ctvTplModal').classList.remove('active');
+  document.getElementById('ctvTplModal').classList.remove('open');
   _ctvTplCurrentId = null;
 }
 
