@@ -467,6 +467,52 @@
     pointer-events: auto;
   }
   .bulk-action-bar .bulk-count { flex:1; font-size:14px; font-weight:800; }
+
+  /* ===== CHAT CTV ===== */
+  .chat-fab {
+    position: fixed; bottom: 24px; right: 20px; z-index: 1200;
+    width: 56px; height: 56px; border-radius: 50%;
+    background: var(--primary); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px; cursor: pointer;
+    box-shadow: 0 4px 16px rgba(26,115,232,0.45);
+    border: none; transition: transform 0.15s;
+  }
+  .chat-fab:active { transform: scale(0.92); }
+  .chat-fab .fab-badge {
+    position: absolute; top: -3px; right: -3px;
+    min-width: 20px; height: 20px; border-radius: 10px;
+    background: var(--danger); color: #fff;
+    font-size: 11px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 5px; border: 2px solid #fff;
+  }
+  .chat-panel {
+    position: fixed; inset: 0; z-index: 1300;
+    display: flex; flex-direction: column;
+    background: #f0f4f8;
+    transform: translateY(100%); transition: transform 0.3s ease;
+  }
+  .chat-panel.open { transform: translateY(0); }
+  .chat-panel-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px; background: linear-gradient(135deg, #1565c0, #0d47a1);
+    color: #fff; flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+  .chat-panel-header .title { flex: 1; font-size: 16px; font-weight: 800; }
+  .chat-panel-header .close-btn { background: rgba(255,255,255,0.2); border: none; color: #fff; width: 36px; height: 36px; border-radius: 50%; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .ctv-chat-msgs { flex: 1; overflow-y: auto; padding: 14px 12px; display: flex; flex-direction: column; gap: 8px; }
+  .ctv-chat-bubble-wrap { display: flex; }
+  .ctv-chat-bubble-wrap.mine { justify-content: flex-end; }
+  .ctv-chat-bubble { max-width: 78%; padding: 9px 14px; border-radius: 18px; font-size: 15px; line-height: 1.5; word-break: break-word; }
+  .ctv-chat-bubble.from-ctv { background: var(--primary); color: #fff; border-bottom-right-radius: 4px; }
+  .ctv-chat-bubble.from-nvtd { background: #fff; color: var(--text); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+  .ctv-chat-time { font-size: 10px; opacity: 0.6; margin-top: 3px; text-align: right; }
+  .ctv-chat-input-row { display: flex; gap: 8px; padding: 12px 12px; border-top: 1px solid var(--border); background: #fff; flex-shrink: 0; }
+  .ctv-chat-input-row input { flex: 1; padding: 11px 16px; border: 1.5px solid var(--border); border-radius: 24px; font-size: 15px; outline: none; }
+  .ctv-chat-input-row input:focus { border-color: var(--primary); }
+  .ctv-chat-input-row button { padding: 11px 20px; border-radius: 24px; background: var(--primary); color: #fff; border: none; font-size: 15px; font-weight: 700; cursor: pointer; flex-shrink: 0; }
 </style>
 </head>
 <body>
@@ -716,6 +762,28 @@
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
+<!-- FLOATING CHAT BUTTON -->
+<button class="chat-fab" id="chatFab" onclick="openCtvChatPanel()" style="display:none" aria-label="Chat với NVTD">
+  💬
+  <span class="fab-badge" id="fabBadge" style="display:none"></span>
+</button>
+
+<!-- CHAT PANEL (full-screen slide-up) -->
+<div class="chat-panel" id="chatPanel">
+  <div class="chat-panel-header">
+    <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:20px">💼</div>
+    <div class="title">Chat với NVTD</div>
+    <button class="close-btn" onclick="closeCtvChatPanel()">✕</button>
+  </div>
+  <div class="ctv-chat-msgs" id="ctvChatMsgs">
+    <div style="text-align:center;color:var(--muted);font-size:14px;padding:40px 20px">Chưa có tin nhắn nào.<br>Gửi tin nhắn cho NVTD tại đây!</div>
+  </div>
+  <div class="ctv-chat-input-row">
+    <input type="text" id="ctvChatInput" placeholder="Nhập tin nhắn..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendCtvChatMsg()}" />
+    <button onclick="sendCtvChatMsg()">Gửi</button>
+  </div>
+</div>
+
 <script>
 // ==================== FIREBASE DATA LAYER ====================
 let _cache = { customers: [], bank: {}, activities: [], taiVayChecklist: [], taiVayWarnDays: { red: 15, orange: 30, yellow: 60 } };
@@ -763,12 +831,15 @@ function _showCtvApp(ctv) {
   if (!ctv || !myCustomers.length) {
     document.getElementById('noData').style.display = 'block';
     document.getElementById('app').style.display = 'none';
+    // Vẫn khởi động chat dù không có KH
+    initCtvChatListener(ctv);
   } else {
     document.getElementById('app').style.display = 'block';
     document.getElementById('noData').style.display = 'none';
     document.getElementById('headerCtvName').textContent = '👤 ' + ctv;
     document.title = `Thu tiền - CTV ${ctv}`;
     renderStats(); renderLists();
+    initCtvChatListener(ctv);
   }
 }
 
@@ -2014,6 +2085,120 @@ function submitBulkConfirm() {
   renderStats();
   renderLists();
   showToast(`✅ Đã xác nhận thu ${count} khách · ${totalAmt.toLocaleString('vi-VN')} ₫`, 3500);
+}
+
+// ==================== CHAT CTV ====================
+let _ctvChatListener = null;
+let _ctvChatListenerKey = null;
+let _ctvChatUnread = 0;
+
+function chatCtvFmtTime(ts) {
+  const d = new Date(ts);
+  const now = new Date();
+  const hhmm = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+  return d.toDateString() === now.toDateString()
+    ? hhmm
+    : d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }) + ' ' + hhmm;
+}
+
+function initCtvChatListener(ctv) {
+  if (!_db || _ctvChatListener) return; // đã có listener
+  const key = safeKey(ctv);
+  _ctvChatListenerKey = key;
+
+  _ctvChatListener = _db.ref('/chat/' + key).on('value', snap => {
+    const msgs = [];
+    let unread = 0;
+    snap.forEach(child => {
+      const v = child.val();
+      msgs.push({ id: child.key, ...v });
+      if (v.from === 'nvtd' && !v.read) unread++;
+    });
+    msgs.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+    _ctvChatUnread = unread;
+    updateFabBadge();
+    const panelOpen = document.getElementById('chatPanel').classList.contains('open');
+    if (panelOpen) {
+      renderCtvChatMessages(msgs);
+      markCtvChatRead(key);
+    }
+  });
+
+  // Hiện nút chat fab
+  const fab = document.getElementById('chatFab');
+  if (fab) fab.style.display = 'flex';
+}
+
+function updateFabBadge() {
+  const badge = document.getElementById('fabBadge');
+  if (!badge) return;
+  if (_ctvChatUnread > 0) {
+    badge.textContent = _ctvChatUnread > 99 ? '99+' : _ctvChatUnread;
+    badge.style.display = 'flex';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function openCtvChatPanel() {
+  document.getElementById('chatPanel').classList.add('open');
+  // Render ngay nếu đã có listener
+  if (_ctvChatListenerKey && _db) {
+    _db.ref('/chat/' + _ctvChatListenerKey).once('value', snap => {
+      const msgs = [];
+      snap.forEach(child => msgs.push({ id: child.key, ...child.val() }));
+      msgs.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+      renderCtvChatMessages(msgs);
+      markCtvChatRead(_ctvChatListenerKey);
+    });
+  }
+}
+
+function closeCtvChatPanel() {
+  document.getElementById('chatPanel').classList.remove('open');
+}
+
+function renderCtvChatMessages(msgs) {
+  const box = document.getElementById('ctvChatMsgs');
+  if (!box) return;
+  if (!msgs.length) {
+    box.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:14px;padding:40px 20px">Chưa có tin nhắn nào.<br>Gửi tin nhắn cho NVTD tại đây!</div>';
+    return;
+  }
+  box.innerHTML = msgs.map(m => {
+    const isMine = m.from === 'ctv';
+    const txt = (m.text || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return `<div class="ctv-chat-bubble-wrap${isMine ? ' mine' : ''}">
+      <div>
+        <div class="ctv-chat-bubble ${isMine ? 'from-ctv' : 'from-nvtd'}">${txt}</div>
+        <div class="ctv-chat-time">${chatCtvFmtTime(m.ts)}</div>
+      </div>
+    </div>`;
+  }).join('');
+  box.scrollTop = box.scrollHeight;
+}
+
+function markCtvChatRead(ctvKey) {
+  if (!_db) return;
+  _db.ref('/chat/' + ctvKey).orderByChild('read').equalTo(false).once('value', snap => {
+    const updates = {};
+    snap.forEach(child => {
+      if (child.val().from === 'nvtd') updates['/chat/' + ctvKey + '/' + child.key + '/read'] = true;
+    });
+    if (Object.keys(updates).length) _db.ref().update(updates);
+  });
+  _ctvChatUnread = 0;
+  updateFabBadge();
+}
+
+function sendCtvChatMsg() {
+  const inp = document.getElementById('ctvChatInput');
+  const text = (inp.value || '').trim();
+  if (!text || !_ctvChatListenerKey || !_db) return;
+  inp.value = '';
+  _db.ref('/chat/' + _ctvChatListenerKey).push({
+    from: 'ctv', text, ts: Date.now(), read: false
+  }).catch(err => showToast('⚠️ Lỗi gửi tin: ' + err.message));
 }
 
 </script>
