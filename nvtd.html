@@ -433,6 +433,21 @@
   .chat-placeholder { flex: 1; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 12px; color: var(--muted); }
   .tab-btn .chat-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; border-radius: 9px; background: var(--danger); color: #fff; font-size: 10px; font-weight: 800; padding: 0 4px; margin-left: 4px; vertical-align: middle; }
 
+  /* ===== MẪU BIỂU NVTD ===== */
+  .tpl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+  .tpl-card { background: #fff; border: 1.5px solid var(--border); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 10px; transition: box-shadow 0.2s; }
+  .tpl-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.10); }
+  .tpl-category-badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 8px; margin-bottom: 4px; }
+  .tpl-card .tpl-title { font-size: 15px; font-weight: 700; color: var(--text); }
+  .tpl-card .tpl-preview { font-size: 12px; color: var(--muted); line-height: 1.5; max-height: 58px; overflow: hidden; white-space: pre-wrap; word-break: break-word; flex: 1; }
+  .tpl-card .tpl-foot { display: flex; align-items: center; gap: 8px; }
+  .tpl-card .tpl-foot .share-wrap { display: flex; align-items: center; gap: 6px; margin-right: auto; font-size: 12px; font-weight: 600; cursor: pointer; user-select: none; }
+  /* Toggle switch */
+  .tgl { width: 38px; height: 22px; border-radius: 11px; background: #ccc; position: relative; flex-shrink: 0; cursor: pointer; transition: background 0.2s; display: inline-block; }
+  .tgl.on { background: var(--success); }
+  .tgl .tgl-knob { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: left 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.25); }
+  .tgl.on .tgl-knob { left: 19px; }
+
   @media (max-width: 600px) {
     html { scroll-padding-top: 88px; }
     header { padding: 8px 12px; gap: 8px; }
@@ -556,6 +571,7 @@
   <button class="tab-btn" onclick="switchTab('tab-list')">📋 Danh sách KH</button>
   <button class="tab-btn" onclick="switchTab('tab-ctv')">👥 Quản lý CTV</button>
   <button class="tab-btn" onclick="switchTab('tab-chat')" id="tabBtnChat">💬 Chat CTV</button>
+  <button class="tab-btn" onclick="switchTab('tab-templates')" id="tabBtnTemplates">📄 Mẫu biểu</button>
 </div>
 </div><!-- end sticky-top -->
 
@@ -621,6 +637,10 @@
         ".read": "auth != null",
         ".write": "auth != null"
       }
+    },
+    "templates": {
+      ".read": "auth != null",
+      ".write": "auth != null && auth.token.email === 'nvtd@sothu.app'"
     }
   }
 }</pre>
@@ -1032,6 +1052,20 @@
 
 </div>
 
+<!-- ===================== TAB TEMPLATES ===================== -->
+<div id="tab-templates" class="tab-content">
+  <div class="card" id="sec-templates-manage">
+    <div class="card-title">📄 Quản lý mẫu biểu</div>
+    <div class="section-note" style="margin-bottom:14px">
+      💡 Tạo các mẫu biểu (phiếu thu, biên nhận, thông báo...). Bật <strong>Chia sẻ</strong> để CTV xem và sử dụng ngay trong app của họ. Dùng <code>{{tên_khách}}</code>, <code>{{số_tiền}}</code>, <code>{{ngày}}</code> để CTV tự điền khi sử dụng.
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+      <button class="btn btn-primary" onclick="openTemplateModal(null)">➕ Tạo mẫu biểu mới</button>
+    </div>
+    <div id="templateList"><div style="text-align:center;color:var(--muted);padding:36px 20px;font-size:14px">Chưa có mẫu biểu nào. Bấm "Tạo mẫu biểu mới" để bắt đầu.</div></div>
+  </div>
+</div>
+
 <!-- ===================== TAB CHAT ===================== -->
 <div id="tab-chat" class="tab-content">
   <div class="chat-layout">
@@ -1157,6 +1191,46 @@
     <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
       <button class="btn btn-primary" style="flex:1" id="excelConfirmBtn" onclick="confirmExcelImport()">✅ Nhập <span id="excelImportCount">0</span> khách hàng</button>
       <button class="btn btn-outline" onclick="closeModal('excelModal')">Hủy</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL TẠO/SỬA MẪU BIỂU NVTD -->
+<div class="modal-overlay" id="templateModal" onclick="if(event.target===this)closeTemplateModal()">
+  <div class="modal" style="max-width:580px;overflow-y:auto;max-height:90vh">
+    <button class="modal-close" onclick="closeTemplateModal()">✕</button>
+    <div class="modal-title" id="tplModalTitle">📄 Tạo mẫu biểu mới</div>
+    <div class="form-group" style="margin-bottom:12px">
+      <label>Tiêu đề <span style="color:var(--danger)">*</span></label>
+      <input type="text" id="tplTitle" placeholder="VD: Phiếu xác nhận thu tiền" />
+    </div>
+    <div class="form-row" style="margin-bottom:12px">
+      <div class="form-group" style="flex:1">
+        <label>Danh mục</label>
+        <select id="tplCategory" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px">
+          <option value="Thu tiền">💰 Thu tiền</option>
+          <option value="Hướng dẫn">📖 Hướng dẫn</option>
+          <option value="Thông báo">📢 Thông báo</option>
+          <option value="Hợp đồng">📝 Hợp đồng</option>
+          <option value="Khác">🗂️ Khác</option>
+        </select>
+      </div>
+      <div class="form-group" style="flex:0;display:flex;align-items:flex-end">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding-bottom:9px;white-space:nowrap">
+          <span style="font-size:14px;font-weight:600">Chia sẻ CTV</span>
+          <div class="tgl" id="tplShareTgl" onclick="toggleTplShare()"><div class="tgl-knob"></div></div>
+          <span style="font-size:12px;color:var(--muted)" id="tplShareLbl">Tắt</span>
+        </label>
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:16px">
+      <label>Nội dung <span style="color:var(--danger)">*</span></label>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:5px">Dùng <code>{{tên_khách}}</code>, <code>{{số_tiền}}</code>, <code>{{ngày}}</code> — CTV sẽ điền khi dùng mẫu.</div>
+      <textarea id="tplContent" rows="12" style="font-family:monospace;font-size:13px;resize:vertical" placeholder="Nhập nội dung mẫu biểu..."></textarea>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" style="flex:2" onclick="saveTemplate()">💾 Lưu mẫu biểu</button>
+      <button class="btn btn-outline" style="flex:1" onclick="closeTemplateModal()">Hủy</button>
     </div>
   </div>
 </div>
@@ -1783,6 +1857,7 @@ function renderAll() {
   renderTatToanWarnings();
   renderChecklistTemplate();
   initChatListeners();
+  initTemplatesListener();
 }
 
 // ==================== TABS ====================
@@ -1796,6 +1871,9 @@ function switchTab(id) {
   if (id === 'tab-chat') {
     renderChatCtvList();
     initChatListeners();
+  } else if (id === 'tab-templates') {
+    renderTemplates();
+    initTemplatesListener();
   } else {
     renderAll();
   }
@@ -1827,6 +1905,9 @@ const SIDE_NAV_CONFIG = {
     { id: 'sec-ctv-bills',    label: '🧾 Bill' },
   ],
   'tab-chat': [],
+  'tab-templates': [
+    { id: 'sec-templates-manage', label: '📄 Mẫu biểu' },
+  ],
 };
 
 let _sideNavObserver = null;
@@ -4000,5 +4081,122 @@ function updateChatTabBadge() {
   } else {
     if (existing) existing.remove();
   }
+}
+
+// ==================== MẪU BIỂU NVTD ====================
+let _templates = {};      // { pushId: { title, content, category, shared, ts } }
+let _tplListenerOn = false;
+let _tplEditingId = null; // null = tạo mới, string = sửa
+let _tplShareVal = false;
+
+function initTemplatesListener() {
+  if (!_db || _tplListenerOn) return;
+  _tplListenerOn = true;
+  _db.ref('/templates').on('value', snap => {
+    _templates = {};
+    if (snap.exists()) snap.forEach(child => { _templates[child.key] = child.val(); });
+    if (document.getElementById('tab-templates').classList.contains('active')) renderTemplates();
+  });
+}
+
+function renderTemplates() {
+  const list = document.getElementById('templateList');
+  if (!list) return;
+  const ids = Object.keys(_templates);
+  if (!ids.length) {
+    list.innerHTML = '<div style="text-align:center;color:var(--muted);padding:36px 20px;font-size:14px">Chưa có mẫu biểu nào. Bấm "Tạo mẫu biểu mới" để bắt đầu.</div>';
+    return;
+  }
+  const catColors = { 'Thu tiền': '#e8f5e9','Hướng dẫn': '#e8f0fe','Thông báo': '#fff3e0','Hợp đồng': '#fce4ec','Khác': '#f3e5f5' };
+  const sorted = ids.sort((a, b) => (_templates[b].ts || 0) - (_templates[a].ts || 0));
+  list.innerHTML = '<div class="tpl-grid">' + sorted.map(id => {
+    const t = _templates[id];
+    const catColor = catColors[t.category] || '#f5f5f5';
+    const preview = (t.content || '').slice(0, 120);
+    const sharedOn = !!t.shared;
+    const escapedId = id.replace(/'/g, "\\'");
+    return `<div class="tpl-card">
+      <div>
+        <span class="tpl-category-badge" style="background:${catColor}">${escapeHtml(t.category || 'Khác')}</span>
+        <div class="tpl-title">${escapeHtml(t.title || '')}</div>
+      </div>
+      <div class="tpl-preview">${escapeHtml(preview).replace(/\n/g,'<br>')}${(t.content||'').length>120?'…':''}</div>
+      <div class="tpl-foot">
+        <label class="share-wrap" onclick="toggleTemplateShare('${escapedId}',${!sharedOn})" title="${sharedOn?'Đang chia sẻ — bấm để ẩn':'Bấm để chia sẻ cho CTV'}">
+          <div class="tgl${sharedOn?' on':''}"><div class="tgl-knob"></div></div>
+          <span style="color:${sharedOn?'var(--success)':'var(--muted)'}">${sharedOn?'Đang chia sẻ':'Chưa chia sẻ'}</span>
+        </label>
+        <button class="btn btn-outline btn-sm" onclick="openTemplateModal('${escapedId}')">✏️ Sửa</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteTemplate('${escapedId}')">🗑️</button>
+      </div>
+    </div>`;
+  }).join('') + '</div>';
+}
+
+function openTemplateModal(id) {
+  _tplEditingId = id || null;
+  const t = id ? _templates[id] : null;
+  document.getElementById('tplModalTitle').textContent = id ? '✏️ Sửa mẫu biểu' : '📄 Tạo mẫu biểu mới';
+  document.getElementById('tplTitle').value = t ? (t.title || '') : '';
+  document.getElementById('tplCategory').value = t ? (t.category || 'Thu tiền') : 'Thu tiền';
+  document.getElementById('tplContent').value = t ? (t.content || '') : '';
+  _tplShareVal = t ? !!t.shared : false;
+  _updateTplShareToggle();
+  document.getElementById('templateModal').classList.add('active');
+  setTimeout(() => document.getElementById('tplTitle').focus(), 60);
+}
+
+function closeTemplateModal() {
+  document.getElementById('templateModal').classList.remove('active');
+}
+
+function toggleTplShare() {
+  _tplShareVal = !_tplShareVal;
+  _updateTplShareToggle();
+}
+
+function _updateTplShareToggle() {
+  const tgl = document.getElementById('tplShareTgl');
+  const lbl = document.getElementById('tplShareLbl');
+  if (_tplShareVal) {
+    tgl.classList.add('on'); lbl.textContent = 'Bật'; lbl.style.color = 'var(--success)';
+  } else {
+    tgl.classList.remove('on'); lbl.textContent = 'Tắt'; lbl.style.color = 'var(--muted)';
+  }
+}
+
+function saveTemplate() {
+  const title = (document.getElementById('tplTitle').value || '').trim();
+  const content = (document.getElementById('tplContent').value || '').trim();
+  if (!title) { showToast('⚠️ Nhập tiêu đề mẫu biểu'); document.getElementById('tplTitle').focus(); return; }
+  if (!content) { showToast('⚠️ Nhập nội dung mẫu biểu'); document.getElementById('tplContent').focus(); return; }
+  if (!_db) { showToast('⚠️ Cần kết nối Firebase'); return; }
+  const data = {
+    title, content,
+    category: document.getElementById('tplCategory').value,
+    shared: _tplShareVal,
+    ts: Date.now(),
+  };
+  const ref = _tplEditingId
+    ? _db.ref('/templates/' + _tplEditingId)
+    : _db.ref('/templates').push();
+  ref.set(data)
+    .then(() => { showToast(_tplEditingId ? '✅ Đã cập nhật mẫu biểu' : '✅ Đã tạo mẫu biểu mới'); closeTemplateModal(); })
+    .catch(e => showToast('⚠️ Lỗi: ' + e.message));
+}
+
+function deleteTemplate(id) {
+  if (!_db) return;
+  if (!confirm('Xóa mẫu biểu này?')) return;
+  _db.ref('/templates/' + id).remove()
+    .then(() => showToast('🗑️ Đã xóa mẫu biểu'))
+    .catch(e => showToast('⚠️ Lỗi: ' + e.message));
+}
+
+function toggleTemplateShare(id, shared) {
+  if (!_db) return;
+  _db.ref('/templates/' + id + '/shared').set(shared)
+    .then(() => showToast(shared ? '🔓 Đã chia sẻ cho CTV' : '🔒 Đã ẩn khỏi CTV'))
+    .catch(e => showToast('⚠️ Lỗi: ' + e.message));
 }
 </script>

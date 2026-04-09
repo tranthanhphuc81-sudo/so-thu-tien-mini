@@ -513,6 +513,20 @@
   .ctv-chat-input-row input { flex: 1; padding: 11px 16px; border: 1.5px solid var(--border); border-radius: 24px; font-size: 15px; outline: none; }
   .ctv-chat-input-row input:focus { border-color: var(--primary); }
   .ctv-chat-input-row button { padding: 11px 20px; border-radius: 24px; background: var(--primary); color: #fff; border: none; font-size: 15px; font-weight: 700; cursor: pointer; flex-shrink: 0; }
+
+  /* ===== MẪU BIỂU CTV ===== */
+  .ctv-tpl-card { background: #fff; border: 1.5px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 12px; cursor: pointer; transition: box-shadow 0.2s; }
+  .ctv-tpl-card:active { background: #f0f4f8; }
+  .ctv-tpl-category { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 8px; margin-bottom: 6px; }
+  .ctv-tpl-title { font-size: 16px; font-weight: 800; margin-bottom: 6px; color: var(--text); }
+  .ctv-tpl-preview { font-size: 13px; color: var(--muted); line-height: 1.5; max-height: 60px; overflow: hidden; white-space: pre-line; word-break: break-word; }
+  .ctv-tpl-hint { margin-top: 10px; font-size: 12px; color: var(--primary); font-weight: 700; }
+  /* toggle sứ dụng trong view modal - cơ bản */
+  .ctv-tpl-vars { background: #e8f0fe; border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+  .ctv-tpl-vars .var-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .ctv-tpl-vars .var-row:last-child { margin-bottom: 0; }
+  .ctv-tpl-vars .var-label { font-size: 13px; font-weight: 600; white-space: nowrap; min-width: 90px; color: #1a73e8; }
+  .ctv-tpl-vars .var-input { flex: 1; padding: 7px 10px; border: 1.5px solid #c5d8ff; border-radius: 8px; font-size: 13px; }
 </style>
 </head>
 <body>
@@ -623,6 +637,9 @@
     <button class="tab-btn" id="tabBtnTaiVay" onclick="switchTab('taivay')" style="display:none">
       📅 TÁI VAY <span class="count-badge" style="background:#e65100" id="taiVayCount">0</span>
     </button>
+    <button class="tab-btn" id="tabBtnTemplates" onclick="switchTab('templates')" style="display:none">
+      📄 Mẫu biểu <span class="count-badge" style="background:var(--primary)" id="tplCtvCount">0</span>
+    </button>
   </div>
 
   <!-- TAB CHƯA THU -->
@@ -647,6 +664,11 @@
       📋 Danh sách khách hàng <strong>sắp tất toán</strong> — CTV hãy chuẩn bị hồ sơ tái vay theo yêu cầu của NVTD.<br>Tích vào từng mục để báo cho NVTD biết tiến độ.
     </div>
     <div id="listTaiVay"></div>
+  </div>
+
+  <!-- TAB MẪU BIỂU -->
+  <div id="tab-templates" class="tab-content" style="padding:16px">
+    <div id="ctvTplList"><div style="text-align:center;color:var(--muted);font-size:14px;padding:40px 20px">NVTD chưa chia sẻ mẫu biểu nào.</div></div>
   </div>
 
   <!-- BULK ACTION BAR (hiện khi chọn ≥1 khách) -->
@@ -759,6 +781,26 @@
   </div>
 </div>
 
+<!-- MODAL XEM & DÙNG MẪU BIỂU CTV -->
+<div class="modal-overlay" id="ctvTplModal" onclick="if(event.target===this)closeCtvTplModal()">
+  <div class="modal" style="overflow-y:auto;max-height:90vh">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="ctvTplModalTitle">📄 Mẫu biểu</div>
+
+    <!-- Điền biến (chỉ hiện nếu có {{variable}}) -->
+    <div id="ctvTplVarSection" class="ctv-tpl-vars" style="display:none">
+      <div style="font-size:13px;font-weight:700;color:#1a73e8;margin-bottom:8px">✏️ Điền thông tin vào mẫu</div>
+      <div id="ctvTplVarRows"></div>
+    </div>
+
+    <div id="ctvTplModalContent" style="background:#f8f9fa;border-radius:10px;padding:14px;font-size:14px;line-height:1.8;white-space:pre-wrap;max-height:40vh;overflow-y:auto;font-family:sans-serif;color:var(--text);word-break:break-word"></div>
+    <div style="display:flex;gap:10px;margin-top:14px">
+      <button class="btn btn-primary" style="flex:1" onclick="copyCtvTpl()">📋 Sao chép</button>
+      <button class="btn btn-outline" style="flex:1" onclick="closeCtvTplModal()">Đóng</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
@@ -831,8 +873,9 @@ function _showCtvApp(ctv) {
   if (!ctv || !myCustomers.length) {
     document.getElementById('noData').style.display = 'block';
     document.getElementById('app').style.display = 'none';
-    // Vẫn khởi động chat dù không có KH
+    // Vẫn khởi động chat và mẫu biểu dù không có KH
     initCtvChatListener(ctv);
+    initCtvTemplatesListener();
   } else {
     document.getElementById('app').style.display = 'block';
     document.getElementById('noData').style.display = 'none';
@@ -840,6 +883,7 @@ function _showCtvApp(ctv) {
     document.title = `Thu tiền - CTV ${ctv}`;
     renderStats(); renderLists();
     initCtvChatListener(ctv);
+    initCtvTemplatesListener();
   }
 }
 
@@ -2204,6 +2248,125 @@ function sendCtvChatMsg() {
   _db.ref('/chat/' + _ctvChatListenerKey).push({
     from: 'ctv', text, ts: Date.now(), read: false
   }).catch(err => showToast('⚠️ Lỗi gửi tin: ' + err.message));
+}
+
+// ==================== MẪU BIỂU CTV ====================
+let _ctvTemplates = {};
+let _ctvTplListenerOn = false;
+let _ctvTplCurrentId = null; // id đang xem trong modal
+
+function initCtvTemplatesListener() {
+  if (!_db || _ctvTplListenerOn) return;
+  _ctvTplListenerOn = true;
+  _db.ref('/templates').on('value', snap => {
+    _ctvTemplates = {};
+    if (snap.exists()) snap.forEach(child => {
+      const v = child.val();
+      if (v && v.shared) _ctvTemplates[child.key] = v;
+    });
+    _renderCtvTemplates();
+    _updateCtvTplTabBtn();
+  });
+}
+
+function _updateCtvTplTabBtn() {
+  const cnt = Object.keys(_ctvTemplates).length;
+  const btn = document.getElementById('tabBtnTemplates');
+  const badge = document.getElementById('tplCtvCount');
+  if (btn) {
+    btn.style.display = cnt > 0 ? '' : 'none';
+    if (badge) badge.textContent = cnt;
+  }
+}
+
+function _renderCtvTemplates() {
+  const list = document.getElementById('ctvTplList');
+  if (!list) return;
+  const ids = Object.keys(_ctvTemplates);
+  if (!ids.length) {
+    list.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:14px;padding:40px 20px">NVTD chưa chia sẻ mẫu biểu nào.</div>';
+    return;
+  }
+  const catColors = { 'Thu tiền':'#e8f5e9','Hướng dẫn':'#e8f0fe','Thông báo':'#fff3e0','Hợp đồng':'#fce4ec','Khác':'#f3e5f5' };
+  const sorted = ids.sort((a, b) => (_ctvTemplates[b].ts || 0) - (_ctvTemplates[a].ts || 0));
+  list.innerHTML = sorted.map(id => {
+    const t = _ctvTemplates[id];
+    const catColor = catColors[t.category] || '#f5f5f5';
+    const preview = (t.content || '').slice(0, 100);
+    const eid = id.replace(/'/g, "\\'");
+    return `<div class="ctv-tpl-card" onclick="openCtvTpl('${eid}')">
+      <span class="ctv-tpl-category" style="background:${catColor}">${_esc(t.category || 'Khác')}</span>
+      <div class="ctv-tpl-title">${_esc(t.title || '')}</div>
+      <div class="ctv-tpl-preview">${_esc(preview).replace(/\n/g,'<br>')}${(t.content||'').length>100?'…':''}</div>
+      <div class="ctv-tpl-hint">Bấm để xem &amp; sao chép →</div>
+    </div>`;
+  }).join('');
+}
+
+function _esc(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function openCtvTpl(id) {
+  const t = _ctvTemplates[id];
+  if (!t) return;
+  _ctvTplCurrentId = id;
+
+  // Tìm các biến {{...}} trong nội dung
+  const vars = [...new Set([...(t.content || '').matchAll(/\{\{([^}]+)\}\}/g)].map(m => m[1].trim()))];
+
+  document.getElementById('ctvTplModalTitle').textContent = '📄 ' + (t.title || 'Mẫu biểu');
+
+  const varSection = document.getElementById('ctvTplVarSection');
+  const varRows = document.getElementById('ctvTplVarRows');
+  if (vars.length) {
+    varRows.innerHTML = vars.map(v =>
+      `<div class="var-row">
+        <span class="var-label">{{${_esc(v)}}}</span>
+        <input class="var-input" id="tplVar_${_esc(v)}" placeholder="Nhập ${_esc(v)}..." oninput="_ctvTplUpdatePreview()" />
+      </div>`
+    ).join('');
+    varSection.style.display = '';
+  } else {
+    varSection.style.display = 'none';
+    varRows.innerHTML = '';
+  }
+
+  document.getElementById('ctvTplModalContent').textContent = t.content || '';
+  document.getElementById('ctvTplModal').classList.add('active');
+}
+
+function _ctvTplUpdatePreview() {
+  const t = _ctvTemplates[_ctvTplCurrentId];
+  if (!t) return;
+  let content = t.content || '';
+  const vars = [...new Set([...content.matchAll(/\{\{([^}]+)\}\}/g)].map(m => m[1].trim()))];
+  vars.forEach(v => {
+    const inp = document.getElementById('tplVar_' + v);
+    const val = inp ? inp.value : '';
+    content = content.split('{{' + v + '}}').join(val || ('{{' + v + '}}'));
+  });
+  document.getElementById('ctvTplModalContent').textContent = content;
+}
+
+function closeCtvTplModal() {
+  document.getElementById('ctvTplModal').classList.remove('active');
+  _ctvTplCurrentId = null;
+}
+
+function copyCtvTpl() {
+  const content = document.getElementById('ctvTplModalContent').textContent;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(content).then(() => showToast('📋 Đã sao chép vào bộ nhớ tạm!'));
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = content;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('📋 Đã sao chép!');
+  }
 }
 
 </script>
