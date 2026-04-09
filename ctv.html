@@ -2120,9 +2120,10 @@ function initCtvChatListener(ctv) {
     const panelOpen = document.getElementById('chatPanel').classList.contains('open');
     if (panelOpen) {
       renderCtvChatMessages(msgs);
-      // Debounce — KHÔNG gọi markCtvChatRead trực tiếp trong listener
-      scheduleCtvMarkRead(key);
     }
+    // Đánh dấu đọc nếu panel đang mở và có tin chưa đọc — markCtvChatRead dùng once()+update()
+    // bất đồng bộ nên an toàn; lần trigger tiếp unread=0, không ghi tiếp
+    if (panelOpen && unread > 0) markCtvChatRead(key);
   });
 
   // Hiện nút chat fab
@@ -2177,13 +2178,6 @@ function renderCtvChatMessages(msgs) {
     </div>`;
   }).join('');
   box.scrollTop = box.scrollHeight;
-}
-
-let _ctvMarkReadTimer = null;
-
-function scheduleCtvMarkRead(key) {
-  clearTimeout(_ctvMarkReadTimer);
-  _ctvMarkReadTimer = setTimeout(() => markCtvChatRead(key), 800);
 }
 
 function markCtvChatRead(ctvKey) {

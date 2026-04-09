@@ -1782,7 +1782,7 @@ function renderAll() {
   renderBillGallery();
   renderTatToanWarnings();
   renderChecklistTemplate();
-  initChatUnreadListeners();
+  initChatListeners();
 }
 
 // ==================== TABS ====================
@@ -1795,7 +1795,7 @@ function switchTab(id) {
   updateSideNav(id);
   if (id === 'tab-chat') {
     renderChatCtvList();
-    initChatUnreadListeners();
+    initChatListeners();
   } else {
     renderAll();
   }
@@ -3834,9 +3834,8 @@ function submitBulkNvtdConfirm() {
 
 // ==================== CHAT NVTD ====================
 let _chatCurrentCtv = null;   // tên CTV đang chat
-let _chatMsgListener = null;  // Firebase listener đang active
-let _chatUnreadListeners = {}; // listener đếm unread từng CTV
-let _chatUnreadCounts = {};   // { ctvSafeKey: count }
+let _chatListeners = {};       // ONE listener per CTV — xử lý badge + render
+let _chatUnreadCounts = {};    // { ctvSafeKey: count }
 
 function getCtvSet() {
   const s = new Set(_cache.customers.map(c => c.ctv).filter(Boolean));
@@ -3878,7 +3877,7 @@ function renderChatCtvList() {
   }).join('');
 }
 
-// Mở hội thoại với 1 CTV
+// Mở hội thoại với 1 CTV — không tạo listener mới, listener đã có từ initChatListeners
 function openCtvChatNvtd(ctv) {
   if (!_db) { showToast('⚠️ Cần kết nối Firebase để dùng chat'); return; }
   _chatCurrentCtv = ctv;
@@ -3893,36 +3892,20 @@ function openCtvChatNvtd(ctv) {
   document.getElementById('chatConvAvatar').textContent = ctv.charAt(0).toUpperCase();
   document.getElementById('chatConvName').textContent = ctv;
 
-  // Detach listener cũ
-  if (_chatMsgListener) {
-    _db.ref('/chat/' + _chatMsgListenerKey).off('value', _chatMsgListener);
-    _chatMsgListener = null;
-  }
   const key = safeKey(ctv);
-  _chatMsgListenerKey = key;
 
-  // Đánh dấu tất cả tin CTV là đã đọc khi mở
+  // Đánh dấu đọc khi mở — gọi trực tiếp, KHÔNG từ trong listener
   markChatRead(key, 'ctv');
 
   document.getElementById('chatMessages').innerHTML = '<div style="text-align:center;color:var(--muted);font-size:13px;padding:20px">Đang tải...</div>';
 
-  _chatMsgListener = _db.ref('/chat/' + key).on('value', snap => {
+  // Tải lần đầu; listener từ initChatListeners sẽ tự cập nhật realtime
+  _db.ref('/chat/' + key).once('value', snap => {
     const msgs = [];
     snap.forEach(child => msgs.push({ id: child.key, ...child.val() }));
     msgs.sort((a, b) => (a.ts || 0) - (b.ts || 0));
     renderChatMessages(msgs);
-    // Dùng debounce để đánh dấu đọc — KHÔNG gọi trực tiếp trong listener
-    // tránh vòng lặp: markRead ghi Firebase → trigger listener → markRead → ...
-    scheduleMarkChatRead(key);
   });
-}
-
-let _chatMsgListenerKey = null;
-let _chatMarkReadTimer = null;
-
-function scheduleMarkChatRead(key) {
-  clearTimeout(_chatMarkReadTimer);
-  _chatMarkReadTimer = setTimeout(() => markChatRead(key, 'ctv'), 800);
 }
 
 function markChatRead(ctvKey, fromRole) {
@@ -3973,22 +3956,33 @@ function sendChatMsg() {
   }).catch(err => showToast('⚠️ Lỗi gửi tin: ' + err.message));
 }
 
-// Listener đếm unread từ tất cả CTV (chạy ngay sau khi authed)
-function initChatUnreadListeners() {
+// Khởi tạo listener realtime — MỘT listener per CTV, xử lý cả badge và nội dung chat.
+// KHÔNG bao giờ ghi Firebase từ trong listener — tránh vòng lặp trigger.
+function initChatListeners() {
   if (!_db) return;
   getCtvSet().forEach(ctv => {
     const key = safeKey(ctv);
-    if (_chatUnreadListeners[key]) return; // đã có
-    _chatUnreadListeners[key] = _db.ref('/chat/' + key).on('value', snap => {
+    if (_chatListeners[key]) return; // đã có listener, không đăng ký lại
+    _chatListeners[key] = _db.ref('/chat/' + key).on('value', snap => {
+      const msgs = [];
       let cnt = 0;
       snap.forEach(child => {
         const v = child.val();
+        msgs.push({ id: child.key, ...v });
         if (v.from === 'ctv' && !v.read) cnt++;
       });
+      msgs.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+      // Cập nhật badge và sidebar
       _chatUnreadCounts[key] = cnt;
       updateChatTabBadge();
-      if (document.getElementById('tab-chat').classList.contains('active')) {
-        renderChatCtvList();
+      const chatTab = document.getElementById('tab-chat');
+      if (chatTab && chatTab.classList.contains('active')) renderChatCtvList();
+      // Nếu CTV này đang được xem → render tin nhắn
+      if (_chatCurrentCtv && safeKey(_chatCurrentCtv) === key) {
+        renderChatMessages(msgs);
+        // Đánh dấu đọc nếu có tin chưa đọc — markChatRead dùng once()+update() bất đồng bộ,
+        // an toàn: wwrite chỉ xảy ra khi cnt>0, lần trigger tiếp cnt=0 nên không ghi tiếp
+        if (cnt > 0) markChatRead(key, 'ctv');
       }
     });
   });
