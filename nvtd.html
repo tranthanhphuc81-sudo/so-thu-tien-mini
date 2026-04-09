@@ -9,6 +9,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
 <style>
   :root {
     --primary: #1a73e8;
@@ -4094,7 +4095,11 @@ function initTemplatesListener() {
   _tplListenerOn = true;
   _db.ref('/templates').on('value', snap => {
     _templates = {};
-    if (snap.exists()) snap.forEach(child => { _templates[child.key] = child.val(); });
+    if (snap.exists()) snap.forEach(child => {
+      const v = child.val();
+      if (v && v.compressed && v.content) v.content = LZString.decompressFromBase64(v.content) || v.content;
+      _templates[child.key] = v;
+    });
     if (document.getElementById('tab-templates').classList.contains('active')) renderTemplates();
   });
 }
@@ -4172,7 +4177,9 @@ function saveTemplate() {
   if (!content) { showToast('⚠️ Nhập nội dung mẫu biểu'); document.getElementById('tplContent').focus(); return; }
   if (!_db) { showToast('⚠️ Cần kết nối Firebase'); return; }
   const data = {
-    title, content,
+    title,
+    content: LZString.compressToBase64(content),
+    compressed: true,
     category: document.getElementById('tplCategory').value,
     shared: _tplShareVal,
     ts: Date.now(),

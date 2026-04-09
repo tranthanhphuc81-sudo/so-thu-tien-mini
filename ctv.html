@@ -8,6 +8,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
 <style>
   :root {
     --primary: #1a73e8;
@@ -2262,6 +2263,7 @@ function initCtvTemplatesListener() {
     _ctvTemplates = {};
     if (snap.exists()) snap.forEach(child => {
       const v = child.val();
+      if (v && v.compressed && v.content) v.content = LZString.decompressFromBase64(v.content) || v.content;
       if (v && v.shared) _ctvTemplates[child.key] = v;
     });
     _renderCtvTemplates();
