@@ -3196,8 +3196,9 @@ function confirmExcelImport() {
     const raw    = String(row[colAmount] || '').replace(/[^0-9.\-]/g, '');
     const rawAmt = parseFloat(raw) || 0;
     if (!name) return;
-    const isPrepaid  = rawAmt < 0;
-    const amt        = isPrepaid ? 0 : rawAmt;
+    const isDone     = rawAmt <= 0;           // <= 0: không còn nợ → chuyển sang đã thu
+    const isPrepaid  = rawAmt < 0;            // < 0: trả thừa (âm)
+    const amt        = isDone ? 0 : rawAmt;
     const prepaidAmt = isPrepaid ? Math.abs(rawAmt) : 0;
     const code   = colCode >= 0 ? String(row[colCode] || '').trim() : '';
 
@@ -3216,11 +3217,11 @@ function confirmExcelImport() {
         const la = parseFloat(String(row[colLoanAmount] || '').replace(/[^0-9.\-]/g, '')) || 0;
         if (la > 0) existing.loanAmount = la;
       }
-      if (isPrepaid && existing.status !== 'paid') {
+      if (isDone && existing.status !== 'paid') {
         existing.status = 'paid';
         existing.paidAt = existing.paidAt || Date.now();
         existing.paidAmount = prepaidAmt;
-        existing.note = existing.note || '💰 Trả trước kỳ này';
+        existing.note = existing.note || (isPrepaid ? '💰 Trả trước kỳ này' : '✅ Đã thanh toán đủ');
       }
       updCount++;
     } else {
@@ -3229,9 +3230,9 @@ function confirmExcelImport() {
       const newCust = {
         id: 'kh_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
         name, amount: amt, code: finalCode, ctv: rowCtv,
-        status: isPrepaid ? 'paid' : 'pending',
-        paidAt: isPrepaid ? Date.now() : null,
-        billImg: null, note: isPrepaid ? '💰 Trả trước kỳ này' : '',
+        status: isDone ? 'paid' : 'pending',
+        paidAt: isDone ? Date.now() : null,
+        billImg: null, note: isPrepaid ? '💰 Trả trước kỳ này' : (isDone ? '✅ Đã thanh toán đủ' : ''),
       };
       if (tatToanTs) newCust.tatToanDate = tatToanTs;
       if (colLoanAmount >= 0) {
