@@ -8,6 +8,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
 <style>
   :root {
@@ -795,6 +796,10 @@
     </div>
 
     <div id="ctvTplModalContent" style="background:#f8f9fa;border-radius:10px;padding:14px;font-size:14px;line-height:1.8;white-space:pre-wrap;max-height:40vh;overflow-y:auto;font-family:sans-serif;color:var(--text);word-break:break-word"></div>
+    <div id="ctvTplModalFileInfo" style="display:none;margin-top:12px;font-size:13px;color:var(--muted)"></div>
+    <div id="ctvTplModalFileAction" style="display:none;margin-top:12px;">
+      <a id="ctvTplModalDownload" class="btn btn-primary" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;justify-content:center;width:100%;">Tải xuống file</a>
+    </div>
     <div style="display:flex;gap:10px;margin-top:14px">
       <button class="btn btn-primary" style="flex:1" onclick="copyCtvTpl()">📋 Sao chép</button>
       <button class="btn btn-outline" style="flex:1" onclick="closeCtvTplModal()">Đóng</button>
@@ -877,6 +882,7 @@ function _showCtvApp(ctv) {
     // Vẫn khởi động chat và mẫu biểu dù không có KH
     initCtvChatListener(ctv);
     initCtvTemplatesListener();
+    initCtvTemplateFilesListener();
   } else {
     document.getElementById('app').style.display = 'block';
     document.getElementById('noData').style.display = 'none';
@@ -885,6 +891,7 @@ function _showCtvApp(ctv) {
     renderStats(); renderLists();
     initCtvChatListener(ctv);
     initCtvTemplatesListener();
+    initCtvTemplateFilesListener();
   }
 }
 
@@ -2253,8 +2260,11 @@ function sendCtvChatMsg() {
 
 // ==================== MẪU BIỂU CTV ====================
 let _ctvTemplates = {};
+let _ctvTemplateFiles = {};
 let _ctvTplListenerOn = false;
+let _ctvTplFileListenerOn = false;
 let _ctvTplCurrentId = null; // id đang xem trong modal
+let _ctvTplIsFile = false;
 
 function initCtvTemplatesListener() {
   if (!_db || _ctvTplListenerOn) return;
@@ -2271,8 +2281,22 @@ function initCtvTemplatesListener() {
   });
 }
 
+function initCtvTemplateFilesListener() {
+  if (!_db || _ctvTplFileListenerOn) return;
+  _ctvTplFileListenerOn = true;
+  _db.ref('/templateFiles').on('value', snap => {
+    _ctvTemplateFiles = {};
+    if (snap.exists()) snap.forEach(child => {
+      const v = child.val();
+      if (v && v.shared && v.url) _ctvTemplateFiles[child.key] = v;
+    });
+    _renderCtvTemplates();
+    _updateCtvTplTabBtn();
+  });
+}
+
 function _updateCtvTplTabBtn() {
-  const cnt = Object.keys(_ctvTemplates).length;
+  const cnt = Object.keys(_ctvTemplates).length + Object.keys(_ctvTemplateFiles).length;
   const btn = document.getElementById('tabBtnTemplates');
   const badge = document.getElementById('tplCtvCount');
   if (btn) {
@@ -2284,25 +2308,44 @@ function _updateCtvTplTabBtn() {
 function _renderCtvTemplates() {
   const list = document.getElementById('ctvTplList');
   if (!list) return;
-  const ids = Object.keys(_ctvTemplates);
-  if (!ids.length) {
+  const templateIds = Object.keys(_ctvTemplates);
+  const fileIds = Object.keys(_ctvTemplateFiles);
+  if (!templateIds.length && !fileIds.length) {
     list.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:14px;padding:40px 20px">NVTD chưa chia sẻ mẫu biểu nào.</div>';
     return;
   }
   const catColors = { 'Thu tiền':'#e8f5e9','Hướng dẫn':'#e8f0fe','Thông báo':'#fff3e0','Hợp đồng':'#fce4ec','Khác':'#f3e5f5' };
-  const sorted = ids.sort((a, b) => (_ctvTemplates[b].ts || 0) - (_ctvTemplates[a].ts || 0));
-  list.innerHTML = sorted.map(id => {
-    const t = _ctvTemplates[id];
-    const catColor = catColors[t.category] || '#f5f5f5';
-    const preview = (t.content || '').slice(0, 100);
-    const eid = id.replace(/'/g, "\\'");
-    return `<div class="ctv-tpl-card" onclick="openCtvTpl('${eid}')">
-      <span class="ctv-tpl-category" style="background:${catColor}">${_esc(t.category || 'Khác')}</span>
-      <div class="ctv-tpl-title">${_esc(t.title || '')}</div>
-      <div class="ctv-tpl-preview">${_esc(preview).replace(/\n/g,'<br>')}${(t.content||'').length>100?'…':''}</div>
-      <div class="ctv-tpl-hint">Bấm để xem &amp; sao chép →</div>
-    </div>`;
-  }).join('');
+  let html = '';
+  if (templateIds.length) {
+    const sorted = templateIds.sort((a, b) => (_ctvTemplates[b].ts || 0) - (_ctvTemplates[a].ts || 0));
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-bottom:18px">' + sorted.map(id => {
+      const t = _ctvTemplates[id];
+      const catColor = catColors[t.category] || '#f5f5f5';
+      const preview = (t.content || '').slice(0, 100);
+      const eid = id.replace(/'/g, "\\'");
+      return `<div class="ctv-tpl-card" onclick="openCtvTpl('${eid}')">
+        <span class="ctv-tpl-category" style="background:${catColor}">${_esc(t.category || 'Khác')}</span>
+        <div class="ctv-tpl-title">${_esc(t.title || '')}</div>
+        <div class="ctv-tpl-preview">${_esc(preview).replace(/\n/g,'<br>')}${(t.content||'').length>100?'…':''}</div>
+        <div class="ctv-tpl-hint">Bấm để xem &amp; sao chép →</div>
+      </div>`;
+    }).join('') + '</div>';
+  }
+  if (fileIds.length) {
+    html += '<div style="margin-top:8px;font-weight:700;color:var(--text);margin-bottom:10px">File mẫu biểu đã chia sẻ</div>';
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px">' + fileIds.sort((a,b)=>(_ctvTemplateFiles[b].ts||0)-(_ctvTemplateFiles[a].ts||0)).map(id => {
+      const f = _ctvTemplateFiles[id];
+      const fileExt = (f.name || '').split('.').pop().toUpperCase();
+      const eid = id.replace(/'/g, "\\'");
+      return `<div class="ctv-tpl-card" onclick="openCtvTplFile('${eid}')">
+        <span class="ctv-tpl-category" style="background:#e8f5e9">FILE</span>
+        <div class="ctv-tpl-title">${_esc(f.title || f.name || 'File mẫu')}</div>
+        <div class="ctv-tpl-preview">${_esc(f.name || '')}<br><strong>${_esc(fileExt)}</strong></div>
+        <div class="ctv-tpl-hint">Bấm để mở file →</div>
+      </div>`;
+    }).join('') + '</div>';
+  }
+  list.innerHTML = html;
 }
 
 function _esc(s) {
@@ -2313,11 +2356,13 @@ function openCtvTpl(id) {
   const t = _ctvTemplates[id];
   if (!t) return;
   _ctvTplCurrentId = id;
+  _ctvTplIsFile = false;
 
-  // Tìm các biến {{...}} trong nội dung
   const vars = [...new Set([...(t.content || '').matchAll(/\{\{([^}]+)\}\}/g)].map(m => m[1].trim()))];
 
   document.getElementById('ctvTplModalTitle').textContent = '📄 ' + (t.title || 'Mẫu biểu');
+  document.getElementById('ctvTplModalFileAction').style.display = 'none';
+  document.getElementById('ctvTplModalFileInfo').style.display = 'none';
 
   const varSection = document.getElementById('ctvTplVarSection');
   const varRows = document.getElementById('ctvTplVarRows');
@@ -2338,6 +2383,25 @@ function openCtvTpl(id) {
   document.getElementById('ctvTplModal').classList.add('open');
 }
 
+function openCtvTplFile(id) {
+  const f = _ctvTemplateFiles[id];
+  if (!f) return;
+  _ctvTplCurrentId = id;
+  _ctvTplIsFile = true;
+
+  document.getElementById('ctvTplModalTitle').textContent = '📄 ' + (f.title || f.name || 'File mẫu');
+  document.getElementById('ctvTplModalContent').textContent = f.name || '';
+  document.getElementById('ctvTplModalFileInfo').style.display = '';
+  const downloadLink = document.getElementById('ctvTplModalDownload');
+  if (downloadLink) {
+    downloadLink.href = f.url;
+    downloadLink.textContent = 'Tải xuống ' + (f.name || 'file');
+  }
+  document.getElementById('ctvTplModalFileAction').style.display = '';
+  document.getElementById('ctvTplVarSection').style.display = 'none';
+  document.getElementById('ctvTplModal').classList.add('open');
+}
+
 function _ctvTplUpdatePreview() {
   const t = _ctvTemplates[_ctvTplCurrentId];
   if (!t) return;
@@ -2354,10 +2418,16 @@ function _ctvTplUpdatePreview() {
 function closeCtvTplModal() {
   document.getElementById('ctvTplModal').classList.remove('open');
   _ctvTplCurrentId = null;
+  _ctvTplIsFile = false;
 }
 
 function copyCtvTpl() {
-  const content = document.getElementById('ctvTplModalContent').textContent;
+  let content = document.getElementById('ctvTplModalContent').textContent;
+  if (_ctvTplIsFile) {
+    const fileData = _ctvTemplateFiles[_ctvTplCurrentId];
+    if (fileData && fileData.url) content = fileData.url;
+  }
+  if (!content) return;
   if (navigator.clipboard) {
     navigator.clipboard.writeText(content).then(() => showToast('📋 Đã sao chép vào bộ nhớ tạm!'));
   } else {

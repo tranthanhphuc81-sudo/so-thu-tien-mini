@@ -9,6 +9,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
 <style>
   :root {
@@ -1227,7 +1228,7 @@
     <div class="form-group" style="margin-bottom:10px">
       <button type="button" class="btn btn-outline btn-sm" onclick="browseTemplateFile()">📁 Upload file mẫu biểu</button>
       <span id="tplFileLabel" style="margin-left:12px;font-size:13px;color:var(--muted)"></span>
-      <input type="file" id="tplFileInput" accept=".txt,.md,.html" style="display:none" onchange="handleTemplateFileInput(this)" />
+      <input type="file" id="tplFileInput" accept=".txt,.md,.html,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx" style="display:none" onchange="handleTemplateFileInput(this)" />
     </div>
     <div class="form-group" style="margin-bottom:16px">
       <label>Nội dung <span style="color:var(--danger)">*</span></label>
@@ -4094,7 +4095,8 @@ let _templates = {};      // { pushId: { title, content, category, shared, ts, f
 let _tplListenerOn = false;
 let _tplEditingId = null; // null = tạo mới, string = sửa
 let _tplShareVal = false;
-let _tplFileName = ''; // tên file mẫu nếu upload từ file
+let _tplFileObj = null;   // file upload nếu NVTD chọn file
+let _tplFileName = '';    // tên file mẫu nếu upload từ file
 
 function initTemplatesListener() {
   if (!_db || _tplListenerOn) return;
@@ -4153,6 +4155,8 @@ function openTemplateModal(id) {
   document.getElementById('tplCategory').value = t ? (t.category || 'Thu tiền') : 'Thu tiền';
   document.getElementById('tplContent').value = t ? (t.content || '') : '';
   _tplShareVal = t ? !!t.shared : false;
+  _tplFileObj = null;
+  _tplFileName = t ? (t.filename || '') : '';
   _updateTplShareToggle();
   setTemplateFileName(_tplFileName);
   document.getElementById('templateModal').classList.add('open');
@@ -4176,27 +4180,31 @@ function browseTemplateFile() {
 function handleTemplateFileInput(input) {
   const file = input.files && input.files[0];
   if (!file) return;
-  const allowed = ['text/plain', 'text/markdown', 'text/html'];
-  const extOk = /\.(txt|md|html?)$/i.test(file.name);
-  if (!allowed.includes(file.type) && !extOk) {
-    showToast('⚠️ Vui lòng chọn file .txt, .md hoặc .html');
+  const allowedExt = /\.(txt|md|html?|pdf|doc|docx|xls|xlsx|ppt|pptx)$/i;
+  if (!allowedExt.test(file.name)) {
+    showToast('⚠️ Vui lòng chọn file .txt, .md, .html, .pdf, .docx, .xlsx, .pptx');
     input.value = '';
     return;
   }
-  const reader = new FileReader();
-  reader.onload = e => {
-    const text = e.target.result || '';
-    document.getElementById('tplContent').value = text;
-    _tplFileName = file.name;
-    setTemplateFileName(file.name);
-    if (!document.getElementById('tplTitle').value.trim()) {
-      document.getElementById('tplTitle').value = file.name.replace(/\.[^/.]+$/, '');
-    }
-  };
-  reader.onerror = () => {
-    showToast('⚠️ Không đọc được file mẫu biểu');
-  };
-  reader.readAsText(file, 'UTF-8');
+  _tplFileObj = file;
+  _tplFileName = file.name;
+  setTemplateFileName(file.name);
+  if (!document.getElementById('tplTitle').value.trim()) {
+    document.getElementById('tplTitle').value = file.name.replace(/\.[^/.]+$/, '');
+  }
+  if (file.type.startsWith('text/') || /\.(txt|md|html?)$/i.test(file.name)) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      document.getElementById('tplContent').value = e.target.result || '';
+    };
+    reader.onerror = () => {
+      showToast('⚠️ Không đọc được nội dung văn bản');
+    };
+    reader.readAsText(file, 'UTF-8');
+  } else {
+    document.getElementById('tplContent').value = '';
+    showToast('🛈 File không phải text sẽ được upload lên Storage');
+  }
   input.value = '';
 }
 
@@ -4224,8 +4232,11 @@ function saveTemplate() {
   const title = (document.getElementById('tplTitle').value || '').trim();
   const content = (document.getElementById('tplContent').value || '').trim();
   if (!title) { showToast('⚠️ Nhập tiêu đề mẫu biểu'); document.getElementById('tplTitle').focus(); return; }
-  if (!content) { showToast('⚠️ Nhập nội dung mẫu biểu'); document.getElementById('tplContent').focus(); return; }
   if (!_db) { showToast('⚠️ Cần kết nối Firebase'); return; }
+  if (_tplFileObj) {
+    return saveTemplateFile();
+  }
+  if (!content) { showToast('⚠️ Nhập nội dung mẫu biểu'); document.getElementById('tplContent').focus(); return; }
   const data = {
     title,
     content: LZString.compressToBase64(content),
@@ -4241,6 +4252,44 @@ function saveTemplate() {
   ref.set(data)
     .then(() => { showToast(_tplEditingId ? '✅ Đã cập nhật mẫu biểu' : '✅ Đã tạo mẫu biểu mới'); closeTemplateModal(); })
     .catch(e => showToast('⚠️ Lỗi: ' + e.message));
+}
+
+function saveTemplateFile() {
+  const file = _tplFileObj;
+  if (!file) return;
+  const title = (document.getElementById('tplTitle').value || '').trim() || file.name.replace(/\.[^/.]+$/, '');
+  const storageRef = firebase.storage().ref();
+  const safeName = encodeURIComponent(file.name.replace(/ /g, '_'));
+  const filePath = `templateFiles/${Date.now()}_${safeName}`;
+  const uploadTask = storageRef.child(filePath).put(file);
+
+  uploadTask.on('state_changed', snapshot => {
+    const percent = Math.round(snapshot.bytesTransferred / snapshot.totalBytes * 100);
+    const label = document.getElementById('tplFileLabel');
+    if (label) label.textContent = `Đang upload ${file.name} (${percent}%)`;
+  }, err => {
+    showToast('⚠️ Upload lỗi: ' + err.message);
+    setTemplateFileName(_tplFileName);
+  }, async () => {
+    const url = await uploadTask.snapshot.ref.getDownloadURL();
+    const metadata = {
+      title,
+      name: file.name,
+      url,
+      type: file.type || 'application/octet-stream',
+      shared: _tplShareVal,
+      owner: firebase.auth().currentUser ? firebase.auth().currentUser.email : 'nvtd@sothu.app',
+      ts: Date.now(),
+      filename: _tplFileName
+    };
+    const ref = _db.ref('/templateFiles').push();
+    ref.set(metadata)
+      .then(() => {
+        showToast('✅ Đã upload và chia sẻ file mẫu biểu');
+        closeTemplateModal();
+      })
+      .catch(e => showToast('⚠️ Lưu metadata lỗi: ' + e.message));
+  });
 }
 
 function deleteTemplate(id) {
