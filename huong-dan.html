@@ -257,6 +257,7 @@
       <a href="#tongquan">📌 Tổng quan hệ thống</a>
       <a href="#firebase">🔥 Bước 1: Cài đặt Firebase</a>
       <a href="#rules">🛡️ Bước 2: Cập nhật Rules</a>
+      <a href="#storage">☁️ Bước 2.5: Bật Firebase Storage</a>
       <a href="#auth-enable">🔑 Bước 3: Bật Authentication</a>
       <a href="#bank">🏦 Bước 4: Thông tin ngân hàng</a>
       <a href="#import">📥 Bước 5: Nhập khách hàng</a>
@@ -449,6 +450,55 @@
           <tr><td><code>/data</code></td><td>Đã đăng nhập Firebase</td><td>Đã đăng nhập Firebase</td></tr>
           <tr><td>Các node khác</td><td>Không ai</td><td>Không ai</td></tr>
         </table>
+      </div>
+    </section>
+
+    <!-- ======================================================= -->
+    <section id="storage">
+      <div class="card">
+        <div class="card-title">☁️ Bước 2.5: Bật Firebase Storage</div>
+
+        <div class="note info">
+          Dùng Storage khi bạn muốn upload file mẫu biểu thực tế (.docx, .xlsx, .pdf, .pptx, v.v.). Realtime Database chỉ dùng để lưu metadata và liên kết download.
+        </div>
+
+        <ol class="steps" style="margin-top:16px">
+          <li>
+            <div class="step-body">
+              <div class="step-title">Mở Storage</div>
+              <div class="step-desc">Firebase Console → <strong>Storage</strong> → Bấm <strong>Get started</strong> nếu chưa bật.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Chọn region</div>
+              <div class="step-desc">Chọn region gần Việt Nam nếu có, ví dụ <strong>asia-southeast1</strong>, rồi bấm <strong>Done</strong>.</div>
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <div class="step-title">Cập nhật Storage Rules</div>
+              <div class="step-desc">Chuyển sang tab <strong>Rules</strong> của Storage và dán nội dung bên dưới rồi <strong>Publish</strong>.</div>
+            </div>
+          </li>
+        </ol>
+
+        <p style="font-size:13px;color:var(--muted);margin-top:8px">Nội dung Rules Storage cần dán:</p>
+        <pre>rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /templateFiles/{fileId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+                    && request.auth.token.email == 'nvtd@sothu.app';
+    }
+  }
+}
+</pre>
+
+        <div class="note warn">
+          Nếu không bật Storage, app sẽ không thể upload file văn phòng thực tế — chỉ dùng được nội dung text mẫu và liên kết metadata.
+        </div>
       </div>
     </section>
 
